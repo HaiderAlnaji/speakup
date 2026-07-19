@@ -1,0 +1,2061 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SpeakUp — Practice speaking English</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0E1533; --ink-2:#1A2450;
+    --surface:#FFFFFF; --surface-2:#F4F6FB; --line:#E4E8F2;
+    --text:#0E1533; --muted:#6B7599;
+    --brand:#12B8A6; --brand-2:#0FB4D4;
+    --brand-grad:linear-gradient(135deg,#12B8A6,#0FB4D4);
+    --gold:#E7A63A; --good:#20B562; --danger:#E5484D;
+    --radius:16px; --shadow:0 12px 40px rgba(14,21,51,.10);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+
+  /* ---------- Motion system ---------- */
+  :root{ --ease:cubic-bezier(.22,1,.36,1); --ease-snap:cubic-bezier(.34,1.56,.64,1); }
+  @media (prefers-reduced-motion:reduce){
+    *{animation-duration:.001ms !important;animation-iteration-count:1 !important;
+      transition-duration:.001ms !important;}
+  }
+  @keyframes riseIn{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+  @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+  @keyframes popIn{from{opacity:0;transform:scale(.94)}to{opacity:1;transform:scale(1)}}
+  .anim-in{animation:riseIn .55s var(--ease) both}
+  .anim-in-1{animation:riseIn .55s var(--ease) .05s both}
+  .anim-in-2{animation:riseIn .55s var(--ease) .12s both}
+  .anim-in-3{animation:riseIn .55s var(--ease) .19s both}
+  .anim-pop{animation:popIn .4s var(--ease-snap) both}
+  body{font-family:'Inter',system-ui,-apple-system,sans-serif;color:var(--text);
+    background:var(--surface-2);line-height:1.5;-webkit-font-smoothing:antialiased}
+  h1,h2,h3,.brandmark{font-family:'Sora','Inter',sans-serif;letter-spacing:-.02em}
+  button{font-family:inherit;cursor:pointer;border:none}
+  .hidden{display:none !important}
+
+  /* ---------- Waveform signature ---------- */
+  .wave{display:inline-flex;align-items:center;gap:3px;height:22px}
+  .wave span{width:3px;height:100%;border-radius:3px;background:var(--brand);
+    transform-origin:center;animation:bounce 1.1s ease-in-out infinite}
+  .wave span:nth-child(2){animation-delay:.15s}
+  .wave span:nth-child(3){animation-delay:.3s}
+  .wave span:nth-child(4){animation-delay:.45s}
+  .wave span:nth-child(5){animation-delay:.6s}
+  @keyframes bounce{0%,100%{transform:scaleY(.3)}50%{transform:scaleY(1)}}
+  @media (prefers-reduced-motion:reduce){.wave span{animation:none;transform:scaleY(.6)}}
+
+  /* ---------- Auth screen ---------- */
+  .auth-wrap{min-height:100vh;display:grid;place-items:center;padding:24px;
+    background:radial-gradient(1000px 500px at 50% -5%,#20306a,#0E1533)}
+  .auth-card{width:100%;max-width:420px;background:var(--surface);border-radius:20px;
+    padding:34px 30px;box-shadow:var(--shadow)}
+  .auth-logo{display:flex;align-items:center;gap:10px;justify-content:center;margin-bottom:20px}
+  .auth-logo .brandmark{font-size:22px;font-weight:700;color:var(--ink)}
+  .auth-card h1{font-size:24px;text-align:center;margin-bottom:6px}
+  .auth-sub{text-align:center;color:var(--muted);font-size:14px;margin-bottom:22px}
+  .field{margin-bottom:14px}
+  .field label{display:block;font-size:13px;font-weight:500;margin-bottom:6px;color:var(--ink)}
+  .field input{width:100%;padding:12px 14px;border:1.5px solid var(--line);border-radius:12px;
+    font-size:15px;transition:border-color .15s}
+  .field input:focus{outline:none;border-color:var(--brand)}
+  .btn-primary{width:100%;padding:13px;border-radius:12px;background:var(--brand-grad);
+    color:#fff;font-weight:600;font-size:15px;transition:filter .2s var(--ease),transform .15s var(--ease)}
+  .btn-primary:hover{filter:brightness(1.05);transform:translateY(-1px)}
+  .btn-primary:active{transform:translateY(0) scale(.98)}
+  .btn-primary:disabled{opacity:.6;cursor:default;transform:none}
+  .auth-toggle{text-align:center;font-size:14px;color:var(--muted);margin-top:18px}
+  .auth-toggle button{background:none;color:var(--brand);font-weight:600;padding:0}
+  .msg{font-size:13.5px;padding:10px 12px;border-radius:10px;margin-bottom:14px;display:none}
+  .msg.err{display:block;background:#FDECEC;color:#B4292E}
+  .msg.ok{display:block;background:#E6F7EE;color:#137a45}
+
+  /* ---------- App shell ---------- */
+  .topbar{background:var(--surface);border-bottom:1px solid var(--line);
+    padding:14px 22px;display:flex;align-items:center;justify-content:space-between;
+    position:sticky;top:0;z-index:10}
+  .topbar .brand{display:flex;align-items:center;gap:9px}
+  .topbar .brandmark{font-size:18px;font-weight:700}
+  .topbar .user{display:flex;align-items:center;gap:12px;font-size:13.5px;color:var(--muted)}
+  .badge-pro{background:var(--gold);color:#3a2600;font-weight:600;font-size:11px;
+    padding:3px 9px;border-radius:20px;letter-spacing:.02em}
+  .btn-ghost{background:var(--surface-2);color:var(--ink);font-weight:500;font-size:13px;
+    padding:7px 13px;border-radius:9px;transition:background .18s var(--ease),transform .15s var(--ease)}
+  .btn-ghost:hover{background:#E9EDF6;transform:translateY(-1px)}
+  .btn-ghost:active{transform:translateY(0) scale(.97)}
+  .container{max-width:940px;margin:0 auto;padding:28px 22px 60px}
+
+  /* ---------- Dashboard ---------- */
+  .page-head{margin-bottom:22px}
+  .page-head h2{font-size:22px}
+  .page-head p{color:var(--muted);font-size:14.5px;margin-top:3px}
+  .stat-row{display:flex;gap:14px;margin-bottom:26px;flex-wrap:wrap}
+
+  /* ---------- Certificate ready banner ---------- */
+  .cert-ready{display:flex;align-items:center;gap:16px;margin-bottom:16px;
+    background:linear-gradient(100deg,#0E1533,#1B2A5E);border:1px solid #2C3B72;
+    border-radius:16px;padding:18px 22px;color:#fff}
+  .cr-icon{font-size:38px;line-height:1}
+  .cr-body{flex:1}
+  .cr-title{font-family:'Sora';font-size:18px;font-weight:700}
+  .cr-sub{font-size:13px;color:#B9C2E0;margin-top:2px}
+
+  /* ---------- Streak banner ---------- */
+  .streak-banner{display:flex;align-items:center;gap:16px;margin-bottom:20px;
+    background:linear-gradient(100deg,#FFF4E0,#FFE9CC);border:1px solid #F3D9A8;
+    border-radius:16px;padding:16px 20px}
+  .sb-flame{font-size:36px;line-height:1;filter:drop-shadow(0 2px 6px rgba(230,140,20,.35))}
+  .sb-body{flex:1}
+  .sb-count{font-family:'Sora';font-size:22px;font-weight:700;color:#7A4E0B}
+  .sb-count span{font-size:26px}
+  .sb-sub{font-size:13.5px;color:#9A6B12;margin-top:2px}
+  .sb-best{font-size:12.5px;color:#9A6B12;background:#fff;border:1px solid #F0D89B;
+    border-radius:20px;padding:5px 12px;white-space:nowrap}
+
+  /* ---------- Progress graph (Pro) ---------- */
+  .progress-card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);
+    padding:20px 22px;margin-bottom:26px}
+  .pc-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+  .pc-head h3{font-size:16px}
+  .pc-trend{font-size:12px;font-weight:600;padding:4px 10px;border-radius:20px}
+  .pc-trend.improving{background:#E7F7EE;color:#1B6B42}
+  .pc-trend.declining{background:#FDECEC;color:#B4292E}
+  .pc-trend.steady{background:var(--surface-2);color:var(--muted)}
+  .pg-bar-wrap{display:flex;align-items:flex-end;gap:6px;height:120px}
+  .pg-col{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;
+    height:100%;gap:6px}
+  .pg-bar{width:100%;max-width:26px;border-radius:5px 5px 2px 2px;background:var(--brand-grad);
+    transition:height .5s var(--ease);min-height:3px}
+  .pg-val{font-size:10.5px;color:var(--muted);white-space:nowrap}
+  .pg-date{font-size:9.5px;color:var(--muted);opacity:.75;white-space:nowrap;
+    writing-mode:vertical-rl;transform:rotate(180deg);max-height:44px}
+
+  .progress-teaser{display:flex;align-items:center;justify-content:space-between;gap:16px;
+    background:var(--surface);border:1.5px dashed var(--line);border-radius:var(--radius);
+    padding:18px 22px;margin-bottom:26px;flex-wrap:wrap}
+  .progress-teaser b{font-size:15px}
+  .progress-teaser p{font-size:13px;color:var(--muted);margin-top:3px}
+
+  .stat{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);
+    padding:16px 18px;flex:1;min-width:150px}
+  .stat .num{font-family:'Sora';font-size:26px;font-weight:700;color:var(--ink)}
+  .stat .lbl{font-size:13px;color:var(--muted);margin-top:2px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);
+    padding:20px;transition:transform .2s var(--ease),box-shadow .2s var(--ease);position:relative}
+  .card.clickable:hover{transform:translateY(-3px);box-shadow:var(--shadow)}
+  .card.clickable:active{transform:translateY(-1px) scale(.99)}
+  .card .lvl{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;
+    color:var(--brand)}
+  .card h3{font-size:17px;margin:8px 0 4px}
+  .card .meta{font-size:13px;color:var(--muted)}
+  .card .bar{height:6px;background:var(--surface-2);border-radius:6px;margin-top:14px;overflow:hidden}
+  .card .bar i{display:block;height:100%;background:var(--brand-grad);border-radius:6px;width:0}
+  .lock-tag{position:absolute;top:16px;right:16px;display:flex;align-items:center;gap:5px;
+    background:#FCF3E2;color:#8a6316;font-size:11px;font-weight:600;padding:4px 9px;border-radius:20px}
+  .pro-pill{display:inline-block;background:var(--gold);color:#3a2600;font-size:11px;font-weight:700;
+    padding:2px 9px;border-radius:20px;vertical-align:middle;margin-left:8px;letter-spacing:.03em}
+
+  /* ---------- Practice ---------- */
+  .back{background:none;color:var(--muted);font-size:14px;margin-bottom:16px;
+    display:flex;align-items:center;gap:6px;font-weight:500}
+  .practice{background:var(--surface);border:1px solid var(--line);border-radius:20px;
+    padding:32px 28px;text-align:center;max-width:620px;margin:0 auto}
+  .progress-dots{display:flex;gap:6px;justify-content:center;margin-bottom:22px}
+  .progress-dots span{width:26px;height:5px;border-radius:5px;background:var(--line)}
+  .progress-dots span.done{background:var(--good)}
+  .progress-dots span.active{background:var(--brand)}
+  .phrase-label{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);
+    margin-bottom:10px}
+  .phrase{font-family:'Sora';font-size:26px;font-weight:600;line-height:1.35;color:var(--ink);
+    margin-bottom:6px}
+  .phrase-tr{font-size:15px;color:var(--brand);margin-bottom:14px;direction:rtl;text-align:center;
+    animation:riseIn .3s var(--ease) both}
+  .phrase-actions{display:flex;gap:10px;justify-content:center;margin-bottom:26px}
+  .listen{background:var(--surface-2);color:var(--ink);font-weight:500;font-size:13.5px;
+    padding:8px 15px;border-radius:20px;display:inline-flex;align-items:center;gap:7px;margin-bottom:0;
+    transition:background .18s var(--ease),transform .15s var(--ease)}
+  .listen:hover{background:#E9EDF6;transform:translateY(-1px)}
+
+  /* ---------- Timed practice session ---------- */
+  .session-setup{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);
+    padding:34px;max-width:520px;margin:0 auto;text-align:center}
+  .session-setup h2{font-size:22px;margin-bottom:8px}
+  .session-setup p{color:var(--muted);font-size:14px;margin-bottom:24px;line-height:1.5}
+  .setup-row{display:flex;gap:14px;margin-bottom:22px}
+  .setup-field{flex:1;text-align:left}
+  .setup-field label{display:block;font-size:12px;font-weight:600;color:var(--muted);margin-bottom:6px}
+  .setup-field select{width:100%;padding:11px 12px;border:1.5px solid var(--line);border-radius:10px;
+    font-size:14.5px;font-family:inherit;background:#fff}
+
+  .session-bar{margin-bottom:22px}
+  .sb-top{display:flex;justify-content:space-between;font-size:12.5px;color:var(--muted);margin-bottom:7px}
+  .sb-track{height:6px;background:var(--surface-2);border-radius:6px;overflow:hidden}
+  .sb-fill{height:100%;background:var(--brand-grad);border-radius:6px;width:0;transition:width 1s linear}
+  .sb-finish{background:none;color:var(--muted);font-size:12px;text-decoration:underline;
+    margin-top:8px;padding:4px}
+  .sb-finish:hover{color:var(--brand)}
+
+  .session-summary{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);
+    padding:32px;text-align:center;max-width:520px;margin:0 auto}
+  .session-summary .big{font-family:'Sora';font-size:40px;font-weight:700;color:var(--brand)}
+  .session-summary .stats{display:flex;justify-content:center;gap:36px;margin:18px 0 26px}
+  .session-summary .stats div{text-align:center}
+  .session-summary .stats b{display:block;font-size:20px;font-family:'Sora'}
+  .session-summary .stats span{font-size:12px;color:var(--muted)}
+
+  .listen:active{transform:translateY(0) scale(.97)}
+
+  .mic-zone{display:flex;flex-direction:column;align-items:center;gap:14px;margin:8px 0 6px}
+  .mic{width:88px;height:88px;border-radius:50%;background:var(--brand-grad);color:#fff;
+    display:grid;place-items:center;box-shadow:0 10px 30px rgba(15,180,166,.4);
+    transition:transform .25s var(--ease-snap);position:relative}
+  .mic:hover{transform:scale(1.06)}
+  .mic:active{transform:scale(.96)}
+  .mic svg{width:34px;height:34px}
+  .mic.recording{background:var(--danger);box-shadow:0 10px 30px rgba(229,72,77,.45)}
+  .mic.recording::after{content:"";position:absolute;inset:-8px;border-radius:50%;
+    border:3px solid var(--danger);opacity:.5;animation:ring 1.2s ease-out infinite}
+  @keyframes ring{0%{transform:scale(1);opacity:.5}100%{transform:scale(1.35);opacity:0}}
+  .mic-hint{font-size:13.5px;color:var(--muted);min-height:18px}
+  .rec-wave{height:26px}
+  .rec-wave span{background:#fff}
+
+  .result{margin-top:24px;padding:20px;border-radius:14px;background:var(--surface-2);display:none}
+  .result.show{display:block;animation:popIn .35s var(--ease-snap) both}
+  .score-num{font-family:'Sora';font-size:44px;font-weight:700;line-height:1}
+  .score-msg{font-size:14.5px;margin-top:6px;font-weight:500}
+  .heard{font-size:13px;color:var(--muted);margin-top:12px}
+  .heard-label{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);
+    margin-bottom:8px}
+  .word-row{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+  .word-chip{font-size:14px;padding:5px 10px;border-radius:8px;font-weight:500}
+  .word-chip.ok{background:#E7F7EE;color:#1B6B42}
+  .word-chip.weak{background:#FDECEC;color:#B4292E;text-decoration:underline wavy;
+    text-decoration-color:#E5484D}
+  .word-tip{font-size:13px;color:#9A6B12;background:#FFF4E0;border:1px solid #F0D89B;
+    border-radius:8px;padding:8px 11px;margin-bottom:8px}
+  .heard-said{font-size:13px;color:var(--muted)}
+  .heard b{color:var(--ink);font-weight:600}
+  .result-actions{display:flex;gap:10px;justify-content:center;margin-top:18px;flex-wrap:wrap}
+  .btn-sm{padding:10px 18px;border-radius:10px;font-weight:600;font-size:14px;
+    transition:transform .15s var(--ease),filter .15s var(--ease)}
+  .btn-sm:active{transform:scale(.96)}
+  .btn-sm.solid{background:var(--brand-grad);color:#fff}
+  .btn-sm.solid:hover{filter:brightness(1.05)}
+  .btn-sm.outline{background:#fff;border:1.5px solid var(--line);color:var(--ink)}
+  .btn-sm.outline:hover{border-color:var(--brand);color:var(--brand)}
+
+  .unsupported{background:#FFF7E6;border:1px solid #F5D98B;color:#7a5a12;
+    font-size:13.5px;padding:12px 14px;border-radius:12px;margin-bottom:20px}
+
+  /* ---------- Sprint hero ---------- */
+  .sprint-hero{background:linear-gradient(150deg,var(--ink) 0%,#1B2A5E 60%,#153F6B 100%);
+    border-radius:20px;padding:34px;margin-bottom:34px;color:#fff;min-height:340px;
+    display:flex;align-items:stretch;justify-content:space-between;gap:26px;
+    box-shadow:var(--shadow);position:relative;overflow:hidden;
+    touch-action:pan-y}
+  .sh-left{align-self:center}
+  .sh-right{align-self:flex-start}
+  .sprint-hero::before{content:"";position:absolute;inset:0;pointer-events:none;
+    background:radial-gradient(400px 200px at 85% 20%,rgba(18,184,166,.28),transparent 70%)}
+  /* the live letter curtain sits above the gradient, below the text */
+  #curtain{position:absolute;inset:0;width:100%;height:100%;display:block;z-index:1}
+  .drag-hint{position:absolute;left:50%;bottom:12px;transform:translateX(-50%);z-index:3;
+    font-size:10.5px;letter-spacing:.18em;text-transform:uppercase;color:rgba(185,194,224,.5);
+    pointer-events:none;white-space:nowrap}
+  .sh-left,.sh-right{position:relative;z-index:2;pointer-events:none}
+  .sh-left .sh-cta{pointer-events:auto}
+  .sh-eyebrow{font-size:11px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;
+    color:var(--gold);margin-bottom:9px}
+  .sh-title{font-size:32px;line-height:1.12;margin-bottom:11px}
+  .sh-promise{color:#B9C2E0;font-size:14.5px;max-width:380px;margin-bottom:20px}
+  .sh-cta{width:auto;padding:12px 26px}
+  .ring{position:relative;width:140px;height:140px;flex-shrink:0}
+  .ring svg{width:100%;height:100%;transform:rotate(-90deg)}
+  .ring circle{fill:none;stroke-width:9;stroke-linecap:round}
+  .ring-bg{stroke:rgba(255,255,255,.14)}
+  .ring-fg{stroke:var(--brand);stroke-dasharray:327;stroke-dashoffset:327;
+    transition:stroke-dashoffset .7s ease}
+  .ring-mid{position:absolute;inset:0;display:grid;place-content:center;text-align:center}
+  .ring-num{font-family:'Sora';font-size:30px;font-weight:700;line-height:1}
+  .ring-lbl{font-size:11px;color:#9aa4c8;letter-spacing:.05em;margin-top:2px}
+  @media (max-width:640px){
+    .sprint-hero{flex-direction:column;align-items:flex-start}
+    .sh-title{font-size:26px}
+  }
+
+  /* ---------- Sprint day grid ---------- */
+  .day-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
+  .day-cell{background:var(--surface);border:1px solid var(--line);border-radius:14px;
+    padding:15px;position:relative;transition:transform .2s var(--ease),box-shadow .2s var(--ease)}
+  .day-cell.open{cursor:pointer;border-color:var(--brand)}
+  .day-cell.open:hover{transform:translateY(-3px);box-shadow:var(--shadow)}
+  .day-cell.open:active{transform:translateY(-1px) scale(.98)}
+  .day-cell.done{background:#F0FBF5;border-color:#B9E8CD}
+  .day-cell.locked{opacity:.55}
+  .dc-num{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
+    color:var(--muted)}
+  .day-cell.open .dc-num{color:var(--brand)}
+  .day-cell.done .dc-num{color:var(--good)}
+  .dc-theme{font-family:'Sora';font-size:14px;font-weight:600;margin-top:6px;line-height:1.3}
+  .dc-tag{font-size:11.5px;color:var(--muted);margin-top:8px;display:flex;align-items:center;gap:4px}
+  .dc-score{position:absolute;top:13px;right:13px;font-size:11px;font-weight:700;
+    color:var(--good);background:#fff;border:1px solid #B9E8CD;padding:2px 7px;border-radius:20px}
+  .day-cell.today{box-shadow:0 0 0 3px rgba(18,184,166,.22)}
+
+  /* ---------- Challenge + day banner ---------- */
+  .day-banner{display:flex;align-items:center;justify-content:center;gap:9px;margin-bottom:14px}
+  .db-day{background:var(--ink);color:#fff;font-size:11.5px;font-weight:700;letter-spacing:.05em;
+    padding:4px 10px;border-radius:20px}
+  .db-theme{font-family:'Sora';font-size:14px;font-weight:600;color:var(--muted)}
+  .challenge{background:#FCF3E2;border:1px dashed #E7C87A;border-radius:12px;padding:12px 14px;
+    margin-bottom:20px;font-size:13.5px;color:#6b4e12;text-align:left}
+  .ch-label{display:block;font-size:10.5px;font-weight:700;letter-spacing:.07em;
+    text-transform:uppercase;color:#a07a1c;margin-bottom:3px}
+
+  /* ---------- Day complete ---------- */
+  .day-done{background:var(--surface);border:1px solid var(--line);border-radius:20px;
+    padding:30px;text-align:center;max-width:620px;margin:16px auto 0}
+  .dd-icon{width:56px;height:56px;border-radius:50%;background:var(--good);color:#fff;
+    display:grid;place-items:center;font-size:28px;margin:0 auto 14px}
+  .dd-icon.fail{background:var(--danger)}
+  .day-done h3{font-size:20px;margin-bottom:6px}
+  .day-done p{color:var(--muted);font-size:14.5px}
+
+  /* ---------- Certificate banner + certificate ---------- */
+  .cert-banner{margin-top:24px;background:linear-gradient(120deg,#FCF3E2,#FDF9F0);
+    border:1px solid #E7C87A;border-radius:14px;padding:18px 20px;
+    display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+  .cb-sub{font-size:13px;color:#8a6316;margin-top:2px}
+  .cert{max-width:620px;margin:0 auto;background:linear-gradient(160deg,var(--ink),#1B2A5E);
+    padding:12px;border-radius:20px}
+  .cert-inner{border:2px solid rgba(231,166,58,.5);border-radius:14px;padding:40px 30px;
+    text-align:center;color:#fff}
+  .cert-eyebrow{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--gold);
+    margin-bottom:20px}
+  .cert-name{font-family:'Sora';font-size:32px;font-weight:700;text-transform:capitalize}
+  .cert-body{color:#9aa4c8;font-size:14px;margin:10px 0}
+  .cert-course{font-family:'Sora';font-size:19px;font-weight:600;color:var(--brand)}
+  .cert-stats{display:flex;justify-content:center;gap:40px;margin:26px 0 20px}
+  .cert-stats b{font-family:'Sora';font-size:24px;display:block}
+  .cert-stats span{font-size:11.5px;color:#9aa4c8}
+  .cert-date{font-size:12.5px;color:#8089ad}
+  .cert-sig{display:flex;align-items:center;justify-content:center;gap:8px;margin-top:22px;
+    padding-top:18px;border-top:1px solid rgba(255,255,255,.12)}
+  .cert-sig .brandmark{font-size:15px;font-weight:700}
+
+  /* ---------- Admin ---------- */
+  .admin-tools{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px}
+  .admin-tool{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:18px}
+  .admin-tool h3{font-size:15px;margin-bottom:6px}
+  .admin-tool p{font-size:13px;color:var(--muted);margin-bottom:14px;line-height:1.5}
+  .admin-table-wrap{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);
+    overflow:hidden;overflow-x:auto}
+  .admin-table{width:100%;border-collapse:collapse;font-size:13.5px}
+  .admin-table th{text-align:left;padding:12px 16px;background:var(--surface-2);
+    font-size:11.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+  .admin-table td{padding:12px 16px;border-top:1px solid var(--line)}
+  .admin-table .tag{font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px}
+  .tag.pro{background:#FCF3E2;color:#8a6316}
+  .tag.free{background:var(--surface-2);color:var(--muted)}
+  .tag.admin{background:#E6F0FF;color:#1a4fb4;margin-left:5px}
+  .admin-table .mini{padding:6px 11px;font-size:12.5px;border-radius:8px}
+
+  /* ---------- CLT: topic generator ---------- */
+  .topic-bar{display:flex;gap:10px;flex-wrap:wrap}
+  .topic-bar input{flex:1;min-width:220px;padding:12px 14px;border:1.5px solid var(--line);
+    border-radius:10px;font-size:14.5px;font-family:inherit}
+  .topic-bar input:focus{outline:none;border-color:var(--brand)}
+  .topic-bar select{padding:12px 10px;border:1.5px solid var(--line);border-radius:10px;
+    font-size:14px;font-family:inherit;background:#fff}
+  .topic-out{margin-top:14px;background:var(--surface);border:1px solid var(--line);
+    border-radius:var(--radius);padding:8px}
+  .t-row{display:flex;align-items:center;gap:10px;padding:11px 12px;border-radius:10px;
+    transition:background .15s var(--ease)}
+  .t-row:hover{background:var(--surface-2)}
+  .t-row .t-txt{flex:1;font-size:15px}
+  .t-row .t-tr{font-size:13.5px;color:var(--brand);margin-top:4px;direction:rtl;text-align:right}
+  .icon-btn{background:var(--surface-2);border:1px solid var(--line);border-radius:8px;
+    padding:6px 9px;font-size:12px;color:var(--muted);transition:all .15s var(--ease)}
+  .icon-btn:hover{border-color:var(--brand);color:var(--brand)}
+
+  /* ---------- CLT: conversation ---------- */
+  .conv-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;
+    margin-bottom:18px;flex-wrap:wrap}
+  .conv-emoji{font-size:30px;line-height:1}
+  .conv-head h2{font-size:22px;margin-top:6px}
+  .conv-setting{color:var(--muted);font-size:14px;margin-top:3px;max-width:520px}
+  .conv-actions{display:flex;gap:9px;align-items:center}
+  .l1-select{padding:7px 10px;border:1px solid var(--line);border-radius:9px;
+    font-size:13px;font-family:inherit;background:#fff;color:var(--ink)}
+
+  .task-card{background:#FFF9E9;border:1px solid #F0D89B;border-radius:var(--radius);
+    padding:16px 18px;margin-bottom:16px}
+  .task-label{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
+    color:#9A6B12;margin-bottom:5px}
+  .task-text{font-size:15px;color:#5C4310;font-weight:500}
+  .goals{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+  .goal{font-size:12.5px;padding:5px 11px;border-radius:20px;background:#fff;
+    border:1px solid #EBD9A8;color:#7A5A16;display:flex;align-items:center;gap:6px;
+    transition:all .3s var(--ease)}
+  .goal.met{background:#E7F7EE;border-color:#A9DFC0;color:#1B6B42}
+  .goal .tick{opacity:.35}
+  .goal.met .tick{opacity:1}
+
+  .chat{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);
+    padding:18px;min-height:220px;max-height:420px;overflow-y:auto;
+    display:flex;flex-direction:column;gap:12px}
+  .bubble{max-width:78%;padding:11px 14px;border-radius:16px;font-size:15px;line-height:1.5;
+    animation:riseIn .3s var(--ease) both;position:relative}
+  .bubble.ai{background:var(--surface-2);color:var(--ink);align-self:flex-start;
+    border-bottom-left-radius:5px}
+  .bubble.ai.err{background:#FDECEC;color:#B4292E;border:1px solid #F3C6C6;max-width:92%}
+  .bubble.me{background:var(--brand);color:#fff;align-self:flex-end;border-bottom-right-radius:5px}
+  .bubble .tr{margin-top:8px;padding-top:8px;border-top:1px solid rgba(0,0,0,.09);
+    font-size:13.5px;color:var(--brand);direction:rtl;text-align:right}
+  .bubble .row{display:flex;gap:8px;margin-top:8px}
+  .b-act{background:transparent;border:1px solid var(--line);border-radius:7px;padding:4px 8px;
+    font-size:11px;color:var(--muted);transition:all .15s var(--ease)}
+  .b-act:hover{border-color:var(--brand);color:var(--brand)}
+  .typing{align-self:flex-start;display:flex;gap:4px;padding:12px 14px}
+  .typing i{width:7px;height:7px;border-radius:50%;background:var(--muted);opacity:.5;
+    animation:blink 1.2s infinite}
+  .typing i:nth-child(2){animation-delay:.2s}
+  .typing i:nth-child(3){animation-delay:.4s}
+  @keyframes blink{0%,100%{opacity:.25;transform:translateY(0)}50%{opacity:.9;transform:translateY(-3px)}}
+
+  .useful{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0 0}
+
+  /* ---------- branching reply choices ---------- */
+  .reply-choices{display:flex;flex-direction:column;gap:10px;margin-top:16px}
+  .reply-choice{display:flex;align-items:center;gap:8px;background:var(--surface);
+    border:1.5px solid var(--line);border-radius:12px;padding:6px 6px 6px 14px;
+    transition:border-color .15s var(--ease),transform .12s var(--ease);flex-wrap:wrap}
+  .reply-choice:hover{border-color:var(--brand)}
+  .rc-text{flex:1;text-align:left;font-size:15px;color:var(--ink);padding:8px 0;min-width:60%}
+  .rc-mic,.rc-tr{width:38px;height:38px;flex:0 0 auto;border-radius:9px;background:var(--surface-2);
+    border:1px solid var(--line);font-size:15px;transition:all .15s var(--ease)}
+  .rc-mic:hover,.rc-tr:hover{border-color:var(--brand);background:#fff}
+  .rc-mic.rec{background:var(--danger);color:#fff;animation:pulse 1.1s ease-out infinite}
+  .rc-trtext{width:100%;font-size:13.5px;color:var(--brand);direction:rtl;text-align:right;
+    padding:2px 4px 4px}
+
+  .useful span{font-size:12.5px;background:var(--surface-2);border:1px solid var(--line);
+    color:var(--muted);padding:5px 10px;border-radius:20px;cursor:pointer;
+    transition:all .15s var(--ease)}
+  .useful span:hover{border-color:var(--brand);color:var(--brand)}
+
+  .chat-input{display:flex;gap:10px;align-items:center;margin-top:14px}
+  .chat-input input{flex:1;padding:13px 15px;border:1.5px solid var(--line);border-radius:12px;
+    font-size:15px;font-family:inherit}
+  .chat-input input:focus{outline:none;border-color:var(--brand)}
+  .mic-sm{width:46px;height:46px;flex:0 0 auto;border-radius:50%;background:var(--brand);
+    color:#fff;display:grid;place-items:center;transition:transform .2s var(--ease-snap)}
+  .mic-sm svg{width:20px;height:20px}
+  .mic-sm:hover{transform:scale(1.07)}
+  .mic-sm:active{transform:scale(.94)}
+  .mic-sm.rec{background:var(--danger);animation:pulse 1.1s ease-out infinite}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(229,72,77,.5)}100%{box-shadow:0 0 0 14px rgba(229,72,77,0)}}
+  .chat-hint{font-size:12.5px;color:var(--muted);margin-top:9px;text-align:center}
+  .conv-foot{display:flex;justify-content:center;margin-top:18px}
+
+  .debrief{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);
+    padding:22px;margin-top:18px;animation:riseIn .45s var(--ease) both}
+  .sprint-day-cleared{margin-top:18px;padding-top:16px;border-top:1px solid var(--line);
+    display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;
+    font-weight:600;color:var(--good)}
+  .debrief h3{font-size:17px;margin-bottom:8px}
+  .db-comm{font-size:15px;color:var(--ink);background:#E7F7EE;border:1px solid #A9DFC0;
+    border-radius:10px;padding:12px 14px;margin-bottom:16px}
+  .db-sec{margin-bottom:14px}
+  .db-sec h4{font-size:12px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);
+    margin-bottom:7px}
+  .db-sec li{font-size:14px;margin-left:18px;margin-bottom:4px}
+  .fix{background:var(--surface-2);border-radius:10px;padding:11px 13px;margin-bottom:8px;font-size:14px}
+  .fix .said{color:var(--danger);text-decoration:line-through;opacity:.75}
+  .fix .better{color:var(--good);font-weight:600}
+  .fix .why{color:var(--muted);font-size:12.5px;margin-top:3px}
+
+  /* ---------- Paywall ---------- */
+  .paywall{background:linear-gradient(160deg,var(--ink),var(--ink-2));color:#fff;
+    border-radius:20px;padding:34px 30px;max-width:520px;margin:10px auto;text-align:center}
+  .paywall h2{font-size:24px;margin-bottom:8px}
+  .paywall p{color:#B9C2E0;font-size:14.5px;margin-bottom:22px}
+  .price{font-family:'Sora';font-size:40px;font-weight:700;margin-bottom:2px}
+  .price small{font-size:15px;color:#9aa4c8;font-weight:500}
+  .perks{list-style:none;text-align:left;max-width:300px;margin:20px auto 26px}
+  .perks li{padding:8px 0;font-size:14.5px;display:flex;gap:10px;align-items:center}
+  .perks li::before{content:"✓";color:var(--brand);font-weight:700}
+  .btn-gold{background:var(--gold);color:#3a2600;font-weight:700;font-size:15px;
+    padding:14px 28px;border-radius:12px;width:100%;
+    transition:filter .18s var(--ease),transform .15s var(--ease)}
+  .btn-gold:hover{filter:brightness(1.05);transform:translateY(-1px)}
+  .btn-gold:active{transform:translateY(0) scale(.98)}
+  .paywall .note{font-size:12px;color:#8089ad;margin-top:14px}
+</style>
+<!-- Paddle.js: does nothing until Paddle.Initialize() is called below, so
+     it's safe to include even when running in demo mode with no Paddle
+     account configured. -->
+<script src="https://cdn.paddle.com/paddle/v2/paddle.js"></script>
+</head>
+<body>
+
+<!-- ============ AUTH SCREEN ============ -->
+<div id="auth" class="auth-wrap">
+  <div class="auth-card">
+    <div class="auth-logo">
+      <span class="wave"><span></span><span></span><span></span><span></span><span></span></span>
+      <span class="brandmark">SpeakUp</span>
+    </div>
+    <h1 id="authTitle">Welcome back</h1>
+    <p class="auth-sub" id="authSub">Log in to keep practicing</p>
+    <div id="authMsg" class="msg"></div>
+    <div class="field">
+      <label>Email</label>
+      <input id="email" type="email" placeholder="you@email.com" autocomplete="email">
+    </div>
+    <div class="field">
+      <label>Password</label>
+      <input id="password" type="password" placeholder="At least 8 characters" autocomplete="current-password">
+    </div>
+    <button id="authBtn" class="btn-primary">Log in</button>
+    <div class="auth-toggle">
+      <span id="toggleText">New here?</span>
+      <button id="toggleBtn">Create an account</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ APP ============ -->
+<div id="app" class="hidden">
+  <div class="topbar">
+    <div class="brand">
+      <span class="wave"><span></span><span></span><span></span><span></span><span></span></span>
+      <span class="brandmark">SpeakUp</span>
+    </div>
+    <div class="user">
+      <span id="userEmail"></span>
+      <span id="proBadge" class="badge-pro hidden">PRO</span>
+      <button class="btn-ghost hidden" id="adminBtn">Admin</button>
+      <button class="btn-ghost" id="logoutBtn">Log out</button>
+    </div>
+  </div>
+
+  <div class="container">
+    <!-- Dashboard -->
+    <div id="dashboard">
+      <!-- Certificate ready — the biggest possible callout, shown once earned -->
+      <div class="cert-ready hidden anim-in" id="certReadyBanner">
+        <div class="cr-icon">🎓</div>
+        <div class="cr-body">
+          <div class="cr-title">Your certificate is ready!</div>
+          <div class="cr-sub">You completed all 14 days of the Sprint. Come see it.</div>
+        </div>
+        <button class="btn-gold" id="certReadyBtn" style="width:auto;padding:12px 24px">View certificate</button>
+      </div>
+
+      <!-- Daily streak — the habit driver. Shows once they've practiced. -->
+      <div class="streak-banner hidden anim-in" id="streakBanner">
+        <div class="sb-flame" id="sbFlame">🔥</div>
+        <div class="sb-body">
+          <div class="sb-count"><span id="streakNum">0</span>-day streak</div>
+          <div class="sb-sub" id="streakSub">Practice today to keep it alive.</div>
+        </div>
+        <div class="sb-best" id="streakBest"></div>
+      </div>
+
+      <!-- The Sprint is the headline product, so it sits above everything. -->
+      <div class="sprint-hero anim-in" id="sprintHero">
+        <canvas id="curtain" aria-hidden="true"></canvas>
+        <div class="sh-left">
+          <div class="sh-eyebrow">The flagship program</div>
+          <h2 class="sh-title">The 14-Day<br>Speaking Sprint</h2>
+          <p class="sh-promise" id="shPromise">Speak English out loud every single day for two weeks. One day unlocks per day. No skipping, no drifting.</p>
+          <button class="btn-gold sh-cta" id="sprintCta">Open the Sprint</button>
+        </div>
+        <div class="sh-right">
+          <div class="ring" id="sprintRing">
+            <svg viewBox="0 0 120 120">
+              <circle class="ring-bg" cx="60" cy="60" r="52"></circle>
+              <circle class="ring-fg" id="ringFg" cx="60" cy="60" r="52"></circle>
+            </svg>
+            <div class="ring-mid">
+              <div class="ring-num" id="ringNum">14</div>
+              <div class="ring-lbl" id="ringLbl">days</div>
+            </div>
+          </div>
+        </div>
+        <div class="drag-hint">↔ drag through the words</div>
+      </div>
+
+      <div class="page-head anim-in-1">
+        <h2>Talk to someone</h2>
+        <p>Real conversations with a goal. Speak or type — get your meaning across.</p>
+      </div>
+      <div id="aiOff" class="unsupported hidden">
+        <b>AI conversations are switched off.</b> Add <code>ANTHROPIC_API_KEY</code> to your
+        <code>.env</code> file and restart the server to turn them on.
+      </div>
+      <div class="grid anim-in-2" id="scenarioGrid"></div>
+
+      <div class="page-head anim-in-2" style="margin-top:36px">
+        <h2>Drill any topic <span class="pro-pill" id="drillProPill">PRO</span></h2>
+        <p>Timed practice sessions with any level and length. Sentences never repeat.</p>
+      </div>
+      <div class="topic-bar anim-in-2">
+        <input id="topicInput" placeholder="e.g. renting a flat, at the pharmacy, arguing politely…"
+               maxlength="80">
+        <select id="topicLevel">
+          <option>Beginner</option><option>Intermediate</option><option>Advanced</option>
+        </select>
+        <button class="btn-sm solid" id="topicBtn">Start practicing</button>
+      </div>
+      <div id="topicOut" class="topic-out hidden"></div>
+
+      <div class="page-head anim-in-3" style="margin-top:36px">
+        <h2>Practice lessons</h2>
+        <p>Fixed phrases to warm up with. Pick a lesson, listen, then speak.</p>
+      </div>
+      <div class="stat-row anim-in-2">
+        <div class="stat"><div class="num" id="statAttempts">0</div><div class="lbl">Total attempts</div></div>
+        <div class="stat"><div class="num" id="statDone">0</div><div class="lbl">Lessons started</div></div>
+        <div class="stat"><div class="num" id="statBest">—</div><div class="lbl">Best score</div></div>
+      </div>
+
+      <!-- Progress graph — Pro feature, shows a teaser to free users -->
+      <div class="progress-card anim-in-2 hidden" id="progressCard">
+        <div class="pc-head">
+          <h3>Your progress</h3>
+          <span class="pc-trend" id="pcTrend"></span>
+        </div>
+        <div id="progressChart"></div>
+      </div>
+      <div class="progress-teaser anim-in-2 hidden" id="progressTeaser">
+        <div>
+          <b>See your improvement over time</b>
+          <p>Pro members get a score graph across their last 14 active days.</p>
+        </div>
+        <button class="btn-sm solid" id="progressUpgradeBtn">Upgrade to Pro</button>
+      </div>
+
+      <div class="grid anim-in-3" id="lessonGrid"></div>
+    </div>
+
+    <!-- Practice -->
+    <div id="practiceView" class="hidden">
+      <button class="back" id="backBtn">← All lessons</button>
+      <div id="unsupported" class="unsupported hidden">
+        Speaking scores need speech recognition, which works best in <b>Google Chrome</b>
+        (and Safari). You can still tap <b>Listen</b> to hear each phrase.
+      </div>
+
+      <!-- Session setup: pick a level and how long to practice -->
+      <div class="session-setup hidden" id="sessionSetup">
+        <div class="day-banner hidden" id="setupDayBanner">
+          <span class="db-day" id="setupDbDay">Day 1</span>
+          <span class="db-theme" id="setupDbTheme"></span>
+        </div>
+        <h2 id="setupTitle">Set up your practice</h2>
+        <p id="setupSub">Choose a level and how long you want to practice. Sentences never repeat — you can go as long as you like.</p>
+        <div class="setup-row">
+          <div class="setup-field">
+            <label>Level</label>
+            <select id="setupLevel">
+              <option>Beginner</option><option>Intermediate</option><option>Advanced</option>
+            </select>
+          </div>
+          <div class="setup-field">
+            <label>Session length</label>
+            <select id="setupMinutes">
+              <option value="10">10 minutes</option>
+              <option value="20">20 minutes</option>
+              <option value="30">30 minutes</option>
+              <option value="60" selected>60 minutes</option>
+              <option value="90">90 minutes</option>
+            </select>
+          </div>
+        </div>
+        <button class="btn-sm solid" id="setupStartBtn" style="width:100%;padding:14px">Start practicing</button>
+      </div>
+
+      <div class="practice hidden" id="practiceCard">
+        <div class="day-banner hidden" id="dayBanner">
+          <span class="db-day" id="dbDay">Day 1</span>
+          <span class="db-theme" id="dbTheme"></span>
+        </div>
+        <div class="challenge hidden" id="challengeBox">
+          <span class="ch-label">Today's challenge</span>
+          <span id="challengeText"></span>
+        </div>
+
+        <!-- Fixed-lesson dots (short lessons) -->
+        <div class="progress-dots hidden" id="dots"></div>
+
+        <!-- Timed-session progress (Sprint days + Drill any topic) -->
+        <div class="session-bar hidden" id="sessionBar">
+          <div class="sb-top">
+            <span id="sbTime">0:00 / 60:00</span>
+            <span id="sbCount">0 sentences · avg —</span>
+          </div>
+          <div class="sb-track"><div class="sb-fill" id="sbFill"></div></div>
+          <button class="sb-finish" id="sbFinishBtn">Finish session now</button>
+        </div>
+
+        <div class="phrase-label">Say this out loud</div>
+        <div class="phrase" id="phraseText"></div>
+        <div class="phrase-tr hidden" id="phraseTr"></div>
+        <div class="phrase-actions">
+          <button class="listen" id="listenBtn">🔊 Listen</button>
+          <button class="listen" id="phraseTrBtn">🌐 Translate</button>
+        </div>
+
+        <div class="mic-zone">
+          <button class="mic" id="micBtn" aria-label="Start recording">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <rect x="9" y="2" width="6" height="12" rx="3"></rect>
+              <path d="M5 10a7 7 0 0 0 14 0"></path><line x1="12" y1="19" x2="12" y2="22"></line>
+            </svg>
+          </button>
+          <div class="mic-hint" id="micHint">Tap the mic and say the sentence</div>
+        </div>
+
+        <div class="result" id="result">
+          <div class="score-num" id="scoreNum">0</div>
+          <div class="score-msg" id="scoreMsg"></div>
+          <div class="heard" id="heard"></div>
+          <div class="result-actions">
+            <button class="btn-sm outline" id="retryBtn">Try again</button>
+            <button class="btn-sm solid" id="nextBtn">Next phrase →</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Shown after the last phrase of a sprint day -->
+      <div class="day-done hidden" id="dayDone">
+        <div class="dd-icon" id="ddIcon">✓</div>
+        <h3 id="ddTitle">Day cleared</h3>
+        <p id="ddMsg"></p>
+        <div class="result-actions">
+          <button class="btn-sm outline" id="ddRetry">Practice again</button>
+          <button class="btn-sm solid" id="ddBack">Back to the Sprint</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sprint -->
+    <div id="sprintView" class="hidden">
+      <button class="back" id="backBtn3">← Home</button>
+
+      <!-- Not enrolled yet: the pitch -->
+      <div id="sprintIntro" class="hidden">
+        <div class="paywall">
+          <h2>The 14-Day Speaking Sprint</h2>
+          <p id="introPromise"></p>
+          <ul class="perks">
+            <li>One new day unlocks every 24 hours</li>
+            <li>A real speaking challenge every day</li>
+            <li>Score 70% or higher to clear a day</li>
+            <li>Build a streak — miss a day, break it</li>
+            <li>Certificate when you finish all 14</li>
+          </ul>
+          <button class="btn-gold" id="startSprintBtn">Start Day 1 now</button>
+          <div class="note">Once you start, the clock runs. That's the point.</div>
+        </div>
+      </div>
+
+      <!-- Enrolled: the tracker -->
+      <div id="sprintMain" class="hidden">
+        <div class="page-head">
+          <h2>The 14-Day Speaking Sprint</h2>
+          <p id="sprintSub"></p>
+        </div>
+        <div class="stat-row">
+          <div class="stat"><div class="num" id="spStreak">0</div><div class="lbl">🔥 Day streak</div></div>
+          <div class="stat"><div class="num" id="spDone">0/14</div><div class="lbl">Days cleared</div></div>
+          <div class="stat"><div class="num" id="spAvg">—</div><div class="lbl">Average score</div></div>
+        </div>
+        <div class="day-grid" id="dayGrid"></div>
+        <div id="certBanner" class="cert-banner hidden">
+          <div>
+            <b>You finished all 14 days.</b>
+            <div class="cb-sub">Your certificate is ready.</div>
+          </div>
+          <button class="btn-sm solid" id="certBtn">View certificate</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Certificate -->
+    <div id="certView" class="hidden">
+      <button class="back" id="backBtn4">← Back to the Sprint</button>
+      <div class="cert">
+        <div class="cert-inner">
+          <div class="cert-eyebrow">Certificate of Completion</div>
+          <div class="cert-name" id="certName"></div>
+          <div class="cert-body">completed every day of</div>
+          <div class="cert-course" id="certCourse"></div>
+          <div class="cert-stats">
+            <div><b id="certScore"></b><span>average score</span></div>
+            <div><b>14</b><span>days, no skips</span></div>
+          </div>
+          <div class="cert-date" id="certDate"></div>
+          <div class="cert-sig">
+            <span class="wave"><span></span><span></span><span></span><span></span><span></span></span>
+            <span class="brandmark">SpeakUp</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Admin -->
+    <div id="adminView" class="hidden">
+      <button class="back" id="backBtnAdmin">← Home</button>
+      <div class="page-head">
+        <h2>Admin panel</h2>
+        <p>Manage users and test the Sprint without waiting 14 days.</p>
+      </div>
+
+      <div class="admin-tools">
+        <div class="admin-tool">
+          <h3>Unlock all 14 days for me</h3>
+          <p>Backdates your own enrollment so every day is open right now. You still have to speak and pass each one — this only removes the daily wait.</p>
+          <button class="btn-sm solid" id="unlockAllBtn">Unlock all days</button>
+        </div>
+        <div class="admin-tool">
+          <h3>Reset my Sprint progress</h3>
+          <p>Wipes your own Sprint enrollment and completed days, so you can test the "Day 1" flow again from scratch.</p>
+          <button class="btn-sm outline" id="resetSprintBtn">Reset my Sprint</button>
+        </div>
+      </div>
+
+      <div class="page-head" style="margin-top:34px">
+        <h2>Users</h2>
+      </div>
+      <div class="admin-table-wrap">
+        <table class="admin-table" id="userTable">
+          <thead><tr><th>Email</th><th>Plan</th><th>Sprint</th><th>Joined</th><th></th></tr></thead>
+          <tbody id="userTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Conversation (CLT role-play) -->
+    <div id="convView" class="hidden">
+      <button class="back" id="backConv">← Home</button>
+      <div class="conv-head">
+        <div>
+          <div class="conv-emoji" id="convEmoji">☕</div>
+          <h2 id="convTitle"></h2>
+          <p class="conv-setting" id="convSetting"></p>
+        </div>
+        <div class="conv-actions">
+          <button class="btn-ghost" id="restartConv">Restart</button>
+        </div>
+      </div>
+
+      <div class="task-card">
+        <div class="task-label">Your goal</div>
+        <div class="task-text" id="convGoal"></div>
+      </div>
+
+      <div class="chat" id="chatBox"></div>
+
+      <!-- The learner picks (or speaks) one of these replies -->
+      <div class="reply-choices" id="replyChoices"></div>
+      <div class="chat-hint" id="chatHint">Pick a reply — or tap 🎤 and say it out loud.</div>
+
+      <div class="conv-foot hidden" id="convFoot">
+        <button class="btn-sm solid" id="convDoneBtn">Finish</button>
+      </div>
+    </div>
+
+    <!-- Paywall -->
+    <div id="paywallView" class="hidden">
+      <button class="back" id="backBtn2">← All lessons</button>
+      <div class="paywall">
+        <h2>Unlock SpeakUp Pro</h2>
+        <p>Get the 14-Day Speaking Sprint — plus every lesson and level.</p>
+        <div class="price">$4.99<small> / month</small></div>
+        <ul class="perks">
+          <li>The 14-Day Speaking Sprint</li>
+          <li>A daily challenge and a real streak</li>
+          <li>Certificate when you finish all 14 days</li>
+          <li>All Intermediate &amp; Advanced lessons</li>
+        </ul>
+        <button class="btn-gold" id="upgradeBtn">Upgrade to Pro</button>
+        <div class="note">Demo mode: this unlocks instantly. Wire up Stripe for real payments (see README).</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+//  Tiny front-end app. Talks to the FastAPI backend at /api.
+// ============================================================
+const API = "";                         // same origin as this page
+let token = localStorage.getItem("speakup_token") || null;
+let mode = "login";                     // "login" or "register"
+let lessons = [];
+let current = null;                     // active practice session
+let sprint = null;                      // sprint data + state
+let scenarios = [];                     // scripted conversation scenarios
+
+// ---- helpers ----
+const $ = (id) => document.getElementById(id);
+async function api(path, method = "GET", body = null){
+  const headers = {"Content-Type":"application/json"};
+  if (token) headers["Authorization"] = "Bearer " + token;
+  const res = await fetch(API + path, {method, headers, body: body ? JSON.stringify(body) : null});
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.detail || "Something went wrong");
+  return data;
+}
+function show(view){
+  ["dashboard","practiceView","paywallView","sprintView","certView","adminView","convView"]
+    .forEach(v => $(v).classList.add("hidden"));
+  const el = $(view);
+  el.classList.remove("hidden");
+  // Replay entrance animations each time this screen is shown, not just once.
+  el.querySelectorAll(".anim-in,.anim-in-1,.anim-in-2,.anim-in-3,.anim-pop").forEach(node => {
+    node.style.animation = "none";
+    void node.offsetWidth;   // force reflow so the animation actually restarts
+    node.style.animation = "";
+  });
+}
+
+// ---- AUTH ----
+$("toggleBtn").onclick = () => {
+  mode = mode === "login" ? "register" : "login";
+  const login = mode === "login";
+  $("authTitle").textContent = login ? "Welcome back" : "Create your account";
+  $("authSub").textContent   = login ? "Log in to keep practicing" : "Start practicing in seconds";
+  $("authBtn").textContent   = login ? "Log in" : "Create account";
+  $("toggleText").textContent= login ? "New here?" : "Already have an account?";
+  $("toggleBtn").textContent = login ? "Create an account" : "Log in";
+  $("authMsg").className = "msg";
+};
+$("authBtn").onclick = async () => {
+  const email = $("email").value.trim();
+  const password = $("password").value;
+  const msg = $("authMsg");
+  msg.className = "msg";
+  if (!email || !password){ msg.className="msg err"; msg.textContent="Please fill in both fields."; return; }
+  $("authBtn").disabled = true;
+  try {
+    const data = await api("/api/" + mode, "POST", {email, password});
+    token = data.token;
+    localStorage.setItem("speakup_token", token);
+    enterApp(data.user);
+  } catch(e){ msg.className="msg err"; msg.textContent = e.message; }
+  $("authBtn").disabled = false;
+};
+[ "email","password" ].forEach(id => $(id).addEventListener("keydown", e => { if(e.key==="Enter") $("authBtn").click(); }));
+
+$("logoutBtn").onclick = () => {
+  token = null; localStorage.removeItem("speakup_token");
+  $("app").classList.add("hidden"); $("auth").classList.remove("hidden");
+};
+
+// ---- ENTER APP ----
+let currentUser = null;
+function enterApp(user){
+  currentUser = user;
+  $("auth").classList.add("hidden");
+  $("app").classList.remove("hidden");
+  $("userEmail").textContent = user.email;
+  $("proBadge").classList.toggle("hidden", !user.is_premium);
+  $("adminBtn").classList.toggle("hidden", !user.is_admin);
+  // Pro pill on "Drill any topic" shows only to free users.
+  const pill = $("drillProPill");
+  if (pill) pill.classList.toggle("hidden", !!user.is_premium);
+  loadDashboard();
+  // The hero had zero size while the login screen was up, so size the
+  // curtain now that it's actually on screen.
+  requestAnimationFrame(() => window.__rebuildCurtain && window.__rebuildCurtain());
+}
+async function loadDashboard(){
+  show("dashboard");
+  const [ls, prog, sp, sc] = await Promise.all([
+    api("/api/lessons"), api("/api/progress"), api("/api/sprint"), api("/api/scenarios")
+  ]);
+  lessons = ls; sprint = sp; scenarios = sc.scenarios;
+  $("aiOff").classList.toggle("hidden", sc.ai_ready);
+  renderStats(prog);
+  renderLessons(prog.best_by_lesson || {});
+  renderScenarios();
+  renderHero();
+  $("certReadyBanner").classList.toggle("hidden", !(sprint.state && sprint.state.finished));
+}
+$("certReadyBtn").onclick = showCertificate;
+
+// The hero ring shows sprint progress at a glance.
+function renderHero(){
+  const st = sprint.state;
+  const done = st.enrolled ? st.completed_days.length : 0;
+  const total = sprint.days.length;
+  const pct = st.enrolled ? st.percent : 0;
+  // circle circumference = 2 * PI * 52 ≈ 327
+  $("ringFg").style.strokeDashoffset = 327 - (327 * pct / 100);
+  $("shPromise").textContent = sprint.promise;
+  if (st.enrolled){
+    $("ringNum").textContent = done + "/" + total;
+    $("ringLbl").textContent = st.streak > 0 ? "🔥 " + st.streak + " streak" : "days cleared";
+    $("sprintCta").textContent = st.finished ? "See your certificate" : "Continue the Sprint";
+  } else {
+    $("ringNum").textContent = total;
+    $("ringLbl").textContent = "days";
+    $("sprintCta").textContent = "Start the Sprint";
+  }
+}
+function renderStats(prog){
+  $("statAttempts").textContent = prog.total_attempts || 0;
+  const best = prog.best_by_lesson || {};
+  $("statDone").textContent = Object.keys(best).length;
+  const vals = Object.values(best);
+  $("statBest").textContent = vals.length ? Math.max(...vals) + "%" : "—";
+  renderStreak(prog);
+  loadProgressGraph();
+}
+
+async function loadProgressGraph(){
+  const isPro = currentUser && currentUser.is_premium;
+  $("progressCard").classList.toggle("hidden", !isPro);
+  $("progressTeaser").classList.toggle("hidden", !!isPro);
+  if (!isPro) return;
+  try {
+    const h = await api("/api/progress/history");
+    renderProgressGraph(h);
+  } catch(e){ $("progressCard").classList.add("hidden"); }
+}
+
+function renderProgressGraph(h){
+  const trendEl = $("pcTrend");
+  trendEl.className = "pc-trend " + h.trend;
+  trendEl.textContent = h.trend === "improving" ? "📈 Improving"
+    : h.trend === "declining" ? "📉 Slipping — practice more" : "→ Steady";
+
+  const chart = $("progressChart");
+  if (!h.points.length){
+    chart.innerHTML = '<p style="color:var(--muted);font-size:13px">Practice a few days to see your trend here.</p>';
+    return;
+  }
+  const wrap = document.createElement("div");
+  wrap.className = "pg-bar-wrap";
+  h.points.forEach(p => {
+    const col = document.createElement("div");
+    col.className = "pg-col";
+    const val = document.createElement("div");
+    val.className = "pg-val"; val.textContent = p.avg_score + "%";
+    const bar = document.createElement("div");
+    bar.className = "pg-bar";
+    bar.style.height = "0%";
+    const dateShort = p.date.slice(5).replace("-", "/");   // MM/DD
+    const dateEl = document.createElement("div");
+    dateEl.className = "pg-date"; dateEl.textContent = dateShort;
+    col.appendChild(val); col.appendChild(bar); col.appendChild(dateEl);
+    wrap.appendChild(col);
+    requestAnimationFrame(() => { bar.style.height = Math.max(p.avg_score, 4) + "%"; });
+  });
+  chart.innerHTML = ""; chart.appendChild(wrap);
+}
+$("progressUpgradeBtn").onclick = () => show("paywallView");
+
+function renderStreak(prog){
+  const banner = $("streakBanner");
+  const streak = prog.streak || 0;
+  if (streak < 1){
+    banner.classList.add("hidden");   // nothing to show until they've started
+    return;
+  }
+  banner.classList.remove("hidden");
+  $("streakNum").textContent = streak;
+  // Flame grows a little as the streak gets longer — a small reward.
+  $("sbFlame").style.fontSize = Math.min(36 + streak * 2, 56) + "px";
+  $("streakSub").textContent = prog.practiced_today
+    ? "You've practiced today — nicely done. Keep it going tomorrow!"
+    : "Practice today to keep your streak alive.";
+  const longest = prog.longest_streak || streak;
+  $("streakBest").textContent = longest > streak
+    ? "Best: " + longest + " days" : "Personal best 🎉";
+}
+function renderLessons(best){
+  const grid = $("lessonGrid"); grid.innerHTML = "";
+  lessons.forEach(le => {
+    const card = document.createElement("div");
+    card.className = "card clickable";
+    const score = best[le.id] || 0;
+    card.innerHTML = `
+      ${le.locked ? '<span class="lock-tag">🔒 Pro</span>' : ''}
+      <div class="lvl">${le.level}</div>
+      <h3>${le.title}</h3>
+      <div class="meta">${le.locked ? 'Premium lesson' : le.phrases.length + ' phrases'}</div>
+      <div class="bar"><i style="width:${score}%"></i></div>`;
+    card.onclick = () => le.locked ? show("paywallView") : startLesson(le);
+    grid.appendChild(card);
+  });
+}
+
+// ---- ADMIN ----
+$("adminBtn").onclick = openAdmin;
+$("backBtnAdmin").onclick = loadDashboard;
+
+async function openAdmin(){
+  show("adminView");
+  await loadUserTable();
+}
+async function loadUserTable(){
+  const users = await api("/api/admin/users");
+  const body = $("userTableBody"); body.innerHTML = "";
+  users.forEach(u => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${u.email}${u.is_admin ? '<span class="tag admin">Admin</span>' : ""}</td>
+      <td><span class="tag ${u.is_premium ? "pro" : "free"}">${u.is_premium ? "Pro" : "Free"}</span></td>
+      <td>${u.sprint_enrolled ? u.sprint_days_done + "/14 days" : "Not started"}</td>
+      <td>${new Date(u.created_at).toLocaleDateString()}</td>
+      <td><button class="btn-sm outline mini" data-toggle="${u.id}">${u.is_premium ? "Remove Pro" : "Grant Pro"}</button></td>`;
+    body.appendChild(tr);
+  });
+  body.querySelectorAll("[data-toggle]").forEach(btn => {
+    btn.onclick = async () => {
+      await api(`/api/admin/users/${btn.dataset.toggle}/toggle-premium`, "POST");
+      loadUserTable();
+    };
+  });
+}
+
+$("unlockAllBtn").onclick = async () => {
+  $("unlockAllBtn").disabled = true; $("unlockAllBtn").textContent = "Unlocking…";
+  try {
+    await api("/api/admin/sprint/unlock-all","POST");
+    alert("All 14 days are unlocked for your account. Go to the Sprint to test them.");
+  } catch(e){ alert(e.message); }
+  $("unlockAllBtn").disabled = false; $("unlockAllBtn").textContent = "Unlock all days";
+};
+$("resetSprintBtn").onclick = async () => {
+  if (!confirm("This wipes your own Sprint progress. Continue?")) return;
+  await api("/api/admin/sprint/reset","POST");
+  alert("Your Sprint progress was reset.");
+};
+
+// ---- SPRINT ----
+$("sprintCta").onclick = openSprint;
+$("backBtn3").onclick = loadDashboard;
+$("backBtn4").onclick = openSprint;
+
+async function openSprint(){
+  sprint = await api("/api/sprint");
+  // Not a Pro user? The Sprint is the paid product, so show the paywall.
+  if (!sprint.is_premium_user){ show("paywallView"); return; }
+  show("sprintView");
+  const st = sprint.state;
+  $("sprintIntro").classList.toggle("hidden", st.enrolled);
+  $("sprintMain").classList.toggle("hidden", !st.enrolled);
+  $("introPromise").textContent = sprint.promise;
+  if (st.enrolled) renderSprintMain();
+}
+
+function renderSprintMain(){
+  const st = sprint.state;
+  $("spStreak").textContent = st.streak;
+  $("spDone").textContent = st.completed_days.length + "/" + st.total_days;
+  $("spAvg").textContent = st.avg_score ? st.avg_score + "%" : "—";
+  $("sprintSub").textContent = st.finished
+    ? "You finished. Every day, no skips."
+    : "Day " + st.unlocked_through + " is open. Score " + st.pass_score + "% or higher to clear a day.";
+  $("certBanner").classList.toggle("hidden", !st.finished);
+
+  const grid = $("dayGrid"); grid.innerHTML = "";
+  sprint.days.forEach(d => {
+    const done = st.completed_days.includes(d.day);
+    const drillDone = st.drill_done_days.includes(d.day);
+    const midway = drillDone && !done;   // drill passed, conversation still owed
+    const open = !d.locked;
+    const isToday = open && !done;
+    const cell = document.createElement("div");
+    cell.className = "day-cell " + (done ? "done" : open ? "open" : "locked") + (isToday ? " today" : "");
+    let tag = "🔒 Opens later";
+    if (done) tag = "✓ Cleared";
+    else if (midway) tag = "💬 Finish the conversation";
+    else if (open) tag = "▶ Start now";
+    cell.innerHTML = `
+      ${done ? `<span class="dc-score">${st.scores_by_day[d.day]}%</span>` : ""}
+      <div class="dc-num">Day ${d.day}</div>
+      <div class="dc-theme">${d.locked ? "Locked" : d.theme}</div>
+      <div class="dc-tag">${tag}</div>`;
+    if (open) cell.onclick = () => midway ? resumeSprintConv(d) : startSprintDay(d);
+    grid.appendChild(cell);
+  });
+}
+
+function resumeSprintConv(d){
+  openConv({
+    id: `sprintday${d.day}`, emoji: "💬", title: d.theme,
+    setting: d.conv.setting, task: d.conv.task,
+    goals: d.conv.goals, useful: d.conv.useful,
+  }, d.day);
+}
+
+$("startSprintBtn").onclick = async () => {
+  $("startSprintBtn").disabled = true;
+  try { await api("/api/sprint/enroll","POST"); await openSprint(); }
+  catch(e){ alert(e.message); }
+  $("startSprintBtn").disabled = false;
+};
+
+$("certBtn").onclick = showCertificate;
+async function showCertificate(){
+  try {
+    const c = await api("/api/sprint/certificate");
+    $("certName").textContent = c.name;
+    $("certCourse").textContent = c.title;
+    $("certScore").textContent = c.avg_score + "%";
+    $("certDate").textContent = "Issued on " + c.issued_on;
+    show("certView");
+  } catch(e){ alert(e.message); }
+}
+
+// ---- PRACTICE ----
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+// Two kinds of practice:
+//   "lesson"  — the short fixed warm-up lists (unchanged, quick, no setup).
+//   "session" — a timed, AI-generated, never-repeating drill. Used by Sprint
+//               days and "Drill any topic". Length + level are chosen first.
+let pendingSetup = null;
+let sessionTimer = null;
+
+function showPracticeShell(){
+  show("practiceView");
+  $("dayDone").classList.add("hidden");
+  $("sessionSetup").classList.add("hidden");
+  $("practiceCard").classList.remove("hidden");
+  $("unsupported").classList.toggle("hidden", !!SR);
+}
+
+function startLesson(le){
+  current = {mode: "lesson", id: le.id, phrases: le.phrases, index: 0, scores: []};
+  showPracticeShell();
+  $("dayBanner").classList.add("hidden");
+  $("challengeBox").classList.add("hidden");
+  $("dots").classList.remove("hidden");
+  $("sessionBar").classList.add("hidden");
+  renderPhrase();
+}
+
+// ---- Sprint day: show the setup screen first, then start a timed session ----
+function startSprintDay(d){
+  show("practiceView");
+  $("dayDone").classList.add("hidden");
+  $("practiceCard").classList.add("hidden");
+  $("sessionSetup").classList.remove("hidden");
+  $("setupDayBanner").classList.remove("hidden");
+  $("setupDbDay").textContent = "Day " + d.day;
+  $("setupDbTheme").textContent = d.theme;
+  $("setupTitle").textContent = d.theme;
+  $("setupSub").textContent = d.challenge + " Choose a level and how long to practice — sentences never repeat.";
+  pendingSetup = { mode: "sprint-session", day: d.day, theme: d.theme,
+                  challenge: d.challenge, topic: d.theme };
+}
+
+// ---- Drill any topic: also goes through the same setup screen ----
+function startTopicSession(topic, level){
+  show("practiceView");
+  $("dayDone").classList.add("hidden");
+  $("practiceCard").classList.add("hidden");
+  $("sessionSetup").classList.remove("hidden");
+  $("setupDayBanner").classList.add("hidden");
+  $("setupTitle").textContent = "Practice: " + topic;
+  $("setupSub").textContent = "Sentences never repeat — practice for as long as you like.";
+  $("setupLevel").value = level;
+  pendingSetup = { mode: "topic-session", topic };
+}
+
+$("setupStartBtn").onclick = async () => {
+  if (!pendingSetup) return;
+  const level = $("setupLevel").value;
+  const minutes = parseInt($("setupMinutes").value, 10);
+  const btn = $("setupStartBtn");
+  btn.disabled = true; btn.textContent = "Loading sentences…";
+  try {
+    await beginTimedSession(Object.assign({}, pendingSetup, {level, minutes}));
+  } catch(e){ alert(e.message); }
+  btn.disabled = false; btn.textContent = "Start practicing";
+};
+
+async function beginTimedSession(ctx){
+  const first = await api("/api/sentences", "POST",
+    { topic: ctx.topic, level: ctx.level, count: 20, avoid: [] });
+  current = {
+    mode: ctx.mode, day: ctx.day, theme: ctx.theme, challenge: ctx.challenge,
+    topic: ctx.topic, level: ctx.level, minutes: ctx.minutes,
+    startedAt: Date.now(), queue: first.sentences, seen: first.sentences.slice(),
+    index: 0, scores: [], fetchingMore: false,
+  };
+  showPracticeShell();
+  const isSprint = ctx.mode === "sprint-session";
+  $("dayBanner").classList.toggle("hidden", !isSprint);
+  $("challengeBox").classList.toggle("hidden", !isSprint);
+  if (isSprint){
+    $("dbDay").textContent = "Day " + ctx.day;
+    $("dbTheme").textContent = ctx.theme;
+    $("challengeText").textContent = ctx.challenge;
+  }
+  $("dots").classList.add("hidden");
+  $("sessionBar").classList.remove("hidden");
+  renderPhrase();
+  if (sessionTimer) clearInterval(sessionTimer);
+  sessionTimer = setInterval(updateSessionBar, 1000);
+  updateSessionBar();
+}
+
+function updateSessionBar(){
+  if (!current || !current.startedAt) return;
+  const elapsedSec = Math.floor((Date.now() - current.startedAt) / 1000);
+  const targetSec = current.minutes * 60;
+  const fmt = s => Math.floor(s/60) + ":" + String(s%60).padStart(2,"0");
+  $("sbTime").textContent = fmt(Math.min(elapsedSec, targetSec)) + " / " + fmt(targetSec);
+  $("sbFill").style.width = Math.min(100, elapsedSec / targetSec * 100) + "%";
+  const scored = current.scores.filter(s => s !== undefined);
+  const avg = scored.length ? Math.round(scored.reduce((a,b)=>a+b,0)/scored.length) : null;
+  $("sbCount").textContent = scored.length + " sentence" + (scored.length===1?"":"s") +
+    (avg !== null ? " · avg " + avg + "%" : " · avg —");
+  if (elapsedSec >= targetSec){
+    clearInterval(sessionTimer); sessionTimer = null;
+    finishSession();
+  }
+}
+
+// Keep the queue from ever running dry during a long session.
+async function topUpQueueIfNeeded(){
+  if (current.fetchingMore) return;
+  if (current.queue.length - current.index > 5) return;
+  current.fetchingMore = true;
+  try {
+    // Send everything seen so far this session (not just a recent slice) —
+    // the bank is now large enough (350+ sentences) that this genuinely
+    // avoids repeats for a full 60-minute session instead of cycling early.
+    const more = await api("/api/sentences", "POST",
+      { topic: current.topic, level: current.level, count: 20, avoid: current.seen });
+    current.queue = current.queue.concat(more.sentences);
+    current.seen = current.seen.concat(more.sentences);
+  } catch(e){ /* if this fails we just run a bit short; not fatal */ }
+  current.fetchingMore = false;
+}
+
+function isSessionMode(){
+  return current && (current.mode === "sprint-session" || current.mode === "topic-session");
+}
+
+function renderPhrase(){
+  const phrases = isSessionMode() ? current.queue : current.phrases;
+  const index = current.index;
+  const phraseEl = $("phraseText");
+  phraseEl.textContent = phrases[index] || "…";
+  phraseEl.style.animation = "none";
+  void phraseEl.offsetWidth;
+  phraseEl.style.animation = "riseIn .45s var(--ease) both";
+  $("result").classList.remove("show");
+  $("phraseTr").classList.add("hidden");
+  $("micHint").textContent = "Tap the mic and say the sentence";
+
+  if (isSessionMode()){
+    $("nextBtn").textContent = "Next sentence →";
+    topUpQueueIfNeeded();
+  } else {
+    const dots = $("dots"); dots.innerHTML = "";
+    phrases.forEach((_, i) => {
+      const s = document.createElement("span");
+      if (i < index) s.className = "done"; else if (i === index) s.className = "active";
+      dots.appendChild(s);
+    });
+    $("nextBtn").textContent = (index === phrases.length - 1) ? "Finish →" : "Next phrase →";
+  }
+}
+
+function currentPhraseText(){
+  return isSessionMode() ? current.queue[current.index] : current.phrases[current.index];
+}
+
+$("backBtn").onclick = () => {
+  if (sessionTimer){ clearInterval(sessionTimer); sessionTimer = null; }
+  if (current && current.mode === "sprint-session") openSprint();
+  else loadDashboard();
+};
+$("backBtn2").onclick = loadDashboard;
+$("listenBtn").onclick = () => {
+  const u = new SpeechSynthesisUtterance(currentPhraseText());
+  u.lang = "en-US"; u.rate = 0.9;
+  speechSynthesis.cancel(); speechSynthesis.speak(u);
+};
+$("phraseTrBtn").onclick = async () => {
+  const box = $("phraseTr");
+  if (!box.classList.contains("hidden")){ box.classList.add("hidden"); return; }
+  try {
+    const r = await api("/api/translate", "POST", { text: currentPhraseText(), lang: "ar" });
+    box.textContent = r.translated;
+    box.classList.remove("hidden");
+  } catch(e){ alert(e.message); }
+};
+$("retryBtn").onclick = () => { $("result").classList.remove("show"); $("micHint").textContent="Tap the mic and try again"; };
+$("nextBtn").onclick = () => {
+  if (isSessionMode()){
+    current.index++;
+    renderPhrase();   // sessions run until the timer ends, not a fixed count
+  } else if (current.index < current.phrases.length - 1){
+    current.index++; renderPhrase();
+  } else {
+    loadDashboard();
+  }
+};
+$("sbFinishBtn").onclick = () => { if (sessionTimer){ clearInterval(sessionTimer); sessionTimer = null; } finishSession(); };
+$("ddBack").onclick = openSprint;
+$("ddRetry").onclick = () => startSprintDay({day: current.day, theme: current.theme, challenge: current.challenge});
+
+// Called when a timed session ends (timer runs out, or "Finish now" clicked).
+async function finishSession(){
+  const scores = current.scores.filter(s => s !== undefined);
+  const avg = scores.length ? Math.round(scores.reduce((a,b)=>a+b,0) / scores.length) : 0;
+
+  if (current.mode === "sprint-session"){
+    $("practiceCard").classList.add("hidden");
+    $("dayDone").classList.remove("hidden");
+    try {
+      const st = await api("/api/sprint/day/complete","POST",{day: current.day, avg_score: avg});
+      sprint.state = st;
+      const dayObj = sprint.days.find(x => x.day === current.day);
+      if (dayObj && dayObj.conv){
+        $("dayDone").classList.add("hidden");
+        openConv({
+          id: `sprintday${current.day}`, emoji: "💬", title: current.theme,
+          setting: dayObj.conv.setting, task: dayObj.conv.task,
+          goals: dayObj.conv.goals, useful: dayObj.conv.useful,
+        }, current.day);
+      } else {
+        $("ddIcon").className = "dd-icon"; $("ddIcon").textContent = "✓";
+        $("ddTitle").textContent = "Drill passed — " + avg + "%";
+        $("ddMsg").textContent = "Head back to the Sprint to continue.";
+      }
+    } catch(e){
+      $("ddIcon").className = "dd-icon fail"; $("ddIcon").textContent = "!";
+      $("ddTitle").textContent = "Drill not passed — " + avg + "%";
+      $("ddMsg").textContent = e.message;
+    }
+  } else {
+    // "Drill any topic" session — just show a summary, no Sprint bookkeeping.
+    $("practiceCard").classList.add("hidden");
+    const elapsedMin = Math.round((Date.now() - current.startedAt) / 60000);
+    $("dayDone").classList.remove("hidden");
+    $("ddIcon").className = "dd-icon"; $("ddIcon").textContent = "✓";
+    $("ddTitle").textContent = "Session complete — " + avg + "% average";
+    $("ddMsg").textContent = scores.length + " sentences in about " + elapsedMin +
+      " minute" + (elapsedMin===1?"":"s") + ". Nice work.";
+    $("ddBack").onclick = loadDashboard;
+    $("ddBack").textContent = "Back to Home";
+  }
+}
+
+// mic recording
+let recognizing = false;
+$("micBtn").onclick = () => {
+  if (!SR){ $("micHint").textContent = "Speech recognition isn't supported in this browser."; return; }
+  if (recognizing) return;
+  const rec = new SR();
+  rec.lang = "en-US"; rec.interimResults = false; rec.maxAlternatives = 4;
+  recognizing = true;
+  $("micBtn").classList.add("recording");
+  $("micBtn").innerHTML = '<span class="wave rec-wave"><span></span><span></span><span></span><span></span><span></span></span>';
+  $("micHint").textContent = "Listening… speak now";
+  rec.start();
+  rec.onresult = (ev) => {
+    const alts = Array.from(ev.results[0]).map(a => a.transcript);
+    grade(alts);
+  };
+  rec.onerror = (ev) => { $("micHint").textContent = ev.error === "no-speech" ? "Didn't catch that — try again." : "Mic error: " + ev.error; };
+  rec.onend = () => { recognizing = false; resetMic(); };
+};
+function resetMic(){
+  $("micBtn").classList.remove("recording");
+  $("micBtn").innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+    stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"></rect>
+    <path d="M5 10a7 7 0 0 0 14 0"></path><line x1="12" y1="19" x2="12" y2="22"></line></svg>`;
+}
+
+// scoring: compare spoken text to the target sentence
+function normalize(s){ return s.toLowerCase().replace(/[^a-z0-9\s]/g,"").replace(/\s+/g," ").trim(); }
+function levenshtein(a, b){
+  const m=a.length, n=b.length, d=Array.from({length:m+1},(_,i)=>[i,...Array(n).fill(0)]);
+  for(let j=0;j<=n;j++) d[0][j]=j;
+  for(let i=1;i<=m;i++) for(let j=1;j<=n;j++)
+    d[i][j] = Math.min(d[i-1][j]+1, d[i][j-1]+1, d[i-1][j-1] + (a[i-1]===b[j-1]?0:1));
+  return d[m][n];
+}
+function similarity(target, said){
+  const t = normalize(target), s = normalize(said);
+  if (!s) return 0;
+  const dist = levenshtein(t, s);
+  return Math.round((1 - dist / Math.max(t.length, s.length)) * 100);
+}
+async function grade(alternatives){
+  const target = currentPhraseText();
+  // pick the alternative that scores highest (most forgiving)
+  let best = 0, bestText = alternatives[0] || "";
+  alternatives.forEach(alt => { const sc = similarity(target, alt); if (sc > best){ best = sc; bestText = alt; } });
+
+  // Remember the best score for this phrase (used to average a sprint day).
+  const prev = current.scores[current.index];
+  current.scores[current.index] = prev === undefined ? best : Math.max(prev, best);
+
+  $("scoreNum").textContent = best;
+  const msgEl = $("scoreMsg");
+  if (best >= 85){ msgEl.textContent = "Excellent! 🎉"; msgEl.style.color = "var(--good)"; }
+  else if (best >= 65){ msgEl.textContent = "Good — keep polishing 👍"; msgEl.style.color = "var(--brand)"; }
+  else { msgEl.textContent = "Keep practicing 💪"; msgEl.style.color = "var(--danger)"; }
+
+  // Pro feature: Pronunciation Focus — highlight exactly which words were
+  // unclear, instead of just an overall score. Free users see the plain
+  // "we heard" line only; this per-word breakdown is the Pro upgrade.
+  const heardEl = $("heard");
+  if (currentUser && currentUser.is_premium){
+    heardEl.innerHTML = "";
+    const weak = wordWeakPoints(target, bestText);
+    const label = document.createElement("div");
+    label.className = "heard-label";
+    label.textContent = "Your target, word by word:";
+    heardEl.appendChild(label);
+    const row = document.createElement("div");
+    row.className = "word-row";
+    weak.forEach(w => {
+      const span = document.createElement("span");
+      span.className = "word-chip" + (w.weak ? " weak" : " ok");
+      span.textContent = w.word;
+      row.appendChild(span);
+    });
+    heardEl.appendChild(row);
+    const weakWords = weak.filter(w => w.weak).map(w => w.word);
+    if (weakWords.length){
+      const tip = document.createElement("div");
+      tip.className = "word-tip";
+      tip.textContent = "🎯 Focus on: " + weakWords.join(", ");
+      heardEl.appendChild(tip);
+    }
+    const heardLine = document.createElement("div");
+    heardLine.className = "heard-said";
+    heardLine.innerHTML = "We heard: <b>" + (bestText || "—") + "</b>";
+    heardEl.appendChild(heardLine);
+  } else {
+    heardEl.innerHTML = "We heard: <b>" + (bestText || "—") + "</b>";
+  }
+  $("result").classList.add("show");
+
+  // Free lessons save each attempt. Sprint days are saved once, at the end.
+  if (current.mode === "lesson"){
+    try {
+      await api("/api/practice","POST",{lesson_id: current.id, phrase_index: current.index,
+                                        score: best, transcript: bestText});
+    } catch(e){ /* saving is best-effort */ }
+  }
+}
+
+// Per-word pronunciation check: for each word in the target sentence, find
+// the closest-matching word actually heard. If nothing heard is close, that
+// word is flagged as a weak point — this is what Pronunciation Focus shows.
+function wordWeakPoints(target, heardText){
+  const targetWords = target.split(/\s+/).filter(Boolean);
+  const heardWords = normalize(heardText).split(/\s+/).filter(Boolean);
+  return targetWords.map(tw => {
+    const tClean = normalize(tw);
+    let bestMatch = 0;
+    heardWords.forEach(hw => { bestMatch = Math.max(bestMatch, similarity(tClean, hw)); });
+    return { word: tw, weak: bestMatch < 60 };
+  });
+}
+
+
+// ---- UPGRADE (demo) ----
+$("upgradeBtn").onclick = async () => {
+  $("upgradeBtn").disabled = true; $("upgradeBtn").textContent = "Loading…";
+  try {
+    const cfg = await api("/api/billing/config");
+    if (cfg.configured) {
+      await startPaddleCheckout(cfg);
+    } else {
+      // Demo mode: no real payment provider configured on the server yet.
+      await api("/api/upgrade","POST");
+      await onBecamePro();
+    }
+  } catch(e){ alert(e.message); }
+  $("upgradeBtn").disabled = false; $("upgradeBtn").textContent = "Upgrade to Pro";
+};
+
+// Shared cleanup once the user is confirmed Pro, whichever path got them there.
+async function onBecamePro(){
+  if (currentUser) currentUser.is_premium = true;
+  $("proBadge").classList.remove("hidden");
+  const pill = $("drillProPill");
+  if (pill) pill.classList.add("hidden");
+  await loadDashboard();
+  await openSprint();      // Pro just unlocked — take them straight to the Sprint.
+}
+
+let paddleInitialized = false;
+
+async function startPaddleCheckout(cfg){
+  if (!window.Paddle){
+    alert("Payment system failed to load. Please refresh and try again.");
+    return;
+  }
+  if (!paddleInitialized){
+    Paddle.Environment.set(cfg.environment === "production" ? "production" : "sandbox");
+    Paddle.Initialize({ token: cfg.client_token });
+    paddleInitialized = true;
+  }
+
+  $("upgradeBtn").textContent = "Opening checkout…";
+  Paddle.Checkout.open({
+    items: [{ priceId: cfg.price_id, quantity: 1 }],
+    customer: { email: cfg.customer_email },
+    // custom_data is echoed back on the webhook — this is how the server
+    // maps "payment succeeded" back to the right account, without ever
+    // trusting anything the browser itself claims.
+    customData: { user_id: String(cfg.user_id) },
+    settings: {
+      displayMode: "overlay",
+      theme: "light",
+      successUrl: window.location.origin + "/?paid=1",
+    },
+  });
+
+  // Paddle's webhook is the source of truth and typically arrives within a
+  // couple of seconds, but isn't perfectly synchronous with the checkout
+  // overlay closing — so poll briefly for confirmation rather than assuming.
+  pollForProConfirmation();
+}
+
+async function pollForProConfirmation(){
+  const maxTries = 20;   // ~30 seconds total
+  for (let i = 0; i < maxTries; i++){
+    await new Promise(r => setTimeout(r, 1500));
+    try {
+      const me = await api("/api/me");
+      if (me.is_premium){
+        $("upgradeBtn").textContent = "Upgrade to Pro";
+        await onBecamePro();
+        return;
+      }
+    } catch(e){ /* keep polling */ }
+  }
+  // Payment may have succeeded but the webhook hasn't landed yet — this can
+  // happen with real payment processors. Don't leave the person guessing.
+  alert("If your payment went through, it can take a few extra seconds to "
+       + "confirm. Refresh the page shortly — Pro will appear automatically.");
+}
+
+// ============================================================
+//  LETTER CURTAIN — a hanging cloth made of English letters.
+//  Same technique as the reference video: verlet integration
+//  (each point remembers where it was, and that difference IS
+//  its velocity), plus distance constraints that hold the
+//  cloth together. Drag your pointer through it to part it.
+// ============================================================
+(function letterCurtain(){
+  const canvas = document.getElementById("curtain");
+  if (!canvas) return;
+  const ctx = canvas.getContext("2d", { alpha: true });
+
+  // Words the curtain is woven from — the vocabulary you practice.
+  const WORDS = ("SPEAK ENGLISH OUT LOUD EVERY DAY HELLO NICE TO MEET YOU HOW ARE "
+    + "COULD I HAVE A COFFEE PLEASE WHERE IS THE STATION THANK YOU VERY MUCH I "
+    + "WOULD LIKE TO PRACTICE MY NAME IS WHAT DO YOU THINK LET US BEGIN AGAIN "
+    + "CONFIDENCE COMES FROM SPEAKING NOT FROM READING KEEP GOING ONE MORE TIME").split(/\s+/);
+
+  const GRID = { cols: 15, rows: 15 };
+  const SPACING = 19;      // design-space gap between letters
+  const GRAVITY = 0.22;
+  const DAMPING = 0.97;
+  const ITER = 3;          // constraint passes per frame — higher = stiffer cloth
+  const TEAR_R = 62;       // pointer influence radius
+
+  let pts = [], links = [], chars = [], W = 0, H = 0, dpr = 1;
+  let pointer = { x: -9999, y: -9999, px: -9999, py: -9999, active: false };
+  let raf = null, visible = true;
+
+  function build(){
+    const rect = canvas.getBoundingClientRect();
+    W = rect.width; H = rect.height;
+    if (W === 0 || H === 0) return false;
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    canvas.width = Math.round(W * dpr);
+    canvas.height = Math.round(H * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.font = "600 13px 'Sora', system-ui, sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+
+    // Hang the curtain from the ring, exactly like cloth hanging from a roof.
+    const clothW = (GRID.cols - 1) * SPACING;
+    const ringEl = document.getElementById("sprintRing");
+    let originX = W - clothW - 60;
+    let originY = 26;
+    if (ringEl){
+      const rr = ringEl.getBoundingClientRect();
+      if (rr.width){
+        originX = (rr.left - rect.left) + rr.width / 2 - clothW / 2;
+        originY = (rr.top - rect.top) + rr.height - 10;   // just under the ring
+      }
+    }
+
+    pts = []; links = []; chars = [];
+    let wi = 0, ci = 0;
+    for (let r = 0; r < GRID.rows; r++){
+      for (let c = 0; c < GRID.cols; c++){
+        const x = originX + c * SPACING;
+        const y = originY + r * SPACING;
+        pts.push({ x, y, px: x, py: y, pinned: r === 0 });
+        // Walk through the word list letter by letter, so the cloth
+        // literally reads as English text.
+        let word = WORDS[wi % WORDS.length];
+        if (ci >= word.length){ wi++; ci = 0; word = WORDS[wi % WORDS.length]; }
+        chars.push(word[ci] || "·");
+        ci++;
+      }
+    }
+    const idx = (c, r) => r * GRID.cols + c;
+    for (let r = 0; r < GRID.rows; r++){
+      for (let c = 0; c < GRID.cols; c++){
+        if (c < GRID.cols - 1) links.push({ a: idx(c, r), b: idx(c + 1, r), len: SPACING });
+        if (r < GRID.rows - 1) links.push({ a: idx(c, r), b: idx(c, r + 1), len: SPACING });
+      }
+    }
+    return true;
+  }
+
+  function step(){
+    // 1. Verlet integration: position - previous position = velocity.
+    for (const p of pts){
+      if (p.pinned) continue;
+      const vx = (p.x - p.px) * DAMPING;
+      const vy = (p.y - p.py) * DAMPING;
+      p.px = p.x; p.py = p.y;
+      p.x += vx;
+      p.y += vy + GRAVITY;
+    }
+    // 2. Pointer sweeps the cloth aside.
+    if (pointer.active){
+      const dxm = pointer.x - pointer.px;
+      const dym = pointer.y - pointer.py;
+      for (const p of pts){
+        if (p.pinned) continue;
+        const dx = p.x - pointer.x, dy = p.y - pointer.y;
+        const d2 = dx * dx + dy * dy;
+        if (d2 < TEAR_R * TEAR_R){
+          const d = Math.sqrt(d2) || 1;
+          const force = (1 - d / TEAR_R);
+          // push along the pointer's travel + gently outward
+          p.x += dxm * force * 0.85 + (dx / d) * force * 2.2;
+          p.y += dym * force * 0.85 + (dy / d) * force * 2.2;
+        }
+      }
+    }
+    // 3. Satisfy the distance constraints so it behaves like cloth.
+    for (let k = 0; k < ITER; k++){
+      for (const l of links){
+        const a = pts[l.a], b = pts[l.b];
+        const dx = b.x - a.x, dy = b.y - a.y;
+        const d = Math.sqrt(dx * dx + dy * dy) || 1e-6;
+        const diff = (d - l.len) / d * 0.5;
+        const ox = dx * diff, oy = dy * diff;
+        if (!a.pinned){ a.x += ox; a.y += oy; }
+        if (!b.pinned){ b.x -= ox; b.y -= oy; }
+      }
+    }
+  }
+
+  function draw(){
+    ctx.clearRect(0, 0, W, H);
+    for (let i = 0; i < pts.length; i++){
+      const p = pts[i];
+      if (p.x < -20 || p.x > W + 20 || p.y > H + 20) continue;
+      const row = (i / GRID.cols) | 0;
+      // fade the letters out toward the bottom, like the reference
+      const fade = 1 - row / GRID.rows;
+      // stretched links glow teal — you can see where you disturbed it
+      const stretch = Math.min(Math.abs(p.x - p.px) + Math.abs(p.y - p.py), 6) / 6;
+      const alpha = (0.22 + fade * 0.55);
+      ctx.fillStyle = stretch > 0.25
+        ? `rgba(18,184,166,${Math.min(alpha + stretch * 0.5, 0.95)})`
+        : `rgba(226,234,255,${alpha})`;
+      ctx.fillText(chars[i], p.x, p.y);
+    }
+  }
+
+  function loop(){
+    if (visible){ step(); draw(); }
+    raf = requestAnimationFrame(loop);
+  }
+
+  // --- pointer plumbing (mouse + touch both work) ---
+  function toLocal(clientX, clientY){
+    const r = canvas.getBoundingClientRect();
+    return { x: clientX - r.left, y: clientY - r.top };
+  }
+  function move(e){
+    const t = e.touches ? e.touches[0] : e;
+    if (!t) return;
+    const { x, y } = toLocal(t.clientX, t.clientY);
+    pointer.px = pointer.active ? pointer.x : x;
+    pointer.py = pointer.active ? pointer.y : y;
+    pointer.x = x; pointer.y = y;
+    pointer.active = true;
+  }
+  function leave(){ pointer.active = false; pointer.x = pointer.y = -9999; }
+
+  const hero = document.getElementById("sprintHero");
+  hero.addEventListener("mousemove", move);
+  hero.addEventListener("mouseleave", leave);
+  hero.addEventListener("touchmove", (e) => { move(e); }, { passive: true });
+  hero.addEventListener("touchend", leave);
+
+  // Pause when the dashboard isn't on screen — no wasted battery.
+  const io = new IntersectionObserver((entries) => {
+    visible = entries[0].isIntersecting;
+  }, { threshold: 0.01 });
+  io.observe(hero);
+
+  let rt = null;
+  window.addEventListener("resize", () => {
+    clearTimeout(rt);
+    rt = setTimeout(() => { if (build()) { /* rebuilt */ } }, 150);
+  });
+
+  // Respect people who don't want motion.
+  const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  function start(){
+    if (!build()){ setTimeout(start, 120); return; }   // hero not laid out yet
+    if (reduced){ step(); draw(); return; }            // draw one static frame
+    if (raf) cancelAnimationFrame(raf);
+    loop();
+  }
+  start();
+  // Rebuild if the hero was hidden at first paint (e.g. user was logged out).
+  window.__rebuildCurtain = () => { if (build() && reduced){ step(); draw(); } };
+})();
+
+// ============================================================
+//  SCRIPTED CONVERSATIONS — branching dialogues, no API.
+//  The character speaks; the learner picks (or says aloud) one
+//  of several replies; each reply leads to the next line. Fully
+//  offline and deterministic — always works.
+// ============================================================
+
+function renderScenarios(){
+  const grid = $("scenarioGrid"); grid.innerHTML = "";
+  scenarios.forEach(s => {
+    const card = document.createElement("div");
+    card.className = "card clickable";
+    card.innerHTML = `
+      ${s.locked ? '<span class="lock-tag">🔒 Pro</span>' : ''}
+      <div style="font-size:26px;line-height:1">${s.emoji}</div>
+      <div class="lvl" style="margin-top:8px">${s.level}</div>
+      <h3>${s.title}</h3>
+      <div class="meta">${s.locked ? "Premium conversation" : s.goal}</div>`;
+    card.onclick = () => s.locked ? show("paywallView") : openConvById(s.id, s.emoji, s.title, null);
+    grid.appendChild(card);
+  });
+}
+
+// conv state: {id, nodes:{id->node}, sprintDay}
+let conv = null;
+
+async function openConvById(convId, emoji, title, sprintDayNum){
+  show("convView");
+  $("chatBox").innerHTML = "";
+  $("replyChoices").innerHTML = "";
+  $("convFoot").classList.add("hidden");
+  $("chatHint").textContent = "Pick a reply — or tap 🎤 and say it out loud.";
+  try {
+    const data = await api("/api/conversation/" + encodeURIComponent(convId));
+    const nodeMap = {};
+    data.nodes.forEach(n => nodeMap[n.id] = n);
+    conv = { id: convId, nodes: nodeMap, sprintDay: sprintDayNum || null };
+    $("convEmoji").textContent = emoji || "💬";
+    $("convTitle").textContent = title || data.title || "";
+    $("convSetting").textContent = data.setting || "";
+    $("convGoal").textContent = data.goal || "";
+    goToNode(data.start);
+  } catch(e){
+    $("chatHint").textContent = e.message;
+  }
+}
+
+// Backwards-compatible entry used by the Sprint flow.
+function openConv(scenarioLike, sprintDayNum){
+  openConvById(scenarioLike.id, scenarioLike.emoji, scenarioLike.title, sprintDayNum);
+}
+
+function addBubble(who, text){
+  const box = $("chatBox");
+  const b = document.createElement("div");
+  b.className = "bubble " + who;
+  b.innerHTML = `<div class="txt"></div>`;
+  b.querySelector(".txt").textContent = text;
+  if (who === "ai"){
+    const row = document.createElement("div");
+    row.className = "row";
+    const hear = document.createElement("button");
+    hear.className = "b-act"; hear.textContent = "🔊 Hear it";
+    hear.onclick = () => speakText(text);
+    const tr = document.createElement("button");
+    tr.className = "b-act"; tr.textContent = "🌐 Translate";
+    tr.onclick = () => translateBubble(b, text, tr);
+    row.appendChild(hear); row.appendChild(tr);
+    b.appendChild(row);
+  }
+  box.appendChild(b);
+  box.scrollTop = box.scrollHeight;
+  return b;
+}
+
+async function translateBubble(bubble, text, btn){
+  if (bubble.querySelector(".tr")){ bubble.querySelector(".tr").remove(); return; }
+  btn.textContent = "…";
+  try {
+    const r = await api("/api/translate", "POST", { text, lang: "ar" });
+    const d = document.createElement("div");
+    d.className = "tr"; d.dir = "rtl";
+    d.textContent = r.translated || "(no translation)";
+    bubble.appendChild(d);
+  } catch(e){ /* ignore */ }
+  btn.textContent = "🌐 Translate";
+}
+
+function speakText(text){
+  if (!window.speechSynthesis) return;
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = "en-US"; u.rate = 0.95;
+  speechSynthesis.cancel(); speechSynthesis.speak(u);
+}
+
+function goToNode(nodeId){
+  const node = conv.nodes[nodeId];
+  if (!node) return;
+  addBubble("ai", node.npc.en);        // the character speaks
+  speakText(node.npc.en);
+  const choices = $("replyChoices"); choices.innerHTML = "";
+
+  if (node.end || !node.replies || node.replies.length === 0){
+    // Conversation finished.
+    $("chatHint").textContent = "✓ Conversation complete.";
+    $("convFoot").classList.remove("hidden");
+    return;
+  }
+
+  node.replies.forEach(rep => {
+    const wrap = document.createElement("div");
+    wrap.className = "reply-choice";
+    const say = document.createElement("button");
+    say.className = "rc-text";
+    say.innerHTML = `<span>${rep.en}</span>`;
+    say.onclick = () => chooseReply(rep);
+    const mic = document.createElement("button");
+    mic.className = "rc-mic"; mic.title = "Say it out loud";
+    mic.textContent = "🎤";
+    mic.onclick = (e) => { e.stopPropagation(); speakReply(rep, mic); };
+    const tr = document.createElement("button");
+    tr.className = "rc-tr"; tr.title = "Translate"; tr.textContent = "🌐";
+    tr.onclick = async (e) => {
+      e.stopPropagation();
+      if (wrap.querySelector(".rc-trtext")){ wrap.querySelector(".rc-trtext").remove(); return; }
+      try {
+        const r = await api("/api/translate", "POST", { text: rep.en, lang: "ar" });
+        const d = document.createElement("div");
+        d.className = "rc-trtext"; d.dir = "rtl"; d.textContent = r.translated || "";
+        wrap.appendChild(d);
+      } catch(err){ /* ignore */ }
+    };
+    wrap.appendChild(say); wrap.appendChild(mic); wrap.appendChild(tr);
+    choices.appendChild(wrap);
+  });
+  $("chatHint").textContent = "Pick a reply — or tap 🎤 and say it out loud.";
+}
+
+function chooseReply(rep){
+  addBubble("me", rep.en);
+  $("replyChoices").innerHTML = "";
+  setTimeout(() => goToNode(rep.goto), 350);   // small beat before the reply
+}
+
+// Speak a chosen reply out loud; if recognised well, it counts as picking it.
+function speakReply(rep, micBtn){
+  if (!SR){ $("chatHint").textContent = "Speech needs Chrome. You can tap the reply instead."; return; }
+  const rec = new SR();
+  rec.lang = "en-US"; rec.interimResults = false; rec.maxAlternatives = 3;
+  micBtn.classList.add("rec");
+  $("chatHint").textContent = "Listening… say the sentence.";
+  rec.start();
+  rec.onresult = (ev) => {
+    const heard = [];
+    for (let i = 0; i < ev.results[0].length; i++) heard.push(ev.results[0][i].transcript);
+    const score = bestScore(rep.en, heard);
+    if (score >= 55){
+      $("chatHint").textContent = "✓ Nice — " + score + "% match.";
+      chooseReply(rep);
+    } else {
+      $("chatHint").textContent = "Heard: \"" + heard[0] + "\" — try again, or just tap the reply.";
+    }
+  };
+  rec.onerror = () => { $("chatHint").textContent = "Didn't catch that — try again or tap the reply."; };
+  rec.onend = () => micBtn.classList.remove("rec");
+}
+
+// How close was what they said to the target reply? (reuses the drill scorer)
+function bestScore(target, alternatives){
+  let best = 0;
+  alternatives.forEach(a => { best = Math.max(best, similarity(target, a)); });
+  return best;
+}
+
+$("backConv").onclick = () => conv && conv.sprintDay ? openSprint() : loadDashboard();
+$("restartConv").onclick = () => openConvById(conv.id, $("convEmoji").textContent, $("convTitle").textContent, conv.sprintDay);
+
+$("convDoneBtn").onclick = async () => {
+  if (conv.sprintDay){
+    try {
+      const st = await api("/api/sprint/day/conv-complete", "POST", { day: conv.sprintDay });
+      sprint.state = st;
+    } catch(e){ /* ignore */ }
+    openSprint();
+  } else {
+    loadDashboard();
+  }
+};
+
+
+// ---- unlimited sentences on any topic — launches a real timed session ----
+$("topicBtn").onclick = () => {
+  if (!currentUser || !currentUser.is_premium){ show("paywallView"); return; }
+  const topic = $("topicInput").value.trim();
+  if (!topic){ $("topicInput").focus(); return; }
+  const level = $("topicLevel").value;
+  startTopicSession(topic, level);
+};
+$("topicInput").addEventListener("keydown", e => { if (e.key === "Enter") $("topicBtn").click(); });
+
+// ---- auto-login if we already have a token ----
+(async () => {
+  if (!token) return;
+  try { const user = await api("/api/me"); enterApp(user); }
+  catch { token = null; localStorage.removeItem("speakup_token"); }
+})();
+</script>
+</body>
+</html>
