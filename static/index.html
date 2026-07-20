@@ -882,7 +882,8 @@
       <div class="paywall">
         <h2>Unlock SpeakUp Pro</h2>
         <p>Get the 14-Day Speaking Sprint — plus every lesson and level.</p>
-        <div class="price">$4.99<small> / month</small></div>
+        <div class="price" id="proPrice">$4.99<small> / month</small></div>
+        <div class="note" id="proPriceIqd"></div>
         <ul class="perks">
           <li>The 14-Day Speaking Sprint</li>
           <li>A daily challenge and a real streak</li>
@@ -890,7 +891,7 @@
           <li>All Intermediate &amp; Advanced lessons</li>
         </ul>
         <button class="btn-gold" id="upgradeBtn">Upgrade to Pro</button>
-        <div class="note">Demo mode: this unlocks instantly. Wire up Stripe for real payments (see README).</div>
+        <div class="note" id="proNote">Demo mode: this unlocks instantly.</div>
       </div>
     </div>
   </div>
@@ -923,6 +924,7 @@ function show(view){
     .forEach(v => $(v).classList.add("hidden"));
   const el = $(view);
   el.classList.remove("hidden");
+  if (view === "paywallView") refreshPriceDisplay();
   // Replay entrance animations each time this screen is shown, not just once.
   el.querySelectorAll(".anim-in,.anim-in-1,.anim-in-2,.anim-in-3,.anim-pop").forEach(node => {
     node.style.animation = "none";
@@ -1580,13 +1582,41 @@ function wordWeakPoints(target, heardText){
 }
 
 
-// ---- UPGRADE (demo) ----
+// ---- UPGRADE ----
+let billingCfg = null;
+
+async function getBillingCfg(){
+  if (!billingCfg) billingCfg = await api("/api/billing/config");
+  return billingCfg;
+}
+
+// Fills in the paywall's price + note from the server so it always matches
+// whichever provider (or demo mode) is actually configured.
+async function refreshPriceDisplay(){
+  try {
+    const cfg = await getBillingCfg();
+    $("proPrice").innerHTML = `$${cfg.price_usd}<small> / month</small>`;
+    if (cfg.provider === "zaincash"){
+      $("proPriceIqd").textContent = `≈ ${Number(cfg.price_iqd).toLocaleString()} IQD, charged via ZainCash`;
+      $("proNote").textContent = "Pay with your ZainCash wallet — no card needed.";
+    } else if (cfg.provider === "paddle"){
+      $("proPriceIqd").textContent = "";
+      $("proNote").textContent = "Secure checkout powered by Paddle.";
+    } else {
+      $("proPriceIqd").textContent = "";
+      $("proNote").textContent = "Demo mode: this unlocks instantly.";
+    }
+  } catch(e){ /* leave the static defaults showing */ }
+}
+
 $("upgradeBtn").onclick = async () => {
   $("upgradeBtn").disabled = true; $("upgradeBtn").textContent = "Loading…";
   try {
-    const cfg = await api("/api/billing/config");
-    if (cfg.configured) {
+    const cfg = await getBillingCfg();
+    if (cfg.provider === "paddle") {
       await startPaddleCheckout(cfg);
+    } else if (cfg.provider === "zaincash") {
+      await startZainCashCheckout();
     } else {
       // Demo mode: no real payment provider configured on the server yet.
       await api("/api/upgrade","POST");
@@ -1595,6 +1625,16 @@ $("upgradeBtn").onclick = async () => {
   } catch(e){ alert(e.message); }
   $("upgradeBtn").disabled = false; $("upgradeBtn").textContent = "Upgrade to Pro";
 };
+
+// ZainCash's checkout is a full-page redirect (no overlay/iframe support),
+// so we navigate the whole browser there and pick things back up when it
+// redirects back to /?paid=1 — see the app-init block near the bottom.
+async function startZainCashCheckout(){
+  $("upgradeBtn").textContent = "Opening checkout…";
+  const res = await api("/api/billing/zaincash/checkout", "POST");
+  if (!res.redirect_url) throw new Error("Could not start ZainCash checkout.");
+  window.location.href = res.redirect_url;
+}
 
 // Shared cleanup once the user is confirmed Pro, whichever path got them there.
 async function onBecamePro(){
@@ -2054,7 +2094,25 @@ $("topicInput").addEventListener("keydown", e => { if (e.key === "Enter") $("top
 (async () => {
   if (!token) return;
   try { const user = await api("/api/me"); enterApp(user); }
-  catch { token = null; localStorage.removeItem("speakup_token"); }
+  catch { token = null; localStorage.removeItem("speakup_token"); return; }
+
+  // Returning from a full-page redirect checkout (ZainCash) or a Paddle
+  // successUrl fallback. Clean the URL either way so a refresh doesn't
+  // re-trigger this.
+  const params = new URLSearchParams(window.location.search);
+  if (params.has("paid") || params.has("upgrade")){
+    const wasPaid = params.get("paid") === "1";
+    history.replaceState(null, "", window.location.pathname);
+    try {
+      // Belt-and-suspenders: ask the server to re-check the last ZainCash
+      // transaction in case the redirect landed before the payment was
+      // fully confirmed.
+      await api("/api/billing/zaincash/sync", "POST");
+      const me = await api("/api/me");
+      if (me.is_premium) await onBecamePro();
+      else if (wasPaid) alert("Payment received — confirming with ZainCash, this can take a few seconds. Refresh shortly if Pro doesn't appear.");
+    } catch(e){ /* ignore — user is still logged in either way */ }
+  }
 })();
 </script>
 </body>

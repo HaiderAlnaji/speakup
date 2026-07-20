@@ -273,25 +273,53 @@ are equally beginner-friendly.
 
 ## 5. The money part — real payments, and how you actually get paid
 
-**Important if you're in Iraq (or any other country Stripe doesn't support):**
-Stripe cannot pay out to an Iraqi bank account — it's on their unsupported
-list. So this uses **Paddle** instead: Paddle is a "Merchant of Record,"
-meaning it handles the actual card charging, sales tax, and compliance for
-you, and — critically — **Paddle can pay you out via Payoneer**, which does
-support Iraqi bank accounts. This is the standard route for founders in
-countries Stripe excludes.
+**Important if your business is based in Iraq:** Paddle, Stripe, Lemon
+Squeezy, and Dodo Payments all refuse to onboard sellers registered in Iraq
+(it's on each of their unsupported-country lists — a banking/compliance
+restriction on their end, not something you can work around at signup). The
+route that actually works is **ZainCash**, Iraq's own mobile-wallet payment
+gateway, licensed by the Central Bank of Iraq. If your business is based
+somewhere Paddle *does* support, use the Paddle path below instead — the
+app supports both, and picks whichever one has credentials set.
 
-### How it works in this codebase
-`POST /api/upgrade` is now **demo-mode only**. With no Paddle credentials
-set, it instantly grants Pro so you can test everything locally for free.
-The moment you set real Paddle credentials (in production), that shortcut
-**automatically disables itself** — real Pro access then comes only from a
-signed webhook Paddle sends after an actual payment. This is tested
-explicitly in `billing_test.py` (25 checks): a forged webhook, a wrong
-secret, a tampered payload, and a missing signature are all rejected: only a
-genuinely-signed request from Paddle can ever grant someone Pro.
+### ZainCash (Iraq-based businesses)
+ZainCash settles in **Iraqi Dinar (IQD) only** — customers pay via their
+ZainCash wallet (phone number + one-time code), no card involved. The app
+shows a USD price for reference, but the real charge is in IQD.
 
-### Setup steps
+1. **Register your business**: https://zaincash.iq/business/business-wallet-registration
+   — after approval you get a `client_id` and `client_secret`, first for a
+   test (UAT) environment, then live credentials once onboarding finishes.
+2. **Add env vars** in Render (Environment tab):
+   ```
+   ZAINCASH_CLIENT_ID=...
+   ZAINCASH_CLIENT_SECRET=...
+   ZAINCASH_ENV=test            (switch to "production" when ready to go live)
+   PRO_PRICE_USD=4.99            (shown to users for reference only)
+   PRO_PRICE_IQD=6500             (what actually gets charged; ~1,300 IQD = $1)
+   ```
+3. **Test with ZainCash's UAT credentials first** (see their docs at
+   docs.zaincash.iq for test wallet numbers/OTPs) before flipping
+   `ZAINCASH_ENV=production`.
+4. **How it works in this codebase**: `POST /api/upgrade` is demo-mode
+   only — with no ZainCash (or Paddle) credentials set, it instantly grants
+   Pro so you can test everything locally for free. The moment real
+   credentials are set, that shortcut disables itself. `/api/billing/zaincash/checkout`
+   creates a transaction and sends the customer to ZainCash's page; after
+   they pay, `/api/billing/zaincash/callback` confirms the result by calling
+   ZainCash's Transaction Inquiry API directly (never trusting the redirect
+   URL alone, since that could be forged) before granting Pro. Each payment
+   buys 30 days of Pro (`pro_expires_at`), since ZainCash charges one-time
+   transactions rather than running recurring subscriptions the way Paddle
+   does.
+
+### Paddle (for businesses based somewhere Paddle supports)
+Paddle is a "Merchant of Record" — it handles card charging, sales tax, and
+compliance for you, and can pay out via Payoneer, wire transfer, or other
+methods depending on your country. Check
+paddle.com/help/start/intro-to-paddle/which-countries-are-supported-by-paddle
+first to confirm your business's country is eligible.
+
 1. **Sign up at paddle.com** (free to start; Paddle takes a percentage per
    sale, no monthly fee).
 2. **Create your product & price**: Catalog → New Product → "SpeakUp Pro" →
@@ -314,16 +342,14 @@ genuinely-signed request from Paddle can ever grant someone Pro.
    ```
 6. **Test in sandbox first.** Paddle gives you a full sandbox environment
    with fake card numbers — use it before flipping `PADDLE_ENV=production`.
-7. **Set up your payout**: in Paddle, go to Payout Settings → choose
-   **Payoneer** (or wire transfer) as your payout method. You'll need a
-   Payoneer account (it accepts Iraqi registrations and connects to Iraqi
-   bank accounts) — sign up at payoneer.com if you don't have one already.
-   Paddle pays out monthly once your balance clears their minimum threshold.
+7. **Set up your payout**: in Paddle, go to Payout Settings and choose
+   whichever payout method it offers for your country.
 
 ### The one rule
-Only the **webhook** (`/api/billing/webhook`) may ever set `is_premium = True`
-from a payment. Never trust the browser to tell you someone paid — that's
-exactly what `billing_test.py` exists to keep true.
+Only a verified payment (ZainCash's Inquiry API result, or Paddle's signed
+webhook) may ever set `is_premium = True`. Never trust the browser to tell
+you someone paid — that's exactly what `billing_test.py` exists to keep
+true for the Paddle path.
 
 ---
 

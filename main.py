@@ -34,8 +34,9 @@ load_dotenv(BASE_DIR / ".env")
 
 import jwt  # PyJWT
 import bcrypt
+import requests
 from fastapi import FastAPI, Depends, HTTPException, Request, status
-from fastapi.responses import FileResponse, Response
+from fastapi.responses import FileResponse, Response, RedirectResponse
 from sqlmodel import SQLModel, Field, Session, create_engine, select
 from sqlalchemy import inspect as sa_inspect, text as sa_text
 from pydantic import BaseModel
@@ -83,6 +84,32 @@ PADDLE_CONFIGURED = bool(PADDLE_API_KEY and PADDLE_WEBHOOK_SECRET
                          and PADDLE_CLIENT_TOKEN and PADDLE_PRICE_ID)
 
 # ----------------------------------------------------------------------
+# 1e. PAYMENTS — ZainCash (Iraq's mobile-wallet payment gateway)
+# ----------------------------------------------------------------------
+# Paddle/Stripe/Lemon Squeezy/Dodo all refuse to onboard sellers based in
+# Iraq, so ZainCash is the real payment path for SpeakUp. It settles in
+# Iraqi Dinar (IQD) only — the customer pays via their ZainCash mobile
+# wallet (phone number + OTP), no card required. The USD price is shown
+# for reference only; the real charge is always in IQD.
+#
+# Get these after ZainCash approves your business:
+# https://zaincash.iq/business/business-wallet-registration
+ZAINCASH_CLIENT_ID = os.getenv("ZAINCASH_CLIENT_ID", "").strip()
+ZAINCASH_CLIENT_SECRET = os.getenv("ZAINCASH_CLIENT_SECRET", "").strip()
+ZAINCASH_ENV = os.getenv("ZAINCASH_ENV", "test").strip()   # "test" or "production"
+ZAINCASH_BASE_URL = (
+    "https://pg-api.zaincash.iq" if ZAINCASH_ENV == "production"
+    else "https://pg-api-uat.zaincash.iq"
+)
+ZAINCASH_CONFIGURED = bool(ZAINCASH_CLIENT_ID and ZAINCASH_CLIENT_SECRET)
+
+# Pro plan price. USD is display-only; PRO_PRICE_IQD is what ZainCash
+# actually charges. ~1,300 IQD = $1 as of mid-2026 — adjust in your .env
+# if the exchange rate moves a lot.
+PRO_PRICE_USD = os.getenv("PRO_PRICE_USD", "4.99").strip()
+PRO_PRICE_IQD = os.getenv("PRO_PRICE_IQD", "6500").strip()
+
+# ----------------------------------------------------------------------
 # 1b. CONTENT CONFIG  (everything is offline — no API, no keys, no limits)
 # ----------------------------------------------------------------------
 # SpeakUp runs entirely on built-in content (see content.py). There are no
@@ -114,6 +141,10 @@ class User(SQLModel, table=True):
     paddle_customer_id: str | None = None
     paddle_subscription_id: str | None = None
     subscription_status: str = "none"   # "none" | "active" | "past_due" | "canceled"
+    # ZainCash tracking. ZainCash payments aren't recurring subscriptions —
+    # each successful payment buys 30 days of Pro, tracked via pro_expires_at.
+    zaincash_transaction_id: str | None = None
+    pro_expires_at: dt.datetime | None = None
 
 
 class Attempt(SQLModel, table=True):
@@ -580,6 +611,21 @@ def _sync_admin_status(user: User, session: Session):
         session.add(user); session.commit(); session.refresh(user)
 
 
+def _sync_subscription_expiry(user: User, session: Session):
+    """
+    ZainCash payments buy a fixed 30-day window (pro_expires_at), unlike
+    Paddle's recurring subscriptions. Checked on every request so access is
+    revoked right on schedule without needing a background job. Admins are
+    always exempt — they keep Pro regardless of any expiry date.
+    """
+    if user.is_admin:
+        return
+    if user.pro_expires_at and user.is_premium and dt.datetime.utcnow() > user.pro_expires_at:
+        user.is_premium = False
+        user.subscription_status = "canceled"
+        session.add(user); session.commit(); session.refresh(user)
+
+
 def get_current_user(request: Request, session: Session = Depends(get_session)) -> User:
     """Reads the 'Authorization: Bearer <token>' header and returns the user."""
     auth = request.headers.get("Authorization", "")
@@ -595,6 +641,7 @@ def get_current_user(request: Request, session: Session = Depends(get_session)) 
     if not user:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "User not found")
     _sync_admin_status(user, session)
+    _sync_subscription_expiry(user, session)
     return user
 
 
@@ -848,9 +895,9 @@ def upgrade(user: User = Depends(get_current_user),
     payment webhook (see /api/billing/webhook below). This prevents anyone
     from just calling this endpoint directly to get Pro for free.
     """
-    if PADDLE_CONFIGURED:
+    if PADDLE_CONFIGURED or ZAINCASH_CONFIGURED:
         raise HTTPException(403, "Real payments are live — use the Upgrade "
-                                 "button to check out with Paddle.")
+                                 "button to check out.")
     user.is_premium = True
     session.add(user)
     session.commit()
@@ -860,15 +907,20 @@ def upgrade(user: User = Depends(get_current_user),
 @app.get("/api/billing/config")
 def billing_config(user: User = Depends(get_current_user)):
     """
-    Tells the frontend how to open checkout. Only ever exposes the PUBLIC
-    client token (safe in the browser) — the secret API key and webhook
-    secret never leave the server.
+    Tells the frontend how to open checkout, and which provider is live.
+    Only ever exposes PUBLIC values (safe in the browser) — secret keys
+    never leave the server. If both happened to be configured, Paddle wins;
+    in practice for SpeakUp it'll be ZainCash.
     """
+    provider = "paddle" if PADDLE_CONFIGURED else ("zaincash" if ZAINCASH_CONFIGURED else "none")
     return {
-        "configured": PADDLE_CONFIGURED,
+        "configured": provider != "none",
+        "provider": provider,
         "client_token": PADDLE_CLIENT_TOKEN if PADDLE_CONFIGURED else "",
         "price_id": PADDLE_PRICE_ID if PADDLE_CONFIGURED else "",
         "environment": PADDLE_ENV,
+        "price_usd": PRO_PRICE_USD,
+        "price_iqd": PRO_PRICE_IQD,
         "customer_email": user.email,
         "user_id": user.id,
     }
@@ -953,6 +1005,169 @@ async def paddle_webhook(request: Request, session: Session = Depends(get_sessio
     session.add(user)
     session.commit()
     return {"received": True, "handled": True}
+
+
+# ----------------------------------------------------------------------
+# 6b. PAYMENTS — ZainCash
+# ----------------------------------------------------------------------
+_zaincash_token_cache = {"token": None, "expires_at": 0.0}
+
+
+def get_zaincash_token() -> str:
+    """
+    Gets an OAuth2 access token from ZainCash (client_credentials grant),
+    cached in memory so we don't re-authenticate on every checkout click.
+    """
+    now = time.time()
+    if _zaincash_token_cache["token"] and now < _zaincash_token_cache["expires_at"]:
+        return _zaincash_token_cache["token"]
+
+    resp = requests.post(
+        f"{ZAINCASH_BASE_URL}/oauth2/token",
+        data={
+            "grant_type": "client_credentials",
+            "client_id": ZAINCASH_CLIENT_ID,
+            "client_secret": ZAINCASH_CLIENT_SECRET,
+            "scope": "payment:read payment:write",
+        },
+        headers={"Content-Type": "application/x-www-form-urlencoded"},
+        timeout=15,
+    )
+    resp.raise_for_status()
+    data = resp.json()
+    _zaincash_token_cache["token"] = data["access_token"]
+    # Refresh a little early so we never hand out a token that expires
+    # mid-request.
+    _zaincash_token_cache["expires_at"] = now + max(data.get("expires_in", 300) - 30, 30)
+    return _zaincash_token_cache["token"]
+
+
+def zaincash_inquiry(transaction_id: str) -> str | None:
+    """
+    Calls ZainCash's Transaction Inquiry API — the authoritative source of
+    truth for whether a payment actually went through (SUCCESS / FAILED /
+    PENDING / etc). We rely on this rather than trusting the redirect alone,
+    since only a real server-to-server call using our own credentials can't
+    be forged by someone just visiting a URL.
+    """
+    try:
+        token = get_zaincash_token()
+        resp = requests.get(
+            f"{ZAINCASH_BASE_URL}/api/v2/payment-gateway/transaction/inquiry/{transaction_id}",
+            headers={"Authorization": f"Bearer {token}"},
+            timeout=15,
+        )
+        resp.raise_for_status()
+        return resp.json().get("data", {}).get("status")
+    except requests.RequestException:
+        return None
+
+
+@app.post("/api/billing/zaincash/checkout")
+def zaincash_checkout(request: Request,
+                       user: User = Depends(get_current_user),
+                       session: Session = Depends(get_session)):
+    """
+    Starts a ZainCash payment. Creates a transaction on ZainCash's side and
+    returns the redirectUrl — the frontend sends the browser's full page
+    there (not an overlay/iframe; ZainCash doesn't support embedding). The
+    customer enters their wallet phone number + OTP on ZainCash's own page,
+    so we never see or touch that.
+    """
+    if not ZAINCASH_CONFIGURED:
+        raise HTTPException(503, "ZainCash is not configured on this server.")
+
+    order_id = f"speakup-{user.id}-{int(time.time())}"
+    base = str(request.base_url).rstrip("/")
+    token = get_zaincash_token()
+
+    resp = requests.post(
+        f"{ZAINCASH_BASE_URL}/api/v2/payment-gateway/transaction/init",
+        headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+        json={
+            "language": "En",
+            "externalReferenceId": order_id,
+            "orderId": order_id,
+            "serviceType": "SpeakUpPro",
+            "amount": {"value": PRO_PRICE_IQD, "currency": "IQD"},
+            "redirectUrls": {
+                "successUrl": f"{base}/api/billing/zaincash/callback?order_id={order_id}",
+                "failureUrl": f"{base}/?upgrade=failed",
+            },
+        },
+        timeout=15,
+    )
+    resp.raise_for_status()
+    data = resp.json().get("data", {})
+
+    # Save the transaction id now so the callback (and the /sync fallback
+    # below) can look it up and confirm the real status via the Inquiry API.
+    user.zaincash_transaction_id = data.get("transactionId") or order_id
+    session.add(user)
+    session.commit()
+
+    return {"redirect_url": data.get("redirectUrl") or data.get("url")}
+
+
+def _confirm_and_grant_zaincash(order_id: str, session: Session) -> bool:
+    """
+    Looks up the user embedded in our own order_id (we control this format:
+    "speakup-{user_id}-{timestamp}"), then asks ZainCash's Inquiry API
+    whether that transaction actually succeeded before granting anything.
+    """
+    try:
+        user_id = int(order_id.split("-")[1])
+    except (IndexError, ValueError):
+        return False
+    user = session.get(User, user_id)
+    if not user or not user.zaincash_transaction_id:
+        return False
+    if zaincash_inquiry(user.zaincash_transaction_id) != "SUCCESS":
+        return False
+    user.is_premium = True
+    user.subscription_status = "active"
+    user.pro_expires_at = dt.datetime.utcnow() + dt.timedelta(days=30)
+    session.add(user)
+    session.commit()
+    return True
+
+
+@app.get("/api/billing/zaincash/callback")
+def zaincash_callback(order_id: str = "", session: Session = Depends(get_session)):
+    """
+    ZainCash redirects the customer's browser here after they finish paying.
+    Pro is only ever granted after confirming the transaction with ZainCash
+    itself via the Inquiry API — never from the redirect alone, which
+    someone could otherwise forge just by visiting this URL.
+    """
+    granted = _confirm_and_grant_zaincash(order_id, session) if order_id else False
+    return RedirectResponse(url="/?paid=1" if granted else "/?upgrade=pending")
+
+
+@app.post("/api/billing/zaincash/sync")
+def zaincash_sync(user: User = Depends(get_current_user),
+                   session: Session = Depends(get_session)):
+    """
+    Safety net for when the redirect back from ZainCash doesn't fire (closed
+    tab, flaky connection, etc). The frontend calls this after returning
+    from checkout to re-check the user's own last transaction.
+    """
+    if user.zaincash_transaction_id and not user.is_premium:
+        if zaincash_inquiry(user.zaincash_transaction_id) == "SUCCESS":
+            user.is_premium = True
+            user.subscription_status = "active"
+            user.pro_expires_at = dt.datetime.utcnow() + dt.timedelta(days=30)
+            session.add(user)
+            session.commit()
+    return {"is_premium": user.is_premium}
+
+
+# Note: ZainCash also supports webhooks for async status updates, but their
+# exact payload shape needs a real merchant account to see and test — see
+# https://docs.zaincash.iq/ once you have live credentials. Their docs
+# explicitly say the webhook is optional and the redirect above is enough
+# to go live; add a /api/billing/zaincash/webhook handler later if you want
+# faster confirmation for customers who don't get redirected back.
 
 
 # ----------------------------------------------------------------------

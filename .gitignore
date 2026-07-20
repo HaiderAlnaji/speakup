@@ -9,6 +9,9 @@ venv/
 
 # Database
 *.db
+*.db-journal
+*.db-wal
+*.db-shm
 app.db
 
 # OS
