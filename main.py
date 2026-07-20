@@ -1430,9 +1430,45 @@ class TranslateIn(BaseModel):
     lang: str = "ar"
 
 
+# LESSONS (above) stores phrases as plain English strings, unlike
+# SENTENCE_BANK/CONVERSATIONS/SPRINT_CONVS which already carry "en"/"ar"
+# pairs. Without this, the "Translate" button on every Practice Lessons
+# phrase silently returned an empty string — found while testing the app.
+LESSON_TRANSLATIONS = {
+    "Hello, nice to meet you.": "مرحباً، سعيد بلقائك.",
+    "My name is Sara. What's your name?": "اسمي سارة. ما اسمك؟",
+    "Where are you from?": "من أين أنت؟",
+    "I'm learning English to travel.": "أتعلم الإنجليزية من أجل السفر.",
+    "It was great talking to you.": "كان من الرائع التحدث معك.",
+
+    "Could I have a coffee, please?": "هل يمكنني الحصول على قهوة، من فضلك؟",
+    "Do you have any tea without sugar?": "هل لديكم شاي بدون سكر؟",
+    "How much is this sandwich?": "كم سعر هذا الساندويتش؟",
+    "Can I pay by card?": "هل يمكنني الدفع بالبطاقة؟",
+    "Thank you, have a nice day.": "شكراً لك، أتمنى لك يوماً سعيداً.",
+
+    "Thank you for inviting me to this interview.": "شكراً لدعوتي لهذه المقابلة.",
+    "I have three years of experience in this field.": "لدي ثلاث سنوات من الخبرة في هذا المجال.",
+    "I work well both independently and in a team.": "أعمل بشكل جيد سواء بمفردي أو ضمن فريق.",
+    "My greatest strength is solving problems quickly.": "أكبر نقاط قوتي هي حل المشكلات بسرعة.",
+    "When can I expect to hear back from you?": "متى يمكنني أن أتوقع الرد منكم؟",
+
+    "Where is the check-in counter for this flight?": "أين مكتب تسجيل الوصول لهذه الرحلة؟",
+    "I would like a window seat, please.": "أرغب بمقعد بجانب النافذة، من فضلك.",
+    "How long is the layover in Istanbul?": "كم مدة التوقف في إسطنبول؟",
+    "Excuse me, is this the gate for the London flight?": "عفواً، هل هذه بوابة رحلة لندن؟",
+    "Could you help me find my luggage?": "هل يمكنك مساعدتي في إيجاد أمتعتي؟",
+
+    "Let's begin by reviewing last quarter's results.": "لنبدأ بمراجعة نتائج الربع الماضي.",
+    "I'd like to add one point to the agenda.": "أود إضافة نقطة واحدة إلى جدول الأعمال.",
+    "Could you clarify what you mean by that?": "هل يمكنك توضيح ما تقصده بذلك؟",
+    "I think we should postpone this decision.": "أعتقد أنه علينا تأجيل هذا القرار.",
+    "Let's schedule a follow-up meeting for next week.": "لنحدد موعداً لاجتماع متابعة الأسبوع القادم.",
+}
+
 # Build one lookup of every English line -> Arabic, across sentences AND
 # all conversation lines, so any "Translate" button resolves instantly.
-_TRANSLATION_LOOKUP = {}
+_TRANSLATION_LOOKUP = dict(LESSON_TRANSLATIONS)
 for _lvl in SENTENCE_BANK.values():
     for _s in _lvl:
         _TRANSLATION_LOOKUP[_s["en"]] = _s["ar"]
