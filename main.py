@@ -1064,7 +1064,13 @@ def zaincash_inquiry(transaction_id: str) -> str | None:
             timeout=15,
         )
         resp.raise_for_status()
-        return resp.json().get("data", {}).get("status")
+        body = resp.json()
+        # Confirmed by direct testing: the Inquiry response is a FLAT object
+        # ({"status": "SUCCESS", ...}), unlike the init response which nests
+        # under "data" — this used to always return None even on a real
+        # SUCCESS. Handle both shapes just in case that ever changes.
+        data = body.get("data", body)
+        return data.get("status")
     except requests.RequestException:
         return None
 
