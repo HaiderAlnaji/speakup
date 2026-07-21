@@ -1163,6 +1163,29 @@ def zaincash_callback(order_id: str = "", session: Session = Depends(get_session
     return RedirectResponse(url="/?paid=1" if granted else "/?upgrade=pending")
 
 
+@app.get("/api/billing/zaincash/debug")
+def zaincash_debug(transaction_id: str, admin: User = Depends(require_admin)):
+    """
+    TEMPORARY debug helper (admin-only) — calls the Inquiry API directly and
+    returns the raw response so we can see exactly why a transaction isn't
+    being recognized as SUCCESS, instead of the silently-swallowed None from
+    zaincash_inquiry(). Safe to delete once ZainCash integration is verified.
+    """
+    try:
+        token = get_zaincash_token()
+    except requests.RequestException as e:
+        return {"stage": "token", "error": str(e), "response": getattr(e, "response", None) and e.response.text}
+    try:
+        resp = requests.get(
+            f"{ZAINCASH_BASE_URL}/api/v2/payment-gateway/transaction/inquiry/{transaction_id}",
+            headers={"Authorization": f"Bearer {token}"},
+            timeout=15,
+        )
+        return {"stage": "inquiry", "status_code": resp.status_code, "body": resp.text[:2000]}
+    except requests.RequestException as e:
+        return {"stage": "inquiry", "error": str(e)}
+
+
 @app.post("/api/billing/zaincash/sync")
 def zaincash_sync(user: User = Depends(get_current_user),
                    session: Session = Depends(get_session)):
