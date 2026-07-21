@@ -46,6 +46,35 @@
   .site-footer a:hover{color:var(--brand);text-decoration:underline}
   .site-footer span{margin:0 8px;color:var(--line)}
 
+  /* ---------- RTL (Arabic) layout ----------
+     Flips overall reading direction for UI chrome. Anything holding actual
+     English lesson/conversation content (phrases, chat bubbles, sentences
+     you're meant to practice) is force-set to dir="ltr" in JS so English
+     text never gets mirrored or misaligned, even while the UI is RTL. */
+  html[dir="rtl"] body{font-family:'Inter','Tahoma',system-ui,sans-serif}
+  html[dir="rtl"] .topbar{flex-direction:row-reverse}
+  html[dir="rtl"] .topbar .brand{flex-direction:row-reverse}
+  html[dir="rtl"] .topbar .user{flex-direction:row-reverse}
+  html[dir="rtl"] .auth-toggle{direction:rtl}
+  html[dir="rtl"] .field label{text-align:right}
+  html[dir="rtl"] .back{flex-direction:row-reverse}
+  html[dir="rtl"] .stat-row, html[dir="rtl"] .setup-row{flex-direction:row-reverse}
+  html[dir="rtl"] .setup-field{text-align:right}
+  html[dir="rtl"] .day-banner, html[dir="rtl"] .challenge{direction:rtl}
+  html[dir="rtl"] .sb-top{flex-direction:row-reverse}
+  html[dir="rtl"] .phrase-actions{flex-direction:row-reverse}
+  html[dir="rtl"] .result-actions{flex-direction:row-reverse}
+  html[dir="rtl"] .lock-tag{right:auto;left:16px}
+  html[dir="rtl"] .pro-pill{margin-left:0;margin-right:8px}
+  html[dir="rtl"] .conv-head{flex-direction:row-reverse}
+  html[dir="rtl"] .conv-actions{direction:rtl}
+  html[dir="rtl"] .reply-choice{flex-direction:row-reverse}
+  html[dir="rtl"] .admin-table th, html[dir="rtl"] .admin-table td{text-align:right}
+  html[dir="rtl"] .cert-sig{flex-direction:row-reverse}
+  html[dir="rtl"] .site-footer{direction:rtl}
+  /* Phrases, chat text, and anything tagged dir=ltr must never mirror. */
+  html[dir="rtl"] [dir="ltr"]{text-align:left}
+
   /* ---------- Waveform signature ---------- */
   .wave{display:inline-flex;align-items:center;gap:3px;height:22px}
   .wave span{width:3px;height:100%;border-radius:3px;background:var(--brand);
@@ -78,6 +107,9 @@
   .btn-primary:disabled{opacity:.6;cursor:default;transform:none}
   .auth-toggle{text-align:center;font-size:14px;color:var(--muted);margin-top:18px}
   .auth-toggle button{background:none;color:var(--brand);font-weight:600;padding:0}
+  .lang-toggle{position:absolute;top:18px;inset-inline-end:18px;background:var(--surface-2);
+    color:var(--ink);font-size:12.5px;font-weight:600;padding:6px 12px;border-radius:20px}
+  .auth-card{position:relative}
   .msg{font-size:13.5px;padding:10px 12px;border-radius:10px;margin-bottom:14px;display:none}
   .msg.err{display:block;background:#FDECEC;color:#B4292E}
   .msg.ok{display:block;background:#E6F7EE;color:#137a45}
@@ -525,25 +557,26 @@
 <!-- ============ AUTH SCREEN ============ -->
 <div id="auth" class="auth-wrap">
   <div class="auth-card">
+    <button id="langToggleAuth" class="lang-toggle" type="button">العربية</button>
     <div class="auth-logo">
       <span class="wave"><span></span><span></span><span></span><span></span><span></span></span>
       <span class="brandmark">SpeakUp</span>
     </div>
-    <h1 id="authTitle">Welcome back</h1>
-    <p class="auth-sub" id="authSub">Log in to keep practicing</p>
+    <h1 id="authTitle" data-i18n="auth.welcomeBack">Welcome back</h1>
+    <p class="auth-sub" id="authSub" data-i18n="auth.loginSub">Log in to keep practicing</p>
     <div id="authMsg" class="msg"></div>
     <div class="field">
-      <label>Email</label>
+      <label data-i18n="auth.emailLabel">Email</label>
       <input id="email" type="email" placeholder="you@email.com" autocomplete="email">
     </div>
     <div class="field">
-      <label>Password</label>
-      <input id="password" type="password" placeholder="At least 8 characters" autocomplete="current-password">
+      <label data-i18n="auth.passwordLabel">Password</label>
+      <input id="password" type="password" placeholder="At least 8 characters" data-i18n-ph="auth.passwordPh" autocomplete="current-password">
     </div>
-    <button id="authBtn" class="btn-primary">Log in</button>
+    <button id="authBtn" class="btn-primary" data-i18n="auth.login">Log in</button>
     <div class="auth-toggle">
-      <span id="toggleText">New here?</span>
-      <button id="toggleBtn">Create an account</button>
+      <span id="toggleText" data-i18n="auth.newHere">New here?</span>
+      <button id="toggleBtn" data-i18n="auth.createAnAccount">Create an account</button>
     </div>
   </div>
 </div>
@@ -558,8 +591,9 @@
     <div class="user">
       <span id="userEmail"></span>
       <span id="proBadge" class="badge-pro hidden">PRO</span>
-      <button class="btn-ghost hidden" id="adminBtn">Admin</button>
-      <button class="btn-ghost" id="logoutBtn">Log out</button>
+      <button class="btn-ghost" id="langToggle">العربية</button>
+      <button class="btn-ghost hidden" id="adminBtn" data-i18n="nav.admin">Admin</button>
+      <button class="btn-ghost" id="logoutBtn" data-i18n="nav.logout">Log out</button>
     </div>
   </div>
 
@@ -570,17 +604,17 @@
       <div class="cert-ready hidden anim-in" id="certReadyBanner">
         <div class="cr-icon">🎓</div>
         <div class="cr-body">
-          <div class="cr-title">Your certificate is ready!</div>
-          <div class="cr-sub">You completed all 14 days of the Sprint. Come see it.</div>
+          <div class="cr-title" data-i18n="dash.certReadyTitle">Your certificate is ready!</div>
+          <div class="cr-sub" data-i18n="dash.certReadySub">You completed all 14 days of the Sprint. Come see it.</div>
         </div>
-        <button class="btn-gold" id="certReadyBtn" style="width:auto;padding:12px 24px">View certificate</button>
+        <button class="btn-gold" id="certReadyBtn" style="width:auto;padding:12px 24px" data-i18n="dash.viewCert">View certificate</button>
       </div>
 
       <!-- Daily streak — the habit driver. Shows once they've practiced. -->
       <div class="streak-banner hidden anim-in" id="streakBanner">
         <div class="sb-flame" id="sbFlame">🔥</div>
         <div class="sb-body">
-          <div class="sb-count"><span id="streakNum">0</span>-day streak</div>
+          <div class="sb-count"><span id="streakNum">0</span><span id="streakSuffix">-day streak</span></div>
           <div class="sb-sub" id="streakSub">Practice today to keep it alive.</div>
         </div>
         <div class="sb-best" id="streakBest"></div>
@@ -590,8 +624,8 @@
       <div class="sprint-hero anim-in" id="sprintHero">
         <canvas id="curtain" aria-hidden="true"></canvas>
         <div class="sh-left">
-          <div class="sh-eyebrow">The flagship program</div>
-          <h2 class="sh-title">The 14-Day<br>Speaking Sprint</h2>
+          <div class="sh-eyebrow" data-i18n="sprint.eyebrow">The flagship program</div>
+          <h2 class="sh-title" data-i18n-html="sprint.title14html">The 14-Day<br>Speaking Sprint</h2>
           <p class="sh-promise" id="shPromise">Speak English out loud every single day for two weeks. One day unlocks per day. No skipping, no drifting.</p>
           <button class="btn-gold sh-cta" id="sprintCta">Open the Sprint</button>
         </div>
@@ -607,72 +641,72 @@
             </div>
           </div>
         </div>
-        <div class="drag-hint">↔ drag through the words</div>
+        <div class="drag-hint" data-i18n="sprint.dragHint">↔ drag through the words</div>
       </div>
 
       <div class="page-head anim-in-1">
-        <h2>Talk to someone</h2>
-        <p>Real conversations with a goal. Speak or type — get your meaning across.</p>
+        <h2 data-i18n="talk.title">Talk to someone</h2>
+        <p data-i18n="talk.sub">Real conversations with a goal. Speak or type — get your meaning across.</p>
       </div>
       <div id="aiOff" class="unsupported hidden">
-        <b>AI conversations are switched off.</b> Add <code>ANTHROPIC_API_KEY</code> to your
+        <b data-i18n="aiOff.b">AI conversations are switched off.</b> Add <code>ANTHROPIC_API_KEY</code> to your
         <code>.env</code> file and restart the server to turn them on.
       </div>
       <div class="grid anim-in-2" id="scenarioGrid"></div>
 
       <div class="page-head anim-in-2" style="margin-top:36px">
-        <h2>Drill any topic <span class="pro-pill" id="drillProPill">PRO</span></h2>
-        <p>Timed practice sessions with any level and length. Sentences never repeat.</p>
+        <h2><span data-i18n="drill.title">Drill any topic</span> <span class="pro-pill" id="drillProPill">PRO</span></h2>
+        <p data-i18n="drill.sub">Timed practice sessions with any level and length. Sentences never repeat.</p>
       </div>
       <div class="topic-bar anim-in-2">
         <input id="topicInput" placeholder="e.g. renting a flat, at the pharmacy, arguing politely…"
-               maxlength="80">
+               data-i18n-ph="topicInput.ph" maxlength="80">
         <select id="topicLevel">
-          <option>Beginner</option><option>Intermediate</option><option>Advanced</option>
+          <option value="Beginner" data-i18n="level.beginner">Beginner</option><option value="Intermediate" data-i18n="level.intermediate">Intermediate</option><option value="Advanced" data-i18n="level.advanced">Advanced</option>
         </select>
-        <button class="btn-sm solid" id="topicBtn">Start practicing</button>
+        <button class="btn-sm solid" id="topicBtn" data-i18n="topicBtn">Start practicing</button>
       </div>
       <div id="topicOut" class="topic-out hidden"></div>
 
       <div class="page-head anim-in-3" style="margin-top:36px">
-        <h2>Practice lessons</h2>
-        <p>Fixed phrases to warm up with. Pick a lesson, listen, then speak.</p>
+        <h2 data-i18n="lessons.title">Practice lessons</h2>
+        <p data-i18n="lessons.sub">Fixed phrases to warm up with. Pick a lesson, listen, then speak.</p>
       </div>
       <div class="stat-row anim-in-2">
-        <div class="stat"><div class="num" id="statAttempts">0</div><div class="lbl">Total attempts</div></div>
-        <div class="stat"><div class="num" id="statDone">0</div><div class="lbl">Lessons started</div></div>
-        <div class="stat"><div class="num" id="statBest">—</div><div class="lbl">Best score</div></div>
+        <div class="stat"><div class="num" id="statAttempts">0</div><div class="lbl" data-i18n="stat.totalAttempts">Total attempts</div></div>
+        <div class="stat"><div class="num" id="statDone">0</div><div class="lbl" data-i18n="stat.lessonsStarted">Lessons started</div></div>
+        <div class="stat"><div class="num" id="statBest">—</div><div class="lbl" data-i18n="stat.bestScore">Best score</div></div>
       </div>
 
       <!-- Progress graph — Pro feature, shows a teaser to free users -->
       <div class="progress-card anim-in-2 hidden" id="progressCard">
         <div class="pc-head">
-          <h3>Your progress</h3>
+          <h3 data-i18n="progress.yourProgress">Your progress</h3>
           <span class="pc-trend" id="pcTrend"></span>
         </div>
         <div id="progressChart"></div>
       </div>
       <div class="progress-teaser anim-in-2 hidden" id="progressTeaser">
         <div>
-          <b>See your improvement over time</b>
-          <p>Pro members get a score graph across their last 14 active days.</p>
+          <b data-i18n="progress.seeImprovement">See your improvement over time</b>
+          <p data-i18n="progress.teaserSub">Pro members get a score graph across their last 14 active days.</p>
         </div>
-        <button class="btn-sm solid" id="progressUpgradeBtn">Upgrade to Pro</button>
+        <button class="btn-sm solid" id="progressUpgradeBtn" data-i18n="progress.upgradeBtn">Upgrade to Pro</button>
       </div>
 
       <div class="grid anim-in-3" id="lessonGrid"></div>
 
       <div class="page-head anim-in-3" style="margin-top:36px">
-        <h2>Shadow Mode</h2>
-        <p>Speak along WITH the recording, not after it — the fastest way to pick up native rhythm, linking, and reductions.</p>
+        <h2 data-i18n="shadow.title">Shadow Mode</h2>
+        <p data-i18n="shadow.sub">Speak along WITH the recording, not after it — the fastest way to pick up native rhythm, linking, and reductions.</p>
       </div>
       <div class="grid anim-in-3" id="shadowGrid"></div>
     </div>
 
     <!-- Practice -->
     <div id="practiceView" class="hidden">
-      <button class="back" id="backBtn">← All lessons</button>
-      <div id="unsupported" class="unsupported hidden">
+      <button class="back" id="backBtn" data-i18n="back.allLessons">← All lessons</button>
+      <div id="unsupported" class="unsupported hidden" data-i18n-html="unsupported.speechHtml">
         Speaking scores need speech recognition, which works best in <b>Google Chrome</b>
         (and Safari). You can still tap <b>Listen</b> to hear each phrase.
       </div>
@@ -683,27 +717,27 @@
           <span class="db-day" id="setupDbDay">Day 1</span>
           <span class="db-theme" id="setupDbTheme"></span>
         </div>
-        <h2 id="setupTitle">Set up your practice</h2>
-        <p id="setupSub">Choose a level and how long you want to practice. Sentences never repeat — you can go as long as you like.</p>
+        <h2 id="setupTitle" data-i18n="setup.titleDefault">Set up your practice</h2>
+        <p id="setupSub" data-i18n="setup.subDefault">Choose a level and how long you want to practice. Sentences never repeat — you can go as long as you like.</p>
         <div class="setup-row">
           <div class="setup-field">
-            <label>Level</label>
+            <label data-i18n="setup.level">Level</label>
             <select id="setupLevel">
-              <option>Beginner</option><option>Intermediate</option><option>Advanced</option>
+              <option value="Beginner" data-i18n="level.beginner">Beginner</option><option value="Intermediate" data-i18n="level.intermediate">Intermediate</option><option value="Advanced" data-i18n="level.advanced">Advanced</option>
             </select>
           </div>
           <div class="setup-field">
-            <label>Session length</label>
+            <label data-i18n="setup.sessionLength">Session length</label>
             <select id="setupMinutes">
-              <option value="10">10 minutes</option>
-              <option value="20">20 minutes</option>
-              <option value="30">30 minutes</option>
-              <option value="60" selected>60 minutes</option>
-              <option value="90">90 minutes</option>
+              <option value="10" data-i18n="setup.min10">10 minutes</option>
+              <option value="20" data-i18n="setup.min20">20 minutes</option>
+              <option value="30" data-i18n="setup.min30">30 minutes</option>
+              <option value="60" selected data-i18n="setup.min60">60 minutes</option>
+              <option value="90" data-i18n="setup.min90">90 minutes</option>
             </select>
           </div>
         </div>
-        <button class="btn-sm solid" id="setupStartBtn" style="width:100%;padding:14px">Start practicing</button>
+        <button class="btn-sm solid" id="setupStartBtn" style="width:100%;padding:14px" data-i18n="setup.startPracticing">Start practicing</button>
       </div>
 
       <div class="practice hidden" id="practiceCard">
@@ -712,7 +746,7 @@
           <span class="db-theme" id="dbTheme"></span>
         </div>
         <div class="challenge hidden" id="challengeBox">
-          <span class="ch-label">Today's challenge</span>
+          <span class="ch-label" data-i18n="challenge.today">Today's challenge</span>
           <span id="challengeText"></span>
         </div>
 
@@ -729,23 +763,23 @@
           <button class="sb-finish" id="sbFinishBtn">Finish session now</button>
         </div>
 
-        <div class="phrase-label">Say this out loud</div>
-        <div class="phrase" id="phraseText"></div>
-        <div class="phrase-tr hidden" id="phraseTr"></div>
+        <div class="phrase-label" data-i18n="phrase.sayOutLoud">Say this out loud</div>
+        <div class="phrase" id="phraseText" dir="ltr"></div>
+        <div class="phrase-tr hidden" id="phraseTr" dir="rtl"></div>
         <div class="phrase-actions">
-          <button class="listen" id="listenBtn">🔊 Listen</button>
-          <button class="listen" id="phraseTrBtn">🌐 Translate</button>
+          <button class="listen" id="listenBtn" data-i18n="phrase.listen">🔊 Listen</button>
+          <button class="listen" id="phraseTrBtn" data-i18n="phrase.translate">🌐 Translate</button>
         </div>
 
         <!-- Shadow Mode only: speak along with the audio in real time, then
              hear your own recording right next to the native one. -->
         <div class="shadow-tip hidden" id="shadowTip"></div>
         <div class="shadow-zone hidden" id="shadowZone">
-          <button class="btn-sm outline" id="shadowRecordBtn">🎙️ Shadow it (speak along)</button>
-          <div class="shadow-hint">🎧 Best with headphones — play and speak at the exact same time.</div>
+          <button class="btn-sm outline" id="shadowRecordBtn" data-i18n="shadow.recordDefault">🎙️ Shadow it (speak along)</button>
+          <div class="shadow-hint" data-i18n="shadow.hint">🎧 Best with headphones — play and speak at the exact same time.</div>
           <div class="shadow-playback hidden" id="shadowPlayback">
-            <button class="btn-sm outline mini" id="playNativeBtn">🔊 Native</button>
-            <button class="btn-sm outline mini" id="playMineBtn">🎧 You</button>
+            <button class="btn-sm outline mini" id="playNativeBtn" data-i18n="shadow.native">🔊 Native</button>
+            <button class="btn-sm outline mini" id="playMineBtn" data-i18n="shadow.mine">🎧 You</button>
           </div>
         </div>
 
@@ -757,16 +791,16 @@
               <path d="M5 10a7 7 0 0 0 14 0"></path><line x1="12" y1="19" x2="12" y2="22"></line>
             </svg>
           </button>
-          <div class="mic-hint" id="micHint">Tap the mic and say the sentence</div>
+          <div class="mic-hint" id="micHint" data-i18n="mic.hintDefault">Tap the mic and say the sentence</div>
         </div>
 
         <div class="result" id="result">
           <div class="score-num" id="scoreNum">0</div>
           <div class="score-msg" id="scoreMsg"></div>
-          <div class="heard" id="heard"></div>
+          <div class="heard" id="heard" dir="ltr"></div>
           <div class="result-actions">
-            <button class="btn-sm outline" id="retryBtn">Try again</button>
-            <button class="btn-sm solid" id="nextBtn">Next phrase →</button>
+            <button class="btn-sm outline" id="retryBtn" data-i18n="result.tryAgain">Try again</button>
+            <button class="btn-sm solid" id="nextBtn" data-i18n="result.nextPhrase">Next phrase →</button>
           </div>
         </div>
       </div>
@@ -777,67 +811,67 @@
         <h3 id="ddTitle">Day cleared</h3>
         <p id="ddMsg"></p>
         <div class="result-actions">
-          <button class="btn-sm outline" id="ddRetry">Practice again</button>
-          <button class="btn-sm solid" id="ddBack">Back to the Sprint</button>
+          <button class="btn-sm outline" id="ddRetry" data-i18n="dd.practiceAgain">Practice again</button>
+          <button class="btn-sm solid" id="ddBack" data-i18n="dd.backToSprint">Back to the Sprint</button>
         </div>
       </div>
     </div>
 
     <!-- Sprint -->
     <div id="sprintView" class="hidden">
-      <button class="back" id="backBtn3">← Home</button>
+      <button class="back" id="backBtn3" data-i18n="back.home">← Home</button>
 
       <!-- Not enrolled yet: the pitch -->
       <div id="sprintIntro" class="hidden">
         <div class="paywall">
-          <h2>The 14-Day Speaking Sprint</h2>
+          <h2 data-i18n="sprint.title14">The 14-Day Speaking Sprint</h2>
           <p id="introPromise"></p>
           <ul class="perks">
-            <li>One new day unlocks every 24 hours</li>
-            <li>A real speaking challenge every day</li>
-            <li>Score 70% or higher to clear a day</li>
-            <li>Build a streak — miss a day, break it</li>
-            <li>Certificate when you finish all 14</li>
+            <li data-i18n="sprint.perk1">One new day unlocks every 24 hours</li>
+            <li data-i18n="sprint.perk2">A real speaking challenge every day</li>
+            <li data-i18n="sprint.perk3">Score 70% or higher to clear a day</li>
+            <li data-i18n="sprint.perk4">Build a streak — miss a day, break it</li>
+            <li data-i18n="sprint.perk5">Certificate when you finish all 14</li>
           </ul>
-          <button class="btn-gold" id="startSprintBtn">Start Day 1 now</button>
-          <div class="note">Once you start, the clock runs. That's the point.</div>
+          <button class="btn-gold" id="startSprintBtn" data-i18n="sprint.startDay1">Start Day 1 now</button>
+          <div class="note" data-i18n="sprint.note">Once you start, the clock runs. That's the point.</div>
         </div>
       </div>
 
       <!-- Enrolled: the tracker -->
       <div id="sprintMain" class="hidden">
         <div class="page-head">
-          <h2>The 14-Day Speaking Sprint</h2>
+          <h2 data-i18n="sprint.title14">The 14-Day Speaking Sprint</h2>
           <p id="sprintSub"></p>
         </div>
         <div class="stat-row">
-          <div class="stat"><div class="num" id="spStreak">0</div><div class="lbl">🔥 Day streak</div></div>
-          <div class="stat"><div class="num" id="spDone">0/14</div><div class="lbl">Days cleared</div></div>
-          <div class="stat"><div class="num" id="spAvg">—</div><div class="lbl">Average score</div></div>
+          <div class="stat"><div class="num" id="spStreak">0</div><div class="lbl" data-i18n="sprint.streakStat">🔥 Day streak</div></div>
+          <div class="stat"><div class="num" id="spDone">0/14</div><div class="lbl" data-i18n="sprint.daysCleared">Days cleared</div></div>
+          <div class="stat"><div class="num" id="spAvg">—</div><div class="lbl" data-i18n="sprint.avgScore">Average score</div></div>
         </div>
         <div class="day-grid" id="dayGrid"></div>
         <div id="certBanner" class="cert-banner hidden">
           <div>
-            <b>You finished all 14 days.</b>
-            <div class="cb-sub">Your certificate is ready.</div>
+            <b data-i18n="sprint.finishedAllDays">You finished all 14 days.</b>
+            <div class="cb-sub" data-i18n="sprint.certReady">Your certificate is ready.</div>
           </div>
-          <button class="btn-sm solid" id="certBtn">View certificate</button>
+          <button class="btn-sm solid" id="certBtn" data-i18n="dash.viewCert">View certificate</button>
         </div>
       </div>
     </div>
 
     <!-- Certificate -->
     <div id="certView" class="hidden">
-      <button class="back" id="backBtn4">← Back to the Sprint</button>
+      <button class="back" id="backBtn4" data-i18n="back.toSprint">← Back to the Sprint</button>
       <div class="cert">
         <div class="cert-inner">
-          <div class="cert-eyebrow">Certificate of Completion</div>
+          <div class="cert-eyebrow" data-i18n="cert.title">Certificate of Completion</div>
           <div class="cert-name" id="certName"></div>
-          <div class="cert-body">completed every day of</div>
-          <div class="cert-course" id="certCourse"></div>
+          <div class="cert-body" data-i18n="cert.completedEvery">completed every day of</div>
+          <div class="cert-course" id="certCourse" dir="ltr"></div>
           <div class="cert-stats">
-            <div><b id="certScore"></b><span>average score</span></div>
-            <div><b>14</b><span>days, no skips</span></div>
+            <div><b id="certScore"></b><span data-i18n="cert.avgScore">average score</span></div>
+            <div><b>14</b><span data-i18n="cert.daysNoSkips">days, no skips</span></div>
           </div>
           <div class="cert-date" id="certDate"></div>
           <div class="cert-sig">
@@ -850,31 +884,31 @@
 
     <!-- Admin -->
     <div id="adminView" class="hidden">
-      <button class="back" id="backBtnAdmin">← Home</button>
+      <button class="back" id="backBtnAdmin" data-i18n="back.home">← Home</button>
       <div class="page-head">
-        <h2>Admin panel</h2>
-        <p>Manage users and test the Sprint without waiting 14 days.</p>
+        <h2 data-i18n="admin.title">Admin panel</h2>
+        <p data-i18n="admin.sub">Manage users and test the Sprint without waiting 14 days.</p>
       </div>
 
       <div class="admin-tools">
         <div class="admin-tool">
-          <h3>Unlock all 14 days for me</h3>
-          <p>Backdates your own enrollment so every day is open right now. You still have to speak and pass each one — this only removes the daily wait.</p>
-          <button class="btn-sm solid" id="unlockAllBtn">Unlock all days</button>
+          <h3 data-i18n="admin.unlockTitle">Unlock all 14 days for me</h3>
+          <p data-i18n="admin.unlockSub">Backdates your own enrollment so every day is open right now. You still have to speak and pass each one — this only removes the daily wait.</p>
+          <button class="btn-sm solid" id="unlockAllBtn" data-i18n="admin.unlockBtn">Unlock all days</button>
         </div>
         <div class="admin-tool">
-          <h3>Reset my Sprint progress</h3>
-          <p>Wipes your own Sprint enrollment and completed days, so you can test the "Day 1" flow again from scratch.</p>
-          <button class="btn-sm outline" id="resetSprintBtn">Reset my Sprint</button>
+          <h3 data-i18n="admin.resetTitle">Reset my Sprint progress</h3>
+          <p data-i18n="admin.resetSub">Wipes your own Sprint enrollment and completed days, so you can test the "Day 1" flow again from scratch.</p>
+          <button class="btn-sm outline" id="resetSprintBtn" data-i18n="admin.resetBtn">Reset my Sprint</button>
         </div>
       </div>
 
       <div class="page-head" style="margin-top:34px">
-        <h2>Users</h2>
+        <h2 data-i18n="admin.usersTitle">Users</h2>
       </div>
       <div class="admin-table-wrap">
         <table class="admin-table" id="userTable">
-          <thead><tr><th>Email</th><th>Plan</th><th>Sprint</th><th>Joined</th><th></th></tr></thead>
+          <thead><tr><th data-i18n="admin.thEmail">Email</th><th data-i18n="admin.thPlan">Plan</th><th data-i18n="admin.thSprint">Sprint</th><th data-i18n="admin.thJoined">Joined</th><th></th></tr></thead>
           <tbody id="userTableBody"></tbody>
         </table>
       </div>
@@ -882,62 +916,62 @@
 
     <!-- Conversation (CLT role-play) -->
     <div id="convView" class="hidden">
-      <button class="back" id="backConv">← Home</button>
+      <button class="back" id="backConv" data-i18n="back.home">← Home</button>
       <div class="conv-head">
         <div>
           <div class="conv-emoji" id="convEmoji">☕</div>
-          <h2 id="convTitle"></h2>
-          <p class="conv-setting" id="convSetting"></p>
+          <h2 id="convTitle" dir="ltr"></h2>
+          <p class="conv-setting" id="convSetting" dir="ltr"></p>
         </div>
         <div class="conv-actions">
-          <button class="btn-ghost" id="restartConv">Restart</button>
+          <button class="btn-ghost" id="restartConv" data-i18n="conv.restart">Restart</button>
         </div>
       </div>
 
       <div class="task-card">
-        <div class="task-label">Your goal</div>
-        <div class="task-text" id="convGoal"></div>
+        <div class="task-label" data-i18n="conv.yourGoal">Your goal</div>
+        <div class="task-text" id="convGoal" dir="ltr"></div>
       </div>
 
-      <div class="chat" id="chatBox"></div>
+      <div class="chat" id="chatBox" dir="ltr"></div>
 
       <!-- The learner picks (or speaks) one of these replies -->
-      <div class="reply-choices" id="replyChoices"></div>
-      <div class="chat-hint" id="chatHint">Pick a reply — or tap 🎤 and say it out loud.</div>
+      <div class="reply-choices" id="replyChoices" dir="ltr"></div>
+      <div class="chat-hint" id="chatHint" data-i18n="conv.hintDefault">Pick a reply — or tap 🎤 and say it out loud.</div>
 
       <div class="conv-foot hidden" id="convFoot">
-        <button class="btn-sm solid" id="convDoneBtn">Finish</button>
+        <button class="btn-sm solid" id="convDoneBtn" data-i18n="conv.finish">Finish</button>
       </div>
     </div>
 
     <!-- Paywall -->
     <div id="paywallView" class="hidden">
-      <button class="back" id="backBtn2">← All lessons</button>
+      <button class="back" id="backBtn2" data-i18n="back.allLessons">← All lessons</button>
       <div class="paywall">
-        <h2>Unlock SpeakUp Pro</h2>
-        <p>Get the 14-Day Speaking Sprint — plus every lesson and level.</p>
+        <h2 data-i18n="paywall.title">Unlock SpeakUp Pro</h2>
+        <p data-i18n="paywall.sub">Get the 14-Day Speaking Sprint — plus every lesson and level.</p>
         <div class="price" id="proPrice">$4.99<small> / month</small></div>
         <div class="note" id="proPriceIqd"></div>
         <ul class="perks">
-          <li>The 14-Day Speaking Sprint</li>
-          <li>A daily challenge and a real streak</li>
-          <li>Certificate when you finish all 14 days</li>
-          <li>All Intermediate &amp; Advanced lessons</li>
+          <li data-i18n="paywall.perk1">The 14-Day Speaking Sprint</li>
+          <li data-i18n="paywall.perk2">A daily challenge and a real streak</li>
+          <li data-i18n="paywall.perk3">Certificate when you finish all 14 days</li>
+          <li data-i18n="paywall.perk4">All Intermediate &amp; Advanced lessons</li>
         </ul>
-        <button class="btn-gold" id="upgradeBtn">Upgrade to Pro</button>
+        <button class="btn-gold" id="upgradeBtn" data-i18n="paywall.upgradeBtn">Upgrade to Pro</button>
         <div class="upgrade-options hidden" id="upgradeOptions"></div>
-        <div class="note" id="proNote">Demo mode: this unlocks instantly.</div>
+        <div class="note" id="proNote" data-i18n="paywall.demoMode">Demo mode: this unlocks instantly.</div>
       </div>
     </div>
   </div>
 </div>
 
 <div class="site-footer">
-  <a href="/terms">Terms of Service</a>
+  <a href="/terms" data-i18n="footer.terms">Terms of Service</a>
   <span>&middot;</span>
-  <a href="/privacy">Privacy Policy</a>
+  <a href="/privacy" data-i18n="footer.privacy">Privacy Policy</a>
   <span>&middot;</span>
-  <a href="/refund">Refund &amp; Cancellation</a>
+  <a href="/refund" data-i18n="footer.refund">Refund &amp; Cancellation</a>
 </div>
 
 <script>
@@ -955,6 +989,367 @@ let scenarios = [];                     // scripted conversation scenarios
 
 // ---- helpers ----
 const $ = (id) => document.getElementById(id);
+
+// ============================================================
+//  I18N — UI chrome translation (Arabic + RTL). The lesson/practice
+//  CONTENT (phrases, conversations, sprint themes) stays in English on
+//  purpose — that's the material being practiced. Only the surrounding
+//  interface (nav, buttons, labels, hints, alerts) is translated here.
+// ============================================================
+let LANG = localStorage.getItem("speakup_lang") || "en";
+
+const T = {
+  en: {
+    "auth.welcomeBack": "Welcome back", "auth.loginSub": "Log in to keep practicing",
+    "auth.createAccount": "Create your account", "auth.registerSub": "Start practicing in seconds",
+    "auth.login": "Log in", "auth.createAccountBtn": "Create account",
+    "auth.newHere": "New here?", "auth.alreadyHave": "Already have an account?",
+    "auth.createAnAccount": "Create an account", "auth.emailLabel": "Email",
+    "auth.passwordLabel": "Password", "auth.passwordPh": "At least 8 characters",
+    "auth.fillBoth": "Please fill in both fields.",
+    "nav.admin": "Admin", "nav.logout": "Log out", "nav.langToggle": "العربية",
+    "dash.certReadyTitle": "Your certificate is ready!",
+    "dash.certReadySub": "You completed all 14 days of the Sprint. Come see it.",
+    "dash.viewCert": "View certificate",
+    "dash.streakSuffix": "-day streak",
+    "dash.practicedToday": "You've practiced today — nicely done. Keep it going tomorrow!",
+    "dash.practiceTodayKeep": "Practice today to keep your streak alive.",
+    "dash.personalBest": "Personal best 🎉",
+    "dash.best": "Best: {n} days",
+    "sprint.eyebrow": "The flagship program",
+    "sprint.title14html": "The 14-Day<br>Speaking Sprint",
+    "sprint.promiseDefault": "Speak English out loud every single day for two weeks. One day unlocks per day. No skipping, no drifting.",
+    "sprint.openBtn": "Open the Sprint", "sprint.continueBtn": "Continue the Sprint",
+    "sprint.startBtn": "Start the Sprint", "sprint.seeCert": "See your certificate",
+    "sprint.daysLbl": "days", "sprint.streakLbl": "streak",
+    "sprint.dragHint": "↔ drag through the words",
+    "talk.title": "Talk to someone",
+    "talk.sub": "Real conversations with a goal. Speak or type — get your meaning across.",
+    "aiOff.b": "AI conversations are switched off.",
+    "drill.title": "Drill any topic",
+    "drill.sub": "Timed practice sessions with any level and length. Sentences never repeat.",
+    "topicInput.ph": "e.g. renting a flat, at the pharmacy, arguing politely…",
+    "level.beginner": "Beginner", "level.intermediate": "Intermediate", "level.advanced": "Advanced",
+    "topicBtn": "Start practicing",
+    "lessons.title": "Practice lessons",
+    "lessons.sub": "Fixed phrases to warm up with. Pick a lesson, listen, then speak.",
+    "stat.totalAttempts": "Total attempts", "stat.lessonsStarted": "Lessons started",
+    "stat.bestScore": "Best score",
+    "progress.yourProgress": "Your progress",
+    "progress.improving": "📈 Improving", "progress.declining": "📉 Slipping — practice more",
+    "progress.steady": "→ Steady",
+    "progress.emptyHint": "Practice a few days to see your trend here.",
+    "progress.seeImprovement": "See your improvement over time",
+    "progress.teaserSub": "Pro members get a score graph across their last 14 active days.",
+    "progress.upgradeBtn": "Upgrade to Pro",
+    "shadow.title": "Shadow Mode",
+    "shadow.sub": "Speak along WITH the recording, not after it — the fastest way to pick up native rhythm, linking, and reductions.",
+    "card.premiumLesson": "Premium lesson", "card.premiumCategory": "Premium category",
+    "card.premiumConversation": "Premium conversation",
+    "card.phrasesCount": "{n} phrases", "card.lockPro": "🔒 Pro",
+    "back.allLessons": "← All lessons", "back.home": "← Home",
+    "back.toSprint": "← Back to the Sprint",
+    "unsupported.speechHtml": "Speaking scores need speech recognition, which works best in <b>Google Chrome</b> (and Safari). You can still tap <b>Listen</b> to hear each phrase.",
+    "setup.level": "Level", "setup.sessionLength": "Session length",
+    "setup.min10": "10 minutes", "setup.min20": "20 minutes", "setup.min30": "30 minutes",
+    "setup.min60": "60 minutes", "setup.min90": "90 minutes",
+    "setup.startPracticing": "Start practicing", "setup.loading": "Loading sentences…",
+    "setup.titleDefault": "Set up your practice",
+    "setup.subDefault": "Choose a level and how long you want to practice. Sentences never repeat — you can go as long as you like.",
+    "setup.topicPrefix": "Practice: ",
+    "setup.subTopic": "Sentences never repeat — practice for as long as you like.",
+    "challenge.today": "Today's challenge",
+    "phrase.sayOutLoud": "Say this out loud",
+    "phrase.listen": "🔊 Listen", "phrase.translate": "🌐 Translate",
+    "shadow.recordDefault": "🎙️ Shadow it (speak along)", "shadow.recordAgain": "🎙️ Shadow it again",
+    "shadow.recording": "● Speak along now…",
+    "shadow.hint": "🎧 Best with headphones — play and speak at the exact same time.",
+    "shadow.native": "🔊 Native", "shadow.mine": "🎧 You",
+    "shadow.noRecording": "Recording isn't supported in this browser.",
+    "shadow.micNeeded": "Microphone access is needed to shadow along: ",
+    "mic.hintDefault": "Tap the mic and say the sentence",
+    "mic.hintRetry": "Tap the mic and try again",
+    "mic.listening": "Listening… speak now",
+    "mic.noSupport": "Speech recognition isn't supported in this browser.",
+    "mic.noSpeech": "Didn't catch that — try again.",
+    "mic.error": "Mic error: ",
+    "result.tryAgain": "Try again", "result.nextPhrase": "Next phrase →",
+    "result.finish": "Finish →", "result.nextSentence": "Next sentence →",
+    "score.excellent": "Excellent! 🎉", "score.good": "Good — keep polishing 👍",
+    "score.keepPracticing": "Keep practicing 💪",
+    "heard.label": "Your target, word by word:", "heard.focus": "🎯 Focus on: ",
+    "heard.weHeard": "We heard: ",
+    "dd.drillPassed": "Drill passed — {n}%", "dd.headBack": "Head back to the Sprint to continue.",
+    "dd.drillNotPassed": "Drill not passed — {n}%",
+    "dd.sessionComplete": "Session complete — {n}% average",
+    "dd.summary": "{n} sentence{s} in about {m} minute{ms}. Nice work.",
+    "dd.backToHome": "Back to Home", "dd.practiceAgain": "Practice again",
+    "dd.backToSprint": "Back to the Sprint",
+    "sprint.title14": "The 14-Day Speaking Sprint",
+    "sprint.perk1": "One new day unlocks every 24 hours",
+    "sprint.perk2": "A real speaking challenge every day",
+    "sprint.perk3": "Score 70% or higher to clear a day",
+    "sprint.perk4": "Build a streak — miss a day, break it",
+    "sprint.perk5": "Certificate when you finish all 14",
+    "sprint.startDay1": "Start Day 1 now",
+    "sprint.note": "Once you start, the clock runs. That's the point.",
+    "sprint.streakStat": "🔥 Day streak", "sprint.daysCleared": "Days cleared",
+    "sprint.avgScore": "Average score",
+    "sprint.finishedAllDays": "You finished all 14 days.", "sprint.certReady": "Your certificate is ready.",
+    "sprint.finishedSub": "You finished. Every day, no skips.",
+    "sprint.dayOpenSub": "Day {d} is open. Score {p}% or higher to clear a day.",
+    "sprint.opensLater": "🔒 Opens later", "sprint.cleared": "✓ Cleared",
+    "sprint.finishConv": "💬 Finish the conversation", "sprint.startNow": "▶ Start now",
+    "sprint.dayLbl": "Day {d}", "sprint.locked": "Locked",
+    "cert.title": "Certificate of Completion", "cert.completedEvery": "completed every day of",
+    "cert.avgScore": "average score", "cert.daysNoSkips": "days, no skips",
+    "cert.issuedOn": "Issued on ",
+    "admin.title": "Admin panel",
+    "admin.sub": "Manage users and test the Sprint without waiting 14 days.",
+    "admin.unlockTitle": "Unlock all 14 days for me",
+    "admin.unlockSub": "Backdates your own enrollment so every day is open right now. You still have to speak and pass each one — this only removes the daily wait.",
+    "admin.unlockBtn": "Unlock all days", "admin.unlocking": "Unlocking…",
+    "admin.resetTitle": "Reset my Sprint progress",
+    "admin.resetSub": "Wipes your own Sprint enrollment and completed days, so you can test the \"Day 1\" flow again from scratch.",
+    "admin.resetBtn": "Reset my Sprint",
+    "admin.resetConfirm": "This wipes your own Sprint progress. Continue?",
+    "admin.resetDone": "Your Sprint progress was reset.",
+    "admin.unlockDone": "All 14 days are unlocked for your account. Go to the Sprint to test them.",
+    "admin.usersTitle": "Users",
+    "admin.thEmail": "Email", "admin.thPlan": "Plan", "admin.thSprint": "Sprint", "admin.thJoined": "Joined",
+    "admin.tagAdmin": "Admin", "admin.pro": "Pro", "admin.free": "Free",
+    "admin.daysOf14": "{n}/14 days", "admin.notStarted": "Not started",
+    "admin.grantPro": "Grant Pro", "admin.removePro": "Remove Pro",
+    "conv.restart": "Restart", "conv.yourGoal": "Your goal",
+    "conv.hintDefault": "Pick a reply — or tap 🎤 and say it out loud.",
+    "conv.complete": "✓ Conversation complete.",
+    "conv.speechNeedsChrome": "Speech needs Chrome. You can tap the reply instead.",
+    "conv.listening": "Listening… say the sentence.",
+    "conv.niceMatch": "✓ Nice — {n}% match.",
+    "conv.heardTryAgain": 'Heard: "{h}" — try again, or just tap the reply.',
+    "conv.didntCatch": "Didn't catch that — try again or tap the reply.",
+    "conv.finish": "Finish", "conv.hearIt": "🔊 Hear it", "conv.translate": "🌐 Translate",
+    "conv.sayItOutLoud": "Say it out loud", "conv.translateTitle": "Translate",
+    "paywall.title": "Unlock SpeakUp Pro",
+    "paywall.sub": "Get the 14-Day Speaking Sprint — plus every lesson and level.",
+    "paywall.perMonth": " / month",
+    "paywall.perk1": "The 14-Day Speaking Sprint",
+    "paywall.perk2": "A daily challenge and a real streak",
+    "paywall.perk3": "Certificate when you finish all 14 days",
+    "paywall.perk4": "All Intermediate & Advanced lessons",
+    "paywall.upgradeBtn": "Upgrade to Pro", "paywall.loading": "Loading…",
+    "paywall.demoMode": "Demo mode: this unlocks instantly.",
+    "paywall.paddleSecure": "Secure checkout powered by Paddle.",
+    "paywall.choosePayment": "Choose how you'd like to pay:",
+    "paywall.payWith": "Pay with {p}",
+    "paywall.iqdApprox": "≈ {n} IQD",
+    "paywall.iqdApproxVia": "≈ {n} IQD, charged via {p}",
+    "paywall.payWithNoCard": "Pay with your {p} — no card needed.",
+    "paywall.openingCheckout": "Opening checkout…",
+    "paywall.couldNotStart": "Could not start checkout.",
+    "paywall.paymentSystemFailed": "Payment system failed to load. Please refresh and try again.",
+    "paywall.pollTimeout": "If your payment went through, it can take a few extra seconds to confirm. Refresh the page shortly — Pro will appear automatically.",
+    "paywall.paidReturn": "Payment received — confirming with the payment provider, this can take a few seconds. Refresh shortly if Pro doesn't appear.",
+    "footer.terms": "Terms of Service", "footer.privacy": "Privacy Policy", "footer.refund": "Refund & Cancellation",
+  },
+  ar: {
+    "auth.welcomeBack": "مرحباً بعودتك", "auth.loginSub": "سجّل الدخول لمتابعة التدريب",
+    "auth.createAccount": "أنشئ حسابك", "auth.registerSub": "ابدأ التدريب خلال ثوانٍ",
+    "auth.login": "تسجيل الدخول", "auth.createAccountBtn": "إنشاء حساب",
+    "auth.newHere": "مستخدم جديد؟", "auth.alreadyHave": "لديك حساب بالفعل؟",
+    "auth.createAnAccount": "إنشاء حساب", "auth.emailLabel": "البريد الإلكتروني",
+    "auth.passwordLabel": "كلمة المرور", "auth.passwordPh": "8 أحرف على الأقل",
+    "auth.fillBoth": "يرجى تعبئة كلا الحقلين.",
+    "nav.admin": "الإدارة", "nav.logout": "تسجيل الخروج", "nav.langToggle": "English",
+    "dash.certReadyTitle": "شهادتك جاهزة!",
+    "dash.certReadySub": "أكملت الأيام الـ14 من السبرنت. تعال شاهدها.",
+    "dash.viewCert": "عرض الشهادة",
+    "dash.streakSuffix": " يوماً متتالياً",
+    "dash.practicedToday": "لقد تدرّبت اليوم — أحسنت! تابع غداً.",
+    "dash.practiceTodayKeep": "تدرّب اليوم للحفاظ على سلسلتك.",
+    "dash.personalBest": "رقمك القياسي 🎉",
+    "dash.best": "الأفضل: {n} يوماً",
+    "sprint.eyebrow": "البرنامج الرئيسي",
+    "sprint.title14html": "سبرنت التحدث<br>لمدة 14 يوماً",
+    "sprint.promiseDefault": "تحدث الإنجليزية بصوت عالٍ كل يوم لمدة أسبوعين. يوم واحد يُفتح كل يوم. بلا تخطٍّ وبلا تراخٍ.",
+    "sprint.openBtn": "افتح السبرنت", "sprint.continueBtn": "تابع السبرنت",
+    "sprint.startBtn": "ابدأ السبرنت", "sprint.seeCert": "شاهد شهادتك",
+    "sprint.daysLbl": "أيام", "sprint.streakLbl": "سلسلة",
+    "sprint.dragHint": "↔ اسحب عبر الكلمات",
+    "talk.title": "تحدث مع شخص",
+    "talk.sub": "محادثات حقيقية بهدف محدد. تحدث أو اكتب — أوصل معناك.",
+    "aiOff.b": "محادثات الذكاء الاصطناعي متوقفة.",
+    "drill.title": "تدرّب على أي موضوع",
+    "drill.sub": "جلسات تدريب محددة بوقت بأي مستوى وأي مدة. الجمل لا تتكرر.",
+    "topicInput.ph": "مثال: استئجار شقة، في الصيدلية، الجدال بأدب…",
+    "level.beginner": "مبتدئ", "level.intermediate": "متوسط", "level.advanced": "متقدم",
+    "topicBtn": "ابدأ التدريب",
+    "lessons.title": "دروس تدريبية",
+    "lessons.sub": "عبارات ثابتة للإحماء. اختر درساً، استمع، ثم تحدث.",
+    "stat.totalAttempts": "مجموع المحاولات", "stat.lessonsStarted": "الدروس التي بدأتها",
+    "stat.bestScore": "أفضل نتيجة",
+    "progress.yourProgress": "تقدّمك",
+    "progress.improving": "📈 في تحسّن", "progress.declining": "📉 تراجع — تدرّب أكثر",
+    "progress.steady": "→ ثابت",
+    "progress.emptyHint": "تدرّب لبضعة أيام لترى تطورك هنا.",
+    "progress.seeImprovement": "شاهد تطورك بمرور الوقت",
+    "progress.teaserSub": "أعضاء Pro يحصلون على رسم بياني للنتائج خلال آخر 14 يوم نشط.",
+    "progress.upgradeBtn": "الترقية إلى Pro",
+    "shadow.title": "وضع المحاكاة (Shadow Mode)",
+    "shadow.sub": "تحدث بالتزامن مع التسجيل، لا بعده — أسرع طريقة لاكتساب الإيقاع الطبيعي والربط والاختصارات الصوتية.",
+    "card.premiumLesson": "درس مميز", "card.premiumCategory": "فئة مميزة",
+    "card.premiumConversation": "محادثة مميزة",
+    "card.phrasesCount": "{n} عبارة", "card.lockPro": "🔒 Pro",
+    "back.allLessons": "→ كل الدروس", "back.home": "→ الرئيسية",
+    "back.toSprint": "→ العودة إلى السبرنت",
+    "unsupported.speechHtml": "تقييم النطق يحتاج إلى ميزة التعرف على الصوت، وتعمل بشكل أفضل في <b>Google Chrome</b> (وSafari). يمكنك دائماً الضغط على <b>استماع</b> لسماع كل عبارة.",
+    "setup.level": "المستوى", "setup.sessionLength": "مدة الجلسة",
+    "setup.min10": "10 دقائق", "setup.min20": "20 دقيقة", "setup.min30": "30 دقيقة",
+    "setup.min60": "60 دقيقة", "setup.min90": "90 دقيقة",
+    "setup.startPracticing": "ابدأ التدريب", "setup.loading": "جارٍ تحميل الجمل…",
+    "setup.titleDefault": "جهّز تدريبك",
+    "setup.subDefault": "اختر مستوى ومدة التدريب. الجمل لا تتكرر — يمكنك الاستمرار بقدر ما تشاء.",
+    "setup.topicPrefix": "تدريب: ",
+    "setup.subTopic": "الجمل لا تتكرر — تدرّب بقدر ما تشاء.",
+    "challenge.today": "تحدي اليوم",
+    "phrase.sayOutLoud": "قل هذا بصوت عالٍ",
+    "phrase.listen": "🔊 استماع", "phrase.translate": "🌐 ترجمة",
+    "shadow.recordDefault": "🎙️ حاكِ (تحدث بالتزامن)", "shadow.recordAgain": "🎙️ حاكِ مرة أخرى",
+    "shadow.recording": "● تحدث الآن…",
+    "shadow.hint": "🎧 الأفضل باستخدام سماعات الرأس — شغّل وتحدث في نفس اللحظة تماماً.",
+    "shadow.native": "🔊 الأصلي", "shadow.mine": "🎧 أنت",
+    "shadow.noRecording": "التسجيل غير مدعوم في هذا المتصفح.",
+    "shadow.micNeeded": "الوصول إلى الميكروفون مطلوب للمحاكاة: ",
+    "mic.hintDefault": "اضغط على الميكروفون وقل الجملة",
+    "mic.hintRetry": "اضغط على الميكروفون وحاول مرة أخرى",
+    "mic.listening": "جارٍ الاستماع… تحدث الآن",
+    "mic.noSupport": "التعرف على الصوت غير مدعوم في هذا المتصفح.",
+    "mic.noSpeech": "لم أسمع ذلك بوضوح — حاول مرة أخرى.",
+    "mic.error": "خطأ في الميكروفون: ",
+    "result.tryAgain": "حاول مرة أخرى", "result.nextPhrase": "→ العبارة التالية",
+    "result.finish": "→ إنهاء", "result.nextSentence": "→ الجملة التالية",
+    "score.excellent": "ممتاز! 🎉", "score.good": "جيد — واصل التحسين 👍",
+    "score.keepPracticing": "واصل التدريب 💪",
+    "heard.label": "هدفك، كلمة كلمة:", "heard.focus": "🎯 ركّز على: ",
+    "heard.weHeard": "سمعنا: ",
+    "dd.drillPassed": "تم اجتياز التمرين — {n}%", "dd.headBack": "عد إلى السبرنت للمتابعة.",
+    "dd.drillNotPassed": "لم يتم اجتياز التمرين — {n}%",
+    "dd.sessionComplete": "اكتملت الجلسة — بمعدل {n}%",
+    "dd.summary": "{n} جملة خلال حوالي {m} دقيقة. عمل رائع.",
+    "dd.backToHome": "العودة للرئيسية", "dd.practiceAgain": "تدرّب مرة أخرى",
+    "dd.backToSprint": "العودة إلى السبرنت",
+    "sprint.title14": "سبرنت التحدث لمدة 14 يوماً",
+    "sprint.perk1": "يوم جديد يُفتح كل 24 ساعة",
+    "sprint.perk2": "تحدي تحدث حقيقي كل يوم",
+    "sprint.perk3": "احصل على 70% أو أكثر لاجتياز اليوم",
+    "sprint.perk4": "ابنِ سلسلة أيام — فوّت يوماً وتنكسر",
+    "sprint.perk5": "شهادة عند إتمام الأيام الـ14",
+    "sprint.startDay1": "ابدأ اليوم الأول الآن",
+    "sprint.note": "بمجرد أن تبدأ، تبدأ العدّاد بالعمل. هذا هو المغزى.",
+    "sprint.streakStat": "🔥 سلسلة الأيام", "sprint.daysCleared": "الأيام المكتملة",
+    "sprint.avgScore": "متوسط النتيجة",
+    "sprint.finishedAllDays": "أكملت الأيام الـ14 كاملة.", "sprint.certReady": "شهادتك جاهزة.",
+    "sprint.finishedSub": "لقد أنهيت. كل يوم، بلا تخطٍّ.",
+    "sprint.dayOpenSub": "اليوم {d} مفتوح. احصل على {p}% أو أعلى لاجتياز اليوم.",
+    "sprint.opensLater": "🔒 يُفتح لاحقاً", "sprint.cleared": "✓ مكتمل",
+    "sprint.finishConv": "💬 أكمل المحادثة", "sprint.startNow": "▶ ابدأ الآن",
+    "sprint.dayLbl": "اليوم {d}", "sprint.locked": "مقفل",
+    "cert.title": "شهادة إتمام", "cert.completedEvery": "أكمل كل أيام",
+    "cert.avgScore": "متوسط النتيجة", "cert.daysNoSkips": "يوماً، دون تخطٍّ",
+    "cert.issuedOn": "صدرت في ",
+    "admin.title": "لوحة الإدارة",
+    "admin.sub": "إدارة المستخدمين واختبار السبرنت دون انتظار 14 يوماً.",
+    "admin.unlockTitle": "افتح الأيام الـ14 كاملة لي",
+    "admin.unlockSub": "يعيد تاريخ تسجيلك بحيث يكون كل يوم مفتوحاً الآن. ما زلت بحاجة للتحدث واجتياز كل يوم — هذا فقط يزيل الانتظار اليومي.",
+    "admin.unlockBtn": "افتح كل الأيام", "admin.unlocking": "جارٍ الفتح…",
+    "admin.resetTitle": "إعادة ضبط تقدمي في السبرنت",
+    "admin.resetSub": "يمسح تسجيلك والأيام المكتملة، لتتمكن من اختبار تدفق \"اليوم الأول\" من جديد.",
+    "admin.resetBtn": "إعادة ضبط السبرنت",
+    "admin.resetConfirm": "هذا سيمسح تقدمك في السبرنت. متابعة؟",
+    "admin.resetDone": "تمت إعادة ضبط تقدمك في السبرنت.",
+    "admin.unlockDone": "تم فتح الأيام الـ14 لحسابك. اذهب إلى السبرنت لاختبارها.",
+    "admin.usersTitle": "المستخدمون",
+    "admin.thEmail": "البريد الإلكتروني", "admin.thPlan": "الخطة", "admin.thSprint": "السبرنت", "admin.thJoined": "تاريخ الانضمام",
+    "admin.tagAdmin": "إداري", "admin.pro": "Pro", "admin.free": "مجاني",
+    "admin.daysOf14": "{n}/14 يوماً", "admin.notStarted": "لم يبدأ",
+    "admin.grantPro": "منح Pro", "admin.removePro": "إزالة Pro",
+    "conv.restart": "إعادة البدء", "conv.yourGoal": "هدفك",
+    "conv.hintDefault": "اختر رداً — أو اضغط 🎤 وقله بصوت عالٍ.",
+    "conv.complete": "✓ اكتملت المحادثة.",
+    "conv.speechNeedsChrome": "التحدث يحتاج إلى Chrome. يمكنك الضغط على الرد بدلاً من ذلك.",
+    "conv.listening": "جارٍ الاستماع… قل الجملة.",
+    "conv.niceMatch": "✓ رائع — تطابق {n}%.",
+    "conv.heardTryAgain": 'سمعت: "{h}" — حاول مرة أخرى، أو اضغط على الرد مباشرة.',
+    "conv.didntCatch": "لم أسمع ذلك بوضوح — حاول مرة أخرى أو اضغط على الرد.",
+    "conv.finish": "إنهاء", "conv.hearIt": "🔊 استمع", "conv.translate": "🌐 ترجمة",
+    "conv.sayItOutLoud": "قله بصوت عالٍ", "conv.translateTitle": "ترجمة",
+    "paywall.title": "افتح SpeakUp Pro",
+    "paywall.sub": "احصل على سبرنت التحدث لمدة 14 يوماً — وكل الدروس والمستويات.",
+    "paywall.perMonth": " / شهرياً",
+    "paywall.perk1": "سبرنت التحدث لمدة 14 يوماً",
+    "paywall.perk2": "تحدٍّ يومي وسلسلة حقيقية",
+    "paywall.perk3": "شهادة عند إتمام الأيام الـ14",
+    "paywall.perk4": "كل الدروس المتوسطة والمتقدمة",
+    "paywall.upgradeBtn": "الترقية إلى Pro", "paywall.loading": "جارٍ التحميل…",
+    "paywall.demoMode": "وضع تجريبي: يتم الفتح فوراً.",
+    "paywall.paddleSecure": "دفع آمن عبر Paddle.",
+    "paywall.choosePayment": "اختر طريقة الدفع:",
+    "paywall.payWith": "الدفع عبر {p}",
+    "paywall.iqdApprox": "≈ {n} د.ع",
+    "paywall.iqdApproxVia": "≈ {n} د.ع، عبر {p}",
+    "paywall.payWithNoCard": "ادفع عبر {p} — بلا حاجة لبطاقة.",
+    "paywall.openingCheckout": "جارٍ فتح صفحة الدفع…",
+    "paywall.couldNotStart": "تعذّر بدء عملية الدفع.",
+    "paywall.paymentSystemFailed": "فشل تحميل نظام الدفع. يرجى تحديث الصفحة والمحاولة مرة أخرى.",
+    "paywall.pollTimeout": "إذا تمت عملية الدفع، قد يستغرق التأكيد بضع ثوانٍ إضافية. حدّث الصفحة بعد قليل — سيظهر Pro تلقائياً.",
+    "paywall.paidReturn": "تم استلام الدفعة — جارٍ التأكيد مع مزود الدفع، قد يستغرق ذلك بضع ثوانٍ. حدّث الصفحة بعد قليل إذا لم يظهر Pro.",
+    "footer.terms": "شروط الخدمة", "footer.privacy": "سياسة الخصوصية", "footer.refund": "الاسترجاع والإلغاء",
+  },
+};
+
+// t(key, vars) — look up a translation for the current LANG, falling back to
+// English, and substitute any {placeholders} with the given values.
+function t(key, vars){
+  let s = (T[LANG] && T[LANG][key]) || T.en[key] || key;
+  if (vars) for (const k in vars) s = s.replace("{" + k + "}", vars[k]);
+  return s;
+}
+
+// Applies LANG to every element tagged with data-i18n / data-i18n-ph, and
+// flips the document direction. Called on load and whenever the language
+// is toggled.
+function applyI18n(){
+  document.documentElement.lang = LANG;
+  document.documentElement.dir = LANG === "ar" ? "rtl" : "ltr";
+  document.querySelectorAll("[data-i18n]").forEach(el => { el.textContent = t(el.dataset.i18n); });
+  document.querySelectorAll("[data-i18n-html]").forEach(el => { el.innerHTML = t(el.dataset.i18nHtml); });
+  document.querySelectorAll("[data-i18n-ph]").forEach(el => { el.placeholder = t(el.dataset.i18nPh); });
+  const toggleLabel = LANG === "ar" ? "English" : "العربية";
+  const lt = $("langToggle"); if (lt) lt.textContent = toggleLabel;
+  const lta = $("langToggleAuth"); if (lta) lta.textContent = toggleLabel;
+}
+
+function setLang(lang){
+  LANG = lang;
+  localStorage.setItem("speakup_lang", lang);
+  applyI18n();
+  // Re-render whatever dynamic view is currently on screen so it picks up
+  // the new language too (static data-i18n elements are handled above).
+  if (currentUser){
+    const dash = $("dashboard");
+    if (dash && !dash.classList.contains("hidden")) loadDashboard();
+    const pw = $("paywallView");
+    if (pw && !pw.classList.contains("hidden")) refreshPriceDisplay();
+    const admin = $("adminView");
+    if (admin && !admin.classList.contains("hidden")) loadUserTable();
+    const sprintView = $("sprintView");
+    if (sprintView && !sprintView.classList.contains("hidden") && sprint && sprint.state && sprint.state.enrolled) renderSprintMain();
+  }
+}
+$("langToggle") && ($("langToggle").onclick = () => setLang(LANG === "ar" ? "en" : "ar"));
+$("langToggleAuth") && ($("langToggleAuth").onclick = () => setLang(LANG === "ar" ? "en" : "ar"));
+applyI18n();
+
 async function api(path, method = "GET", body = null){
   const headers = {"Content-Type":"application/json"};
   if (token) headers["Authorization"] = "Bearer " + token;
@@ -981,11 +1376,11 @@ function show(view){
 $("toggleBtn").onclick = () => {
   mode = mode === "login" ? "register" : "login";
   const login = mode === "login";
-  $("authTitle").textContent = login ? "Welcome back" : "Create your account";
-  $("authSub").textContent   = login ? "Log in to keep practicing" : "Start practicing in seconds";
-  $("authBtn").textContent   = login ? "Log in" : "Create account";
-  $("toggleText").textContent= login ? "New here?" : "Already have an account?";
-  $("toggleBtn").textContent = login ? "Create an account" : "Log in";
+  $("authTitle").textContent = login ? t("auth.welcomeBack") : t("auth.createAccount");
+  $("authSub").textContent   = login ? t("auth.loginSub") : t("auth.registerSub");
+  $("authBtn").textContent   = login ? t("auth.login") : t("auth.createAccountBtn");
+  $("toggleText").textContent= login ? t("auth.newHere") : t("auth.alreadyHave");
+  $("toggleBtn").textContent = login ? t("auth.createAnAccount") : t("auth.login");
   $("authMsg").className = "msg";
 };
 $("authBtn").onclick = async () => {
@@ -993,7 +1388,7 @@ $("authBtn").onclick = async () => {
   const password = $("password").value;
   const msg = $("authMsg");
   msg.className = "msg";
-  if (!email || !password){ msg.className="msg err"; msg.textContent="Please fill in both fields."; return; }
+  if (!email || !password){ msg.className="msg err"; msg.textContent=t("auth.fillBoth"); return; }
   $("authBtn").disabled = true;
   try {
     const data = await api("/api/" + mode, "POST", {email, password});
@@ -1054,12 +1449,12 @@ function renderHero(){
   $("shPromise").textContent = sprint.promise;
   if (st.enrolled){
     $("ringNum").textContent = done + "/" + total;
-    $("ringLbl").textContent = st.streak > 0 ? "🔥 " + st.streak + " streak" : "days cleared";
-    $("sprintCta").textContent = st.finished ? "See your certificate" : "Continue the Sprint";
+    $("ringLbl").textContent = st.streak > 0 ? "🔥 " + st.streak + " " + t("sprint.streakLbl") : t("sprint.daysCleared");
+    $("sprintCta").textContent = st.finished ? t("sprint.seeCert") : t("sprint.continueBtn");
   } else {
     $("ringNum").textContent = total;
-    $("ringLbl").textContent = "days";
-    $("sprintCta").textContent = "Start the Sprint";
+    $("ringLbl").textContent = t("sprint.daysLbl");
+    $("sprintCta").textContent = t("sprint.startBtn");
   }
 }
 function renderStats(prog){
@@ -1086,12 +1481,12 @@ async function loadProgressGraph(){
 function renderProgressGraph(h){
   const trendEl = $("pcTrend");
   trendEl.className = "pc-trend " + h.trend;
-  trendEl.textContent = h.trend === "improving" ? "📈 Improving"
-    : h.trend === "declining" ? "📉 Slipping — practice more" : "→ Steady";
+  trendEl.textContent = h.trend === "improving" ? t("progress.improving")
+    : h.trend === "declining" ? t("progress.declining") : t("progress.steady");
 
   const chart = $("progressChart");
   if (!h.points.length){
-    chart.innerHTML = '<p style="color:var(--muted);font-size:13px">Practice a few days to see your trend here.</p>';
+    chart.innerHTML = '<p style="color:var(--muted);font-size:13px">' + t("progress.emptyHint") + '</p>';
     return;
   }
   const wrap = document.createElement("div");
@@ -1124,14 +1519,15 @@ function renderStreak(prog){
   }
   banner.classList.remove("hidden");
   $("streakNum").textContent = streak;
+  const suffixEl = $("streakSuffix"); if (suffixEl) suffixEl.textContent = t("dash.streakSuffix");
   // Flame grows a little as the streak gets longer — a small reward.
   $("sbFlame").style.fontSize = Math.min(36 + streak * 2, 56) + "px";
   $("streakSub").textContent = prog.practiced_today
-    ? "You've practiced today — nicely done. Keep it going tomorrow!"
-    : "Practice today to keep your streak alive.";
+    ? t("dash.practicedToday")
+    : t("dash.practiceTodayKeep");
   const longest = prog.longest_streak || streak;
   $("streakBest").textContent = longest > streak
-    ? "Best: " + longest + " days" : "Personal best 🎉";
+    ? t("dash.best", {n: longest}) : t("dash.personalBest");
 }
 function renderLessons(best){
   const grid = $("lessonGrid"); grid.innerHTML = "";
@@ -1140,10 +1536,10 @@ function renderLessons(best){
     card.className = "card clickable";
     const score = best[le.id] || 0;
     card.innerHTML = `
-      ${le.locked ? '<span class="lock-tag">🔒 Pro</span>' : ''}
+      ${le.locked ? '<span class="lock-tag">' + t("card.lockPro") + '</span>' : ''}
       <div class="lvl">${le.level}</div>
-      <h3>${le.title}</h3>
-      <div class="meta">${le.locked ? 'Premium lesson' : le.phrases.length + ' phrases'}</div>
+      <h3 dir="ltr">${le.title}</h3>
+      <div class="meta">${le.locked ? t("card.premiumLesson") : t("card.phrasesCount", {n: le.phrases.length})}</div>
       <div class="bar"><i style="width:${score}%"></i></div>`;
     card.onclick = () => le.locked ? show("paywallView") : startLesson(le);
     grid.appendChild(card);
@@ -1156,11 +1552,11 @@ function renderShadowGrid(){
     const card = document.createElement("div");
     card.className = "card clickable";
     card.innerHTML = `
-      ${cat.locked ? '<span class="lock-tag">🔒 Pro</span>' : ''}
+      ${cat.locked ? '<span class="lock-tag">' + t("card.lockPro") + '</span>' : ''}
       <div class="lvl">${cat.level}</div>
-      <h3>${cat.title}</h3>
-      <div class="meta">${cat.locked ? 'Premium category' : cat.phrases.length + ' phrases'}</div>
-      <div class="meta" style="margin-top:2px">${cat.focus}</div>`;
+      <h3 dir="ltr">${cat.title}</h3>
+      <div class="meta">${cat.locked ? t("card.premiumCategory") : t("card.phrasesCount", {n: cat.phrases.length})}</div>
+      <div class="meta" style="margin-top:2px" dir="ltr">${cat.focus}</div>`;
     card.onclick = () => cat.locked ? show("paywallView") : startShadow(cat);
     grid.appendChild(card);
   });
@@ -1180,11 +1576,11 @@ async function loadUserTable(){
   users.forEach(u => {
     const tr = document.createElement("tr");
     tr.innerHTML = `
-      <td>${u.email}${u.is_admin ? '<span class="tag admin">Admin</span>' : ""}</td>
-      <td><span class="tag ${u.is_premium ? "pro" : "free"}">${u.is_premium ? "Pro" : "Free"}</span></td>
-      <td>${u.sprint_enrolled ? u.sprint_days_done + "/14 days" : "Not started"}</td>
+      <td dir="ltr">${u.email}${u.is_admin ? '<span class="tag admin">' + t("admin.tagAdmin") + '</span>' : ""}</td>
+      <td><span class="tag ${u.is_premium ? "pro" : "free"}">${u.is_premium ? t("admin.pro") : t("admin.free")}</span></td>
+      <td>${u.sprint_enrolled ? t("admin.daysOf14", {n: u.sprint_days_done}) : t("admin.notStarted")}</td>
       <td>${new Date(u.created_at).toLocaleDateString()}</td>
-      <td><button class="btn-sm outline mini" data-toggle="${u.id}">${u.is_premium ? "Remove Pro" : "Grant Pro"}</button></td>`;
+      <td><button class="btn-sm outline mini" data-toggle="${u.id}">${u.is_premium ? t("admin.removePro") : t("admin.grantPro")}</button></td>`;
     body.appendChild(tr);
   });
   body.querySelectorAll("[data-toggle]").forEach(btn => {
@@ -1196,17 +1592,17 @@ async function loadUserTable(){
 }
 
 $("unlockAllBtn").onclick = async () => {
-  $("unlockAllBtn").disabled = true; $("unlockAllBtn").textContent = "Unlocking…";
+  $("unlockAllBtn").disabled = true; $("unlockAllBtn").textContent = t("admin.unlocking");
   try {
     await api("/api/admin/sprint/unlock-all","POST");
-    alert("All 14 days are unlocked for your account. Go to the Sprint to test them.");
+    alert(t("admin.unlockDone"));
   } catch(e){ alert(e.message); }
-  $("unlockAllBtn").disabled = false; $("unlockAllBtn").textContent = "Unlock all days";
+  $("unlockAllBtn").disabled = false; $("unlockAllBtn").textContent = t("admin.unlockBtn");
 };
 $("resetSprintBtn").onclick = async () => {
-  if (!confirm("This wipes your own Sprint progress. Continue?")) return;
+  if (!confirm(t("admin.resetConfirm"))) return;
   await api("/api/admin/sprint/reset","POST");
-  alert("Your Sprint progress was reset.");
+  alert(t("admin.resetDone"));
 };
 
 // ---- SPRINT ----
@@ -1232,8 +1628,8 @@ function renderSprintMain(){
   $("spDone").textContent = st.completed_days.length + "/" + st.total_days;
   $("spAvg").textContent = st.avg_score ? st.avg_score + "%" : "—";
   $("sprintSub").textContent = st.finished
-    ? "You finished. Every day, no skips."
-    : "Day " + st.unlocked_through + " is open. Score " + st.pass_score + "% or higher to clear a day.";
+    ? t("sprint.finishedSub")
+    : t("sprint.dayOpenSub", {d: st.unlocked_through, p: st.pass_score});
   $("certBanner").classList.toggle("hidden", !st.finished);
 
   const grid = $("dayGrid"); grid.innerHTML = "";
@@ -1245,14 +1641,14 @@ function renderSprintMain(){
     const isToday = open && !done;
     const cell = document.createElement("div");
     cell.className = "day-cell " + (done ? "done" : open ? "open" : "locked") + (isToday ? " today" : "");
-    let tag = "🔒 Opens later";
-    if (done) tag = "✓ Cleared";
-    else if (midway) tag = "💬 Finish the conversation";
-    else if (open) tag = "▶ Start now";
+    let tag = t("sprint.opensLater");
+    if (done) tag = t("sprint.cleared");
+    else if (midway) tag = t("sprint.finishConv");
+    else if (open) tag = t("sprint.startNow");
     cell.innerHTML = `
       ${done ? `<span class="dc-score">${st.scores_by_day[d.day]}%</span>` : ""}
-      <div class="dc-num">Day ${d.day}</div>
-      <div class="dc-theme">${d.locked ? "Locked" : d.theme}</div>
+      <div class="dc-num">${t("sprint.dayLbl", {d: d.day})}</div>
+      <div class="dc-theme" dir="ltr">${d.locked ? t("sprint.locked") : d.theme}</div>
       <div class="dc-tag">${tag}</div>`;
     if (open) cell.onclick = () => midway ? resumeSprintConv(d) : startSprintDay(d);
     grid.appendChild(cell);
@@ -1281,7 +1677,7 @@ async function showCertificate(){
     $("certName").textContent = c.name;
     $("certCourse").textContent = c.title;
     $("certScore").textContent = c.avg_score + "%";
-    $("certDate").textContent = "Issued on " + c.issued_on;
+    $("certDate").textContent = t("cert.issuedOn") + c.issued_on;
     show("certView");
   } catch(e){ alert(e.message); }
 }
@@ -1331,10 +1727,10 @@ function startSprintDay(d){
   $("practiceCard").classList.add("hidden");
   $("sessionSetup").classList.remove("hidden");
   $("setupDayBanner").classList.remove("hidden");
-  $("setupDbDay").textContent = "Day " + d.day;
+  $("setupDbDay").textContent = t("sprint.dayLbl", {d: d.day});
   $("setupDbTheme").textContent = d.theme;
   $("setupTitle").textContent = d.theme;
-  $("setupSub").textContent = d.challenge + " Choose a level and how long to practice — sentences never repeat.";
+  $("setupSub").textContent = d.challenge + " " + t("setup.subDefault");
   pendingSetup = { mode: "sprint-session", day: d.day, theme: d.theme,
                   challenge: d.challenge, topic: d.theme };
 }
@@ -1346,8 +1742,8 @@ function startTopicSession(topic, level){
   $("practiceCard").classList.add("hidden");
   $("sessionSetup").classList.remove("hidden");
   $("setupDayBanner").classList.add("hidden");
-  $("setupTitle").textContent = "Practice: " + topic;
-  $("setupSub").textContent = "Sentences never repeat — practice for as long as you like.";
+  $("setupTitle").textContent = t("setup.topicPrefix") + topic;
+  $("setupSub").textContent = t("setup.subTopic");
   $("setupLevel").value = level;
   pendingSetup = { mode: "topic-session", topic };
 }
@@ -1357,11 +1753,11 @@ $("setupStartBtn").onclick = async () => {
   const level = $("setupLevel").value;
   const minutes = parseInt($("setupMinutes").value, 10);
   const btn = $("setupStartBtn");
-  btn.disabled = true; btn.textContent = "Loading sentences…";
+  btn.disabled = true; btn.textContent = t("setup.loading");
   try {
     await beginTimedSession(Object.assign({}, pendingSetup, {level, minutes}));
   } catch(e){ alert(e.message); }
-  btn.disabled = false; btn.textContent = "Start practicing";
+  btn.disabled = false; btn.textContent = t("setup.startPracticing");
 };
 
 async function beginTimedSession(ctx){
@@ -1378,7 +1774,7 @@ async function beginTimedSession(ctx){
   $("dayBanner").classList.toggle("hidden", !isSprint);
   $("challengeBox").classList.toggle("hidden", !isSprint);
   if (isSprint){
-    $("dbDay").textContent = "Day " + ctx.day;
+    $("dbDay").textContent = t("sprint.dayLbl", {d: ctx.day});
     $("dbTheme").textContent = ctx.theme;
     $("challengeText").textContent = ctx.challenge;
   }
@@ -1399,8 +1795,9 @@ function updateSessionBar(){
   $("sbFill").style.width = Math.min(100, elapsedSec / targetSec * 100) + "%";
   const scored = current.scores.filter(s => s !== undefined);
   const avg = scored.length ? Math.round(scored.reduce((a,b)=>a+b,0)/scored.length) : null;
-  $("sbCount").textContent = scored.length + " sentence" + (scored.length===1?"":"s") +
-    (avg !== null ? " · avg " + avg + "%" : " · avg —");
+  $("sbCount").textContent = (LANG === "ar"
+    ? scored.length + " جملة" + (avg !== null ? " · بمعدل " + avg + "%" : " · بمعدل —")
+    : scored.length + " sentence" + (scored.length===1?"":"s") + (avg !== null ? " · avg " + avg + "%" : " · avg —"));
   if (elapsedSec >= targetSec){
     clearInterval(sessionTimer); sessionTimer = null;
     finishSession();
@@ -1438,12 +1835,13 @@ function renderPhrase(){
   phraseEl.style.animation = "riseIn .45s var(--ease) both";
   $("result").classList.remove("show");
   $("phraseTr").classList.add("hidden");
-  $("micHint").textContent = "Tap the mic and say the sentence";
+  $("micHint").textContent = t("mic.hintDefault");
   resetShadowUI();
 
   if (current.mode === "shadow"){
     $("shadowTip").classList.remove("hidden");
     $("shadowTip").textContent = "💡 " + (current.tips[index] || "");
+    $("shadowTip").dir = "ltr";
     $("shadowZone").classList.remove("hidden");
   } else {
     $("shadowTip").classList.add("hidden");
@@ -1451,7 +1849,7 @@ function renderPhrase(){
   }
 
   if (isSessionMode()){
-    $("nextBtn").textContent = "Next sentence →";
+    $("nextBtn").textContent = t("result.nextSentence");
     topUpQueueIfNeeded();
   } else {
     const dots = $("dots"); dots.innerHTML = "";
@@ -1460,7 +1858,7 @@ function renderPhrase(){
       if (i < index) s.className = "done"; else if (i === index) s.className = "active";
       dots.appendChild(s);
     });
-    $("nextBtn").textContent = (index === phrases.length - 1) ? "Finish →" : "Next phrase →";
+    $("nextBtn").textContent = (index === phrases.length - 1) ? t("result.finish") : t("result.nextPhrase");
   }
 }
 
@@ -1489,7 +1887,7 @@ $("phraseTrBtn").onclick = async () => {
     box.classList.remove("hidden");
   } catch(e){ alert(e.message); }
 };
-$("retryBtn").onclick = () => { $("result").classList.remove("show"); $("micHint").textContent="Tap the mic and try again"; };
+$("retryBtn").onclick = () => { $("result").classList.remove("show"); $("micHint").textContent=t("mic.hintRetry"); };
 $("nextBtn").onclick = () => {
   if (isSessionMode()){
     current.index++;
@@ -1525,12 +1923,12 @@ async function finishSession(){
         }, current.day);
       } else {
         $("ddIcon").className = "dd-icon"; $("ddIcon").textContent = "✓";
-        $("ddTitle").textContent = "Drill passed — " + avg + "%";
-        $("ddMsg").textContent = "Head back to the Sprint to continue.";
+        $("ddTitle").textContent = t("dd.drillPassed", {n: avg});
+        $("ddMsg").textContent = t("dd.headBack");
       }
     } catch(e){
       $("ddIcon").className = "dd-icon fail"; $("ddIcon").textContent = "!";
-      $("ddTitle").textContent = "Drill not passed — " + avg + "%";
+      $("ddTitle").textContent = t("dd.drillNotPassed", {n: avg});
       $("ddMsg").textContent = e.message;
     }
   } else {
@@ -1539,31 +1937,30 @@ async function finishSession(){
     const elapsedMin = Math.round((Date.now() - current.startedAt) / 60000);
     $("dayDone").classList.remove("hidden");
     $("ddIcon").className = "dd-icon"; $("ddIcon").textContent = "✓";
-    $("ddTitle").textContent = "Session complete — " + avg + "% average";
-    $("ddMsg").textContent = scores.length + " sentences in about " + elapsedMin +
-      " minute" + (elapsedMin===1?"":"s") + ". Nice work.";
+    $("ddTitle").textContent = t("dd.sessionComplete", {n: avg});
+    $("ddMsg").textContent = t("dd.summary", {n: scores.length, s: scores.length===1?"":"s", m: elapsedMin, ms: elapsedMin===1?"":"s"});
     $("ddBack").onclick = loadDashboard;
-    $("ddBack").textContent = "Back to Home";
+    $("ddBack").textContent = t("dd.backToHome");
   }
 }
 
 // mic recording
 let recognizing = false;
 $("micBtn").onclick = () => {
-  if (!SR){ $("micHint").textContent = "Speech recognition isn't supported in this browser."; return; }
+  if (!SR){ $("micHint").textContent = t("mic.noSupport"); return; }
   if (recognizing) return;
   const rec = new SR();
   rec.lang = "en-US"; rec.interimResults = false; rec.maxAlternatives = 4;
   recognizing = true;
   $("micBtn").classList.add("recording");
   $("micBtn").innerHTML = '<span class="wave rec-wave"><span></span><span></span><span></span><span></span><span></span></span>';
-  $("micHint").textContent = "Listening… speak now";
+  $("micHint").textContent = t("mic.listening");
   rec.start();
   rec.onresult = (ev) => {
     const alts = Array.from(ev.results[0]).map(a => a.transcript);
     grade(alts);
   };
-  rec.onerror = (ev) => { $("micHint").textContent = ev.error === "no-speech" ? "Didn't catch that — try again." : "Mic error: " + ev.error; };
+  rec.onerror = (ev) => { $("micHint").textContent = ev.error === "no-speech" ? t("mic.noSpeech") : t("mic.error") + ev.error; };
   rec.onend = () => { recognizing = false; resetMic(); };
 };
 function resetMic(){
@@ -1586,12 +1983,12 @@ function resetShadowUI(){
   $("shadowPlayback").classList.add("hidden");
   $("shadowRecordBtn").disabled = false;
   $("shadowRecordBtn").classList.remove("recording");
-  $("shadowRecordBtn").textContent = "🎙️ Shadow it (speak along)";
+  $("shadowRecordBtn").textContent = t("shadow.recordDefault");
 }
 
 $("shadowRecordBtn").onclick = async () => {
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
-    alert("Recording isn't supported in this browser."); return;
+    alert(t("shadow.noRecording")); return;
   }
   try {
     const stream = await navigator.mediaDevices.getUserMedia({audio: true});
@@ -1605,12 +2002,12 @@ $("shadowRecordBtn").onclick = async () => {
       $("shadowPlayback").classList.remove("hidden");
       $("shadowRecordBtn").disabled = false;
       $("shadowRecordBtn").classList.remove("recording");
-      $("shadowRecordBtn").textContent = "🎙️ Shadow it again";
+      $("shadowRecordBtn").textContent = t("shadow.recordAgain");
     };
     shadowRecorder.start();
     $("shadowRecordBtn").disabled = true;
     $("shadowRecordBtn").classList.add("recording");
-    $("shadowRecordBtn").textContent = "● Speak along now…";
+    $("shadowRecordBtn").textContent = t("shadow.recording");
 
     const u = new SpeechSynthesisUtterance(currentPhraseText());
     u.lang = "en-US"; u.rate = 0.95;
@@ -1618,7 +2015,7 @@ $("shadowRecordBtn").onclick = async () => {
     speechSynthesis.cancel();
     speechSynthesis.speak(u);
   } catch (e){
-    alert("Microphone access is needed to shadow along: " + e.message);
+    alert(t("shadow.micNeeded") + e.message);
   }
 };
 $("playNativeBtn").onclick = () => {
@@ -1657,9 +2054,9 @@ async function grade(alternatives){
 
   $("scoreNum").textContent = best;
   const msgEl = $("scoreMsg");
-  if (best >= 85){ msgEl.textContent = "Excellent! 🎉"; msgEl.style.color = "var(--good)"; }
-  else if (best >= 65){ msgEl.textContent = "Good — keep polishing 👍"; msgEl.style.color = "var(--brand)"; }
-  else { msgEl.textContent = "Keep practicing 💪"; msgEl.style.color = "var(--danger)"; }
+  if (best >= 85){ msgEl.textContent = t("score.excellent"); msgEl.style.color = "var(--good)"; }
+  else if (best >= 65){ msgEl.textContent = t("score.good"); msgEl.style.color = "var(--brand)"; }
+  else { msgEl.textContent = t("score.keepPracticing"); msgEl.style.color = "var(--danger)"; }
 
   // Pro feature: Pronunciation Focus — highlight exactly which words were
   // unclear, instead of just an overall score. Free users see the plain
@@ -1670,10 +2067,10 @@ async function grade(alternatives){
     const weak = wordWeakPoints(target, bestText);
     const label = document.createElement("div");
     label.className = "heard-label";
-    label.textContent = "Your target, word by word:";
+    label.textContent = t("heard.label");
     heardEl.appendChild(label);
     const row = document.createElement("div");
-    row.className = "word-row";
+    row.className = "word-row"; row.dir = "ltr";
     weak.forEach(w => {
       const span = document.createElement("span");
       span.className = "word-chip" + (w.weak ? " weak" : " ok");
@@ -1684,16 +2081,16 @@ async function grade(alternatives){
     const weakWords = weak.filter(w => w.weak).map(w => w.word);
     if (weakWords.length){
       const tip = document.createElement("div");
-      tip.className = "word-tip";
-      tip.textContent = "🎯 Focus on: " + weakWords.join(", ");
+      tip.className = "word-tip"; tip.dir = "ltr";
+      tip.textContent = t("heard.focus") + weakWords.join(", ");
       heardEl.appendChild(tip);
     }
     const heardLine = document.createElement("div");
-    heardLine.className = "heard-said";
-    heardLine.innerHTML = "We heard: <b>" + (bestText || "—") + "</b>";
+    heardLine.className = "heard-said"; heardLine.dir = "ltr";
+    heardLine.innerHTML = t("heard.weHeard") + "<b>" + (bestText || "—") + "</b>";
     heardEl.appendChild(heardLine);
   } else {
-    heardEl.innerHTML = "We heard: <b>" + (bestText || "—") + "</b>";
+    heardEl.innerHTML = t("heard.weHeard") + "<b>" + (bestText || "—") + "</b>";
   }
   $("result").classList.add("show");
 
@@ -1734,40 +2131,40 @@ async function getBillingCfg(){
 async function refreshPriceDisplay(){
   try {
     const cfg = await getBillingCfg();
-    $("proPrice").innerHTML = `$${cfg.price_usd}<small> / month</small>`;
+    $("proPrice").innerHTML = `$${cfg.price_usd}<small>${t("paywall.perMonth")}</small>`;
     const localProviders = cfg.local_providers || [];
     const opts = $("upgradeOptions");
     opts.innerHTML = "";
 
     if (cfg.provider === "paddle"){
       $("proPriceIqd").textContent = "";
-      $("proNote").textContent = "Secure checkout powered by Paddle.";
+      $("proNote").textContent = t("paywall.paddleSecure");
       $("upgradeBtn").classList.remove("hidden");
       opts.classList.add("hidden");
     } else if (localProviders.length > 1){
       // More than one Iraqi payment rail is configured (e.g. ZainCash for
       // mobile-wallet users, QiCard for Rafidain/Rasheed Bank Qi Card
       // holders) — let the customer pick which one to pay with.
-      $("proPriceIqd").textContent = `≈ ${Number(cfg.price_iqd).toLocaleString()} IQD`;
-      $("proNote").textContent = "Choose how you'd like to pay:";
+      $("proPriceIqd").textContent = t("paywall.iqdApprox", {n: Number(cfg.price_iqd).toLocaleString()});
+      $("proNote").textContent = t("paywall.choosePayment");
       $("upgradeBtn").classList.add("hidden");
       opts.classList.remove("hidden");
       localProviders.forEach(p => {
         const btn = document.createElement("button");
         btn.className = "btn-gold";
-        btn.textContent = "Pay with " + p.label;
+        btn.textContent = t("paywall.payWith", {p: p.label});
         btn.onclick = () => startLocalCheckout(p.id, btn);
         opts.appendChild(btn);
       });
     } else if (localProviders.length === 1){
       const p = localProviders[0];
-      $("proPriceIqd").textContent = `≈ ${Number(cfg.price_iqd).toLocaleString()} IQD, charged via ${p.label}`;
-      $("proNote").textContent = `Pay with your ${p.label} — no card needed.`;
+      $("proPriceIqd").textContent = t("paywall.iqdApproxVia", {n: Number(cfg.price_iqd).toLocaleString(), p: p.label});
+      $("proNote").textContent = t("paywall.payWithNoCard", {p: p.label});
       $("upgradeBtn").classList.remove("hidden");
       opts.classList.add("hidden");
     } else {
       $("proPriceIqd").textContent = "";
-      $("proNote").textContent = "Demo mode: this unlocks instantly.";
+      $("proNote").textContent = t("paywall.demoMode");
       $("upgradeBtn").classList.remove("hidden");
       opts.classList.add("hidden");
     }
@@ -1775,7 +2172,7 @@ async function refreshPriceDisplay(){
 }
 
 $("upgradeBtn").onclick = async () => {
-  $("upgradeBtn").disabled = true; $("upgradeBtn").textContent = "Loading…";
+  $("upgradeBtn").disabled = true; $("upgradeBtn").textContent = t("paywall.loading");
   try {
     const cfg = await getBillingCfg();
     const localProviders = cfg.local_providers || [];
@@ -1789,7 +2186,7 @@ $("upgradeBtn").onclick = async () => {
       await onBecamePro();
     }
   } catch(e){ alert(e.message); }
-  $("upgradeBtn").disabled = false; $("upgradeBtn").textContent = "Upgrade to Pro";
+  $("upgradeBtn").disabled = false; $("upgradeBtn").textContent = t("paywall.upgradeBtn");
 };
 
 // Every local (non-Paddle) provider follows the same shape: POST to
@@ -1799,10 +2196,10 @@ $("upgradeBtn").onclick = async () => {
 // block near the bottom.
 async function startLocalCheckout(providerId, btn){
   const original = btn.textContent;
-  btn.disabled = true; btn.textContent = "Opening checkout…";
+  btn.disabled = true; btn.textContent = t("paywall.openingCheckout");
   try {
     const res = await api(`/api/billing/${providerId}/checkout`, "POST");
-    if (!res.redirect_url) throw new Error("Could not start checkout.");
+    if (!res.redirect_url) throw new Error(t("paywall.couldNotStart"));
     window.location.href = res.redirect_url;
   } catch(e){
     alert(e.message);
@@ -1824,7 +2221,7 @@ let paddleInitialized = false;
 
 async function startPaddleCheckout(cfg){
   if (!window.Paddle){
-    alert("Payment system failed to load. Please refresh and try again.");
+    alert(t("paywall.paymentSystemFailed"));
     return;
   }
   if (!paddleInitialized){
@@ -1833,7 +2230,7 @@ async function startPaddleCheckout(cfg){
     paddleInitialized = true;
   }
 
-  $("upgradeBtn").textContent = "Opening checkout…";
+  $("upgradeBtn").textContent = t("paywall.openingCheckout");
   Paddle.Checkout.open({
     items: [{ priceId: cfg.price_id, quantity: 1 }],
     customer: { email: cfg.customer_email },
@@ -1861,7 +2258,7 @@ async function pollForProConfirmation(){
     try {
       const me = await api("/api/me");
       if (me.is_premium){
-        $("upgradeBtn").textContent = "Upgrade to Pro";
+        $("upgradeBtn").textContent = t("paywall.upgradeBtn");
         await onBecamePro();
         return;
       }
@@ -1869,8 +2266,7 @@ async function pollForProConfirmation(){
   }
   // Payment may have succeeded but the webhook hasn't landed yet — this can
   // happen with real payment processors. Don't leave the person guessing.
-  alert("If your payment went through, it can take a few extra seconds to "
-       + "confirm. Refresh the page shortly — Pro will appear automatically.");
+  alert(t("paywall.pollTimeout"));
 }
 
 // ============================================================
@@ -2077,11 +2473,11 @@ function renderScenarios(){
     const card = document.createElement("div");
     card.className = "card clickable";
     card.innerHTML = `
-      ${s.locked ? '<span class="lock-tag">🔒 Pro</span>' : ''}
+      ${s.locked ? '<span class="lock-tag">' + t("card.lockPro") + '</span>' : ''}
       <div style="font-size:26px;line-height:1">${s.emoji}</div>
       <div class="lvl" style="margin-top:8px">${s.level}</div>
-      <h3>${s.title}</h3>
-      <div class="meta">${s.locked ? "Premium conversation" : s.goal}</div>`;
+      <h3 dir="ltr">${s.title}</h3>
+      <div class="meta" dir="ltr">${s.locked ? t("card.premiumConversation") : s.goal}</div>`;
     card.onclick = () => s.locked ? show("paywallView") : openConvById(s.id, s.emoji, s.title, null);
     grid.appendChild(card);
   });
@@ -2095,7 +2491,7 @@ async function openConvById(convId, emoji, title, sprintDayNum){
   $("chatBox").innerHTML = "";
   $("replyChoices").innerHTML = "";
   $("convFoot").classList.add("hidden");
-  $("chatHint").textContent = "Pick a reply — or tap 🎤 and say it out loud.";
+  $("chatHint").textContent = t("conv.hintDefault");
   try {
     const data = await api("/api/conversation/" + encodeURIComponent(convId));
     const nodeMap = {};
@@ -2120,16 +2516,17 @@ function addBubble(who, text){
   const box = $("chatBox");
   const b = document.createElement("div");
   b.className = "bubble " + who;
+  b.dir = "ltr";
   b.innerHTML = `<div class="txt"></div>`;
   b.querySelector(".txt").textContent = text;
   if (who === "ai"){
     const row = document.createElement("div");
     row.className = "row";
     const hear = document.createElement("button");
-    hear.className = "b-act"; hear.textContent = "🔊 Hear it";
+    hear.className = "b-act"; hear.textContent = t("conv.hearIt");
     hear.onclick = () => speakText(text);
     const tr = document.createElement("button");
-    tr.className = "b-act"; tr.textContent = "🌐 Translate";
+    tr.className = "b-act"; tr.textContent = t("conv.translate");
     tr.onclick = () => translateBubble(b, text, tr);
     row.appendChild(hear); row.appendChild(tr);
     b.appendChild(row);
@@ -2149,7 +2546,7 @@ async function translateBubble(bubble, text, btn){
     d.textContent = r.translated || "(no translation)";
     bubble.appendChild(d);
   } catch(e){ /* ignore */ }
-  btn.textContent = "🌐 Translate";
+  btn.textContent = t("conv.translate");
 }
 
 function speakText(text){
@@ -2168,24 +2565,24 @@ function goToNode(nodeId){
 
   if (node.end || !node.replies || node.replies.length === 0){
     // Conversation finished.
-    $("chatHint").textContent = "✓ Conversation complete.";
+    $("chatHint").textContent = t("conv.complete");
     $("convFoot").classList.remove("hidden");
     return;
   }
 
   node.replies.forEach(rep => {
     const wrap = document.createElement("div");
-    wrap.className = "reply-choice";
+    wrap.className = "reply-choice"; wrap.dir = "ltr";
     const say = document.createElement("button");
     say.className = "rc-text";
     say.innerHTML = `<span>${rep.en}</span>`;
     say.onclick = () => chooseReply(rep);
     const mic = document.createElement("button");
-    mic.className = "rc-mic"; mic.title = "Say it out loud";
+    mic.className = "rc-mic"; mic.title = t("conv.sayItOutLoud");
     mic.textContent = "🎤";
     mic.onclick = (e) => { e.stopPropagation(); speakReply(rep, mic); };
     const tr = document.createElement("button");
-    tr.className = "rc-tr"; tr.title = "Translate"; tr.textContent = "🌐";
+    tr.className = "rc-tr"; tr.title = t("conv.translateTitle"); tr.textContent = "🌐";
     tr.onclick = async (e) => {
       e.stopPropagation();
       if (wrap.querySelector(".rc-trtext")){ wrap.querySelector(".rc-trtext").remove(); return; }
@@ -2199,7 +2596,7 @@ function goToNode(nodeId){
     wrap.appendChild(say); wrap.appendChild(mic); wrap.appendChild(tr);
     choices.appendChild(wrap);
   });
-  $("chatHint").textContent = "Pick a reply — or tap 🎤 and say it out loud.";
+  $("chatHint").textContent = t("conv.hintDefault");
 }
 
 function chooseReply(rep){
@@ -2210,24 +2607,24 @@ function chooseReply(rep){
 
 // Speak a chosen reply out loud; if recognised well, it counts as picking it.
 function speakReply(rep, micBtn){
-  if (!SR){ $("chatHint").textContent = "Speech needs Chrome. You can tap the reply instead."; return; }
+  if (!SR){ $("chatHint").textContent = t("conv.speechNeedsChrome"); return; }
   const rec = new SR();
   rec.lang = "en-US"; rec.interimResults = false; rec.maxAlternatives = 3;
   micBtn.classList.add("rec");
-  $("chatHint").textContent = "Listening… say the sentence.";
+  $("chatHint").textContent = t("conv.listening");
   rec.start();
   rec.onresult = (ev) => {
     const heard = [];
     for (let i = 0; i < ev.results[0].length; i++) heard.push(ev.results[0][i].transcript);
     const score = bestScore(rep.en, heard);
     if (score >= 55){
-      $("chatHint").textContent = "✓ Nice — " + score + "% match.";
+      $("chatHint").textContent = t("conv.niceMatch", {n: score});
       chooseReply(rep);
     } else {
-      $("chatHint").textContent = "Heard: \"" + heard[0] + "\" — try again, or just tap the reply.";
+      $("chatHint").textContent = t("conv.heardTryAgain", {h: heard[0]});
     }
   };
-  rec.onerror = () => { $("chatHint").textContent = "Didn't catch that — try again or tap the reply."; };
+  rec.onerror = () => { $("chatHint").textContent = t("conv.didntCatch"); };
   rec.onend = () => micBtn.classList.remove("rec");
 }
 
@@ -2288,7 +2685,7 @@ $("topicInput").addEventListener("keydown", e => { if (e.key === "Enter") $("top
     try {
       const me = await api("/api/me");
       if (me.is_premium) await onBecamePro();
-      else if (wasPaid) alert("Payment received — confirming with the payment provider, this can take a few seconds. Refresh shortly if Pro doesn't appear.");
+      else if (wasPaid) alert(t("paywall.paidReturn"));
     } catch(e){ /* ignore — user is still logged in either way */ }
   }
 })();
