@@ -38,7 +38,7 @@ import jwt  # PyJWT
 import bcrypt
 import requests
 from fastapi import FastAPI, Depends, HTTPException, Request, status
-from fastapi.responses import FileResponse, Response, RedirectResponse
+from fastapi.responses import FileResponse, Response, RedirectResponse, HTMLResponse
 from sqlmodel import SQLModel, Field, Session, create_engine, select
 from sqlalchemy import inspect as sa_inspect, text as sa_text
 from pydantic import BaseModel
@@ -62,6 +62,11 @@ TOKEN_HOURS = 24 * 7  # how long a login stays valid
 # every request, no matter what's stored in the database. This is what makes
 # it impossible for a stray/old flag to grant someone admin.
 ADMIN_EMAILS = {e.strip().lower() for e in os.getenv("ADMIN_EMAIL", "").split(",") if e.strip()}
+
+# Contact address shown on the legal pages (Terms/Privacy/Refund). Falls back
+# to your first ADMIN_EMAIL so you don't have to set anything extra to get
+# started — set SUPPORT_EMAIL explicitly once you have a dedicated address.
+SUPPORT_EMAIL = os.getenv("SUPPORT_EMAIL", "").strip() or (sorted(ADMIN_EMAILS)[0] if ADMIN_EMAILS else "support@example.com")
 
 # ----------------------------------------------------------------------
 # 1d. PAYMENTS — Paddle (Merchant of Record; supports payout via Payoneer,
@@ -1929,6 +1934,37 @@ def index():
         headers={"Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
                  "Pragma": "no-cache"},
     )
+
+
+_LEGAL_LAST_UPDATED = "July 21, 2026"  # bump this whenever you edit terms/privacy/refund.html
+
+
+def _serve_legal_page(filename: str) -> HTMLResponse:
+    """
+    Serves a static legal page (terms/privacy/refund) after filling in the
+    {{SUPPORT_EMAIL}} and {{LAST_UPDATED}} placeholders server-side. Keeping
+    these as placeholders (instead of a hardcoded email in the HTML) means
+    the pages always show whatever SUPPORT_EMAIL/ADMIN_EMAIL you've actually
+    configured, on every deploy, with no risk of a stale/fake address.
+    """
+    html = (BASE_DIR / "static" / filename).read_text()
+    html = html.replace("{{SUPPORT_EMAIL}}", SUPPORT_EMAIL).replace("{{LAST_UPDATED}}", _LEGAL_LAST_UPDATED)
+    return HTMLResponse(html)
+
+
+@app.get("/terms", response_class=HTMLResponse)
+def terms_page():
+    return _serve_legal_page("terms.html")
+
+
+@app.get("/privacy", response_class=HTMLResponse)
+def privacy_page():
+    return _serve_legal_page("privacy.html")
+
+
+@app.get("/refund", response_class=HTMLResponse)
+def refund_page():
+    return _serve_legal_page("refund.html")
 
 
 @app.get("/api/debug/config")

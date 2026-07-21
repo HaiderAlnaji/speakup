@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Refund &amp; Cancellation Policy — SpeakUp</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0E1533; --ink-2:#1A2450;
+    --surface:#FFFFFF; --surface-2:#F4F6FB; --line:#E4E8F2;
+    --text:#0E1533; --muted:#6B7599;
+    --brand:#12B8A6; --brand-2:#0FB4D4;
+    --brand-grad:linear-gradient(135deg,#12B8A6,#0FB4D4);
+    --gold:#E7A63A; --good:#20B562; --danger:#E5484D;
+    --radius:16px; --shadow:0 12px 40px rgba(14,21,51,.10);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Inter',system-ui,-apple-system,sans-serif;color:var(--text);
+    background:var(--surface-2);line-height:1.6;-webkit-font-smoothing:antialiased}
+  h1,h2,.brandmark{font-family:'Sora','Inter',sans-serif;letter-spacing:-.02em}
+  a{color:var(--brand)}
+  .top{background:var(--surface);border-bottom:1px solid var(--line)}
+  .top-inner{max-width:760px;margin:0 auto;padding:18px 24px;display:flex;align-items:center;justify-content:space-between}
+  .brandmark{font-size:19px;font-weight:700;color:var(--ink);text-decoration:none}
+  .back{font-size:14px;color:var(--muted);text-decoration:none}
+  .back:hover{color:var(--brand)}
+  .wrap{max-width:760px;margin:0 auto;padding:40px 24px 80px}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);
+    box-shadow:var(--shadow);padding:40px}
+  h1{font-size:28px;margin-bottom:6px}
+  .updated{color:var(--muted);font-size:13px;margin-bottom:28px}
+  h2{font-size:18px;margin:28px 0 10px;color:var(--ink-2)}
+  h2:first-of-type{margin-top:0}
+  p{margin-bottom:12px}
+  ul{margin:0 0 12px 20px}
+  li{margin-bottom:6px}
+  .note{background:var(--surface-2);border:1px solid var(--line);border-radius:12px;padding:14px 16px;
+    font-size:14px;color:var(--muted);margin-top:32px}
+</style>
+</head>
+<body>
+  <div class="top">
+    <div class="top-inner">
+      <a class="brandmark" href="/">SpeakUp</a>
+      <a class="back" href="/">&larr; Back to app</a>
+    </div>
+  </div>
+  <div class="wrap">
+    <div class="card">
+      <h1>Refund &amp; Cancellation Policy</h1>
+      <div class="updated">Last updated: {{LAST_UPDATED}}</div>
+
+      <h2>1. How Pro Access Works</h2>
+      <p>SpeakUp Pro is sold in two possible ways, depending on your region and how you pay:</p>
+      <ul>
+        <li><strong>Local payment (ZainCash or Qi Card / "Pay with SuperQi")</strong> — a one-time payment that unlocks Pro access for 30 days. It does not renew automatically; when the 30 days end, you simply pay again if you want to continue. There is no subscription to "cancel" with this method.</li>
+        <li><strong>Paddle (where available)</strong> — a recurring monthly subscription that renews automatically until you cancel.</li>
+      </ul>
+
+      <h2>2. Cancelling a Paddle Subscription</h2>
+      <p>If you paid via Paddle, you can cancel anytime before your next renewal date to avoid being charged again. Cancelling stops future renewals; you keep Pro access until the end of the period you already paid for.</p>
+
+      <h2>3. Refund Eligibility</h2>
+      <p>If you believe you were charged in error, were double-charged, or Pro features were not delivered after a successful payment, contact us within 3 days of the charge and we'll review it. Refunds are generally not available once you have substantially used Pro features during the paid period, except where required by law.</p>
+
+      <h2>4. How to Request a Refund</h2>
+      <p>Email <a href="mailto:{{SUPPORT_EMAIL}}">{{SUPPORT_EMAIL}}</a> with the email address on your account and the approximate date of payment. For local payments (ZainCash / Qi Card), refunds are processed manually through the payment provider's own merchant reversal process, which can take a few business days. For Paddle, refunds are processed through Paddle as the merchant of record.</p>
+
+      <h2>5. Failed or Unconfirmed Payments</h2>
+      <p>SpeakUp only grants Pro access after independently confirming a successful payment with the provider. If a payment fails, is cancelled, or times out, you are not charged and Pro is not granted — nothing further is needed on your end.</p>
+
+      <h2>6. Chargebacks</h2>
+      <p>If you have an issue with a payment, please contact us first — we're happy to resolve billing problems directly. Filing a chargeback without contacting us first can delay a resolution.</p>
+
+      <h2>7. Changes to This Policy</h2>
+      <p>We may update this policy as SpeakUp's payment options change. We'll update the "Last updated" date above when we do.</p>
+
+      <h2>8. Contact</h2>
+      <p>Questions about a payment or refund? Email <a href="mailto:{{SUPPORT_EMAIL}}">{{SUPPORT_EMAIL}}</a>.</p>
+
+      <div class="note">
+        This page is provided for general information and is not a substitute for legal advice.
+      </div>
+    </div>
+  </div>
+</body>
+</html>
