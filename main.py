@@ -1164,13 +1164,17 @@ def zaincash_callback(order_id: str = "", session: Session = Depends(get_session
 
 
 @app.get("/api/billing/zaincash/debug")
-def zaincash_debug(transaction_id: str, admin: User = Depends(require_admin)):
+def zaincash_debug(user: User = Depends(get_current_user)):
     """
-    TEMPORARY debug helper (admin-only) — calls the Inquiry API directly and
-    returns the raw response so we can see exactly why a transaction isn't
-    being recognized as SUCCESS, instead of the silently-swallowed None from
+    TEMPORARY debug helper — calls the Inquiry API directly for the CALLING
+    user's own last transaction only (no cross-user data exposure) and
+    returns the raw response so we can see exactly why it isn't being
+    recognized as SUCCESS, instead of the silently-swallowed None from
     zaincash_inquiry(). Safe to delete once ZainCash integration is verified.
     """
+    transaction_id = user.zaincash_transaction_id
+    if not transaction_id:
+        return {"error": "no zaincash_transaction_id on this user"}
     try:
         token = get_zaincash_token()
     except requests.RequestException as e:
