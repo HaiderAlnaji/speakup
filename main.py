@@ -1110,7 +1110,8 @@ def zaincash_checkout(request: Request,
         # what made the first bad request hard to diagnose without digging
         # through Render's logs.
         raise HTTPException(502, f"ZainCash rejected the request ({resp.status_code}): {resp.text[:500]}")
-    data = resp.json().get("data", {})
+    body = resp.json()
+    data = body.get("data", body)  # some responses may not nest under "data"
 
     # Save the transaction id now so the callback (and the /sync fallback
     # below) can look it up and confirm the real status via the Inquiry API.
@@ -1118,7 +1119,13 @@ def zaincash_checkout(request: Request,
     session.add(user)
     session.commit()
 
-    return {"redirect_url": data.get("redirectUrl") or data.get("url")}
+    redirect_url = (data.get("redirectUrl") or data.get("url") or data.get("checkoutUrl")
+                     or data.get("redirect_url") or data.get("paymentUrl") or data.get("link"))
+    if not redirect_url:
+        # None of the known field names matched — surface the exact response
+        # so this is fixable from the error message alone, not a guessing game.
+        raise HTTPException(502, f"ZainCash didn't return a redirect URL. Raw response: {_json.dumps(body)[:800]}")
+    return {"redirect_url": redirect_url}
 
 
 def _confirm_and_grant_zaincash(order_id: str, session: Session) -> bool:
