@@ -415,6 +415,7 @@ LESSONS = [
 ]
 
 LESSON_BY_ID = {lesson["id"]: lesson for lesson in LESSONS}
+SHADOW_BY_ID = {cat["id"]: cat for cat in SHADOW_CATEGORIES}
 
 
 # ----------------------------------------------------------------------
@@ -844,10 +845,15 @@ def list_shadow_categories(user: User = Depends(get_current_user)):
 @app.post("/api/practice")
 def save_practice(data: PracticeIn, user: User = Depends(get_current_user),
                   session: Session = Depends(get_session)):
+    # data.lesson_id is either a real lesson ID or a Shadow Mode category ID
+    # (both live in the same string field — Shadow attempts count toward the
+    # same total-attempts/streak/best-score stats as lesson practice).
     lesson = LESSON_BY_ID.get(data.lesson_id)
-    if not lesson:
+    shadow_cat = SHADOW_BY_ID.get(data.lesson_id)
+    if not lesson and not shadow_cat:
         raise HTTPException(404, "Lesson not found.")
-    if lesson["is_premium"] and not user.is_premium:
+    is_premium_item = lesson["is_premium"] if lesson else shadow_cat["is_premium"]
+    if is_premium_item and not user.is_premium:
         raise HTTPException(403, "This is a premium lesson.")
     score = max(0, min(100, int(data.score)))
     attempt = Attempt(

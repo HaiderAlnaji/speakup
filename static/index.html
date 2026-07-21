@@ -783,7 +783,7 @@
           </div>
         </div>
 
-        <div class="mic-zone">
+        <div class="mic-zone" id="micZone">
           <button class="mic" id="micBtn" aria-label="Start recording">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
               stroke-linecap="round" stroke-linejoin="round">
@@ -1431,7 +1431,7 @@ async function loadDashboard(){
   $("aiOff").classList.toggle("hidden", sc.ai_ready);
   renderStats(prog);
   renderLessons(prog.best_by_lesson || {});
-  renderShadowGrid();
+  renderShadowGrid(prog.best_by_lesson || {});
   renderScenarios();
   renderHero();
   $("certReadyBanner").classList.toggle("hidden", !(sprint.state && sprint.state.finished));
@@ -1546,17 +1546,20 @@ function renderLessons(best){
   });
 }
 
-function renderShadowGrid(){
+function renderShadowGrid(best){
+  best = best || {};
   const grid = $("shadowGrid"); grid.innerHTML = "";
   shadowCats.forEach(cat => {
     const card = document.createElement("div");
     card.className = "card clickable";
+    const score = best[cat.id] || 0;
     card.innerHTML = `
       ${cat.locked ? '<span class="lock-tag">' + t("card.lockPro") + '</span>' : ''}
       <div class="lvl">${cat.level}</div>
       <h3 dir="ltr">${cat.title}</h3>
       <div class="meta">${cat.locked ? t("card.premiumCategory") : t("card.phrasesCount", {n: cat.phrases.length})}</div>
-      <div class="meta" style="margin-top:2px" dir="ltr">${cat.focus}</div>`;
+      <div class="meta" style="margin-top:2px" dir="ltr">${cat.focus}</div>
+      <div class="bar"><i style="width:${score}%"></i></div>`;
     card.onclick = () => cat.locked ? show("paywallView") : startShadow(cat);
     grid.appendChild(card);
   });
@@ -1843,9 +1846,14 @@ function renderPhrase(){
     $("shadowTip").textContent = "💡 " + (current.tips[index] || "");
     $("shadowTip").dir = "ltr";
     $("shadowZone").classList.remove("hidden");
+    // "Shadow it" already records + scores pronunciation in one action (see
+    // below), so the separate mic button would just be a confusing second
+    // way to do the same thing — hide it while in Shadow Mode.
+    $("micZone").classList.add("hidden");
   } else {
     $("shadowTip").classList.add("hidden");
     $("shadowZone").classList.add("hidden");
+    $("micZone").classList.remove("hidden");
   }
 
   if (isSessionMode()){
@@ -1973,11 +1981,22 @@ function resetMic(){
 // ---- SHADOW MODE: speak along with the native audio in real time, then
 // hear your own recording right next to it. No AI — just the browser's
 // built-in text-to-speech as the "native" model and the mic as the mirror.
+//
+// One tap now does THREE things at once, all from the same take:
+//   1. MediaRecorder captures raw audio, for the native-vs-yours playback.
+//   2. SpeechRecognition (the same engine the regular mic button uses)
+//      listens in parallel and produces a transcript.
+//   3. That transcript is scored with the exact same grade() function every
+//      other practice mode uses — same 0-100 score, same Pro word-by-word
+//      "Pronunciation Focus" highlighting for weak words. Shadow Mode gets
+//      real pronunciation feedback, not just an audio comparison.
 let shadowRecorder = null;
 let shadowBlobUrl = null;
+let shadowRec = null;   // the SpeechRecognition instance for this take
 
 function resetShadowUI(){
   if (shadowRecorder && shadowRecorder.state === "recording") shadowRecorder.stop();
+  if (shadowRec){ try { shadowRec.abort(); } catch(e){} shadowRec = null; }
   speechSynthesis.cancel();
   if (shadowBlobUrl){ URL.revokeObjectURL(shadowBlobUrl); shadowBlobUrl = null; }
   $("shadowPlayback").classList.add("hidden");
@@ -2008,10 +2027,35 @@ $("shadowRecordBtn").onclick = async () => {
     $("shadowRecordBtn").disabled = true;
     $("shadowRecordBtn").classList.add("recording");
     $("shadowRecordBtn").textContent = t("shadow.recording");
+    $("result").classList.remove("show");
+
+    // Score this same take, using speech recognition running alongside the
+    // recorder (not instead of it) — if the browser doesn't support it,
+    // Shadow Mode still works, it just skips the score/highlighting part.
+    shadowRec = null;
+    if (SR){
+      shadowRec = new SR();
+      shadowRec.lang = "en-US"; shadowRec.interimResults = false; shadowRec.maxAlternatives = 4;
+      shadowRec.onresult = (ev) => {
+        const alts = Array.from(ev.results[0]).map(a => a.transcript);
+        grade(alts);
+      };
+      shadowRec.onerror = () => { /* stayed silent — the audio comparison still works fine */ };
+      try { shadowRec.start(); } catch(e){ shadowRec = null; }
+    }
 
     const u = new SpeechSynthesisUtterance(currentPhraseText());
     u.lang = "en-US"; u.rate = 0.95;
-    u.onend = () => { if (shadowRecorder && shadowRecorder.state === "recording") shadowRecorder.stop(); };
+    u.onend = () => {
+      if (shadowRecorder && shadowRecorder.state === "recording") shadowRecorder.stop();
+      // Give speech recognition a beat to catch any trailing words before
+      // stopping it — it's listening for the same stretch of time as the
+      // native audio just played, plus a small buffer.
+      if (shadowRec){
+        const rec = shadowRec;
+        setTimeout(() => { try { rec.stop(); } catch(e){} }, 900);
+      }
+    };
     speechSynthesis.cancel();
     speechSynthesis.speak(u);
   } catch (e){
@@ -2094,8 +2138,10 @@ async function grade(alternatives){
   }
   $("result").classList.add("show");
 
-  // Free lessons save each attempt. Sprint days are saved once, at the end.
-  if (current.mode === "lesson"){
+  // Lesson and Shadow Mode attempts save each attempt (same endpoint — the
+  // server recognizes Shadow category IDs too). Sprint days save once, at
+  // the end, via their own separate endpoint.
+  if (current.mode === "lesson" || current.mode === "shadow"){
     try {
       await api("/api/practice","POST",{lesson_id: current.id, phrase_index: current.index,
                                         score: best, transcript: bestText});
