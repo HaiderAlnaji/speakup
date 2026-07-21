@@ -22,6 +22,7 @@ import hashlib
 import json as _json
 import re
 import time
+import uuid
 import datetime as dt
 from pathlib import Path
 from collections import defaultdict
@@ -102,6 +103,10 @@ ZAINCASH_BASE_URL = (
     else "https://pg-api-uat.zaincash.iq"
 )
 ZAINCASH_CONFIGURED = bool(ZAINCASH_CLIENT_ID and ZAINCASH_CLIENT_SECRET)
+# ZainCash's docs use "JAWS" as the example serviceType and describe it as
+# merchant-defined — override ZAINCASH_SERVICE_TYPE in your .env if your
+# business account was assigned a different value.
+ZAINCASH_SERVICE_TYPE = os.getenv("ZAINCASH_SERVICE_TYPE", "JAWS").strip()
 
 # Pro plan price. USD is display-only; PRO_PRICE_IQD is what ZainCash
 # actually charges. ~1,300 IQD = $1 as of mid-2026 — adjust in your .env
@@ -1077,6 +1082,9 @@ def zaincash_checkout(request: Request,
     if not ZAINCASH_CONFIGURED:
         raise HTTPException(503, "ZainCash is not configured on this server.")
 
+    # order_id is OUR tracking id (embeds the user id, see _confirm_and_grant_zaincash).
+    # externalReferenceId is a SEPARATE field ZainCash requires to be a UUID —
+    # conflating the two caused a 400 Bad Request the first time this was tested.
     order_id = f"speakup-{user.id}-{int(time.time())}"
     base = str(request.base_url).rstrip("/")
     token = get_zaincash_token()
@@ -1086,9 +1094,9 @@ def zaincash_checkout(request: Request,
         headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
         json={
             "language": "En",
-            "externalReferenceId": order_id,
+            "externalReferenceId": str(uuid.uuid4()),
             "orderId": order_id,
-            "serviceType": "SpeakUpPro",
+            "serviceType": ZAINCASH_SERVICE_TYPE,
             "amount": {"value": PRO_PRICE_IQD, "currency": "IQD"},
             "redirectUrls": {
                 "successUrl": f"{base}/api/billing/zaincash/callback?order_id={order_id}",
@@ -1097,7 +1105,11 @@ def zaincash_checkout(request: Request,
         },
         timeout=15,
     )
-    resp.raise_for_status()
+    if not resp.ok:
+        # Surface ZainCash's actual error body instead of a bare 500 — this is
+        # what made the first bad request hard to diagnose without digging
+        # through Render's logs.
+        raise HTTPException(502, f"ZainCash rejected the request ({resp.status_code}): {resp.text[:500]}")
     data = resp.json().get("data", {})
 
     # Save the transaction id now so the callback (and the /sync fallback
