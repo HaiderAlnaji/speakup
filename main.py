@@ -1093,7 +1093,7 @@ def zaincash_checkout(request: Request,
         f"{ZAINCASH_BASE_URL}/api/v2/payment-gateway/transaction/init",
         headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
         json={
-            "language": "En",
+            "language": "en",
             "externalReferenceId": str(uuid.uuid4()),
             "orderId": order_id,
             "serviceType": ZAINCASH_SERVICE_TYPE,
