@@ -123,7 +123,7 @@ PRO_PRICE_IQD = os.getenv("PRO_PRICE_IQD", "6500").strip()
 # conversations are all pre-written and translated, so the app works the
 # same for one user or a million.
 from content import (SENTENCE_BANK, CONVERSATIONS, CONVERSATION_BY_ID,
-                     SPRINT_CONVS)
+                     SPRINT_CONVS, SHADOW_CATEGORIES)
 
 # The learner's first language, for showing translations. Arabic is default.
 # Translations are baked into content.py per sentence/line.
@@ -778,6 +778,30 @@ def list_lessons(user: User = Depends(get_current_user)):
             "locked": locked,
             # Only send the actual phrases if the user is allowed to see them.
             "phrases": [] if locked else lesson["phrases"],
+        })
+    return out
+
+
+@app.get("/api/shadow")
+def list_shadow_categories(user: User = Depends(get_current_user)):
+    """
+    Shadow Mode: connected-speech/rhythm practice. Same free/Pro locking
+    pattern as /api/lessons — first two categories are free, the rest need
+    is_premium. Content lives in content.py (SHADOW_CATEGORIES); no AI, no
+    per-user cost, same as everything else in this app.
+    """
+    out = []
+    for cat in SHADOW_CATEGORIES:
+        locked = cat["is_premium"] and not user.is_premium
+        out.append({
+            "id": cat["id"],
+            "title": cat["title"],
+            "level": cat["level"],
+            "focus": cat["focus"],
+            "is_premium": cat["is_premium"],
+            "locked": locked,
+            "phrases": [] if locked else [p["en"] for p in cat["phrases"]],
+            "tips": [] if locked else [p["tip"] for p in cat["phrases"]],
         })
     return out
 
@@ -1507,6 +1531,9 @@ _TRANSLATION_LOOKUP = dict(LESSON_TRANSLATIONS)
 for _lvl in SENTENCE_BANK.values():
     for _s in _lvl:
         _TRANSLATION_LOOKUP[_s["en"]] = _s["ar"]
+for _cat in SHADOW_CATEGORIES:
+    for _p in _cat["phrases"]:
+        _TRANSLATION_LOOKUP[_p["en"]] = _p["ar"]
 for _c in CONVERSATIONS:
     for _node in _c["nodes"]:
         _TRANSLATION_LOOKUP[_node["npc"]["en"]] = _node["npc"]["ar"]

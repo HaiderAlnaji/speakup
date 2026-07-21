@@ -1088,3 +1088,117 @@ SPRINT_CONVS = {
                "🎉 لقد فعلتها. أربعة عشر يوماً من التحدث الحقيقي!", end=True),
         ]},
 }
+
+
+# ----------------------------------------------------------------------
+# 4) SHADOW MODE — connected-speech / rhythm training, no AI required
+# ----------------------------------------------------------------------
+# Correct grammar and vocabulary aren't what make learners sound non-native —
+# it's usually PROSODY: the rhythm, linking, and reductions native speakers
+# use automatically. "Shadowing" (speaking along WITH a recording, not after
+# it) is the classic technique interpreters and accent coaches use to train
+# exactly this, and it needs no AI: just a native-ish audio model (the
+# browser's own text-to-speech) and a mirror (the learner's own recording,
+# played back immediately for a direct before/after comparison).
+#
+# Each phrase carries a short "tip" explaining the real phonetic feature at
+# play (linking, flapping, reduction, stress-timing) — these are standard,
+# well-documented features of spoken English, not guesses.
+SHADOW_CATEGORIES = [
+    {
+        "id": "contractions",
+        "title": "Contractions in the Wild",
+        "level": "Beginner",
+        "is_premium": False,
+        "focus": "Casual reductions native speakers use even in everyday careful speech.",
+        "phrases": [
+            {"en": "What are you going to do this weekend?",
+             "ar": "ماذا ستفعل في نهاية هذا الأسبوع؟",
+             "tip": "\"going to\" naturally blends into \"gonna\" — try saying it fast, not word by word."},
+            {"en": "I want to try that new restaurant.",
+             "ar": "أريد تجربة ذلك المطعم الجديد.",
+             "tip": "\"want to\" blends into \"wanna\" in relaxed natural speech."},
+            {"en": "I have got to finish this today.",
+             "ar": "يجب أن أنهي هذا اليوم.",
+             "tip": "\"got to\" collapses into \"gotta\" — don't pronounce every letter."},
+            {"en": "Give me a minute, please.",
+             "ar": "أعطني دقيقة من فضلك.",
+             "tip": "\"give me\" often blends into \"gimme\" when spoken casually."},
+            {"en": "I kind of like it, actually.",
+             "ar": "يعجبني إلى حد ما في الواقع.",
+             "tip": "\"kind of\" reduces to \"kinda\" — the \"of\" almost disappears."},
+        ],
+    },
+    {
+        "id": "linking",
+        "title": "Linking Sounds Together",
+        "level": "Beginner",
+        "is_premium": False,
+        "focus": "English doesn't pause between words — the last sound and next word blend.",
+        "phrases": [
+            {"en": "Turn it off before you leave.",
+             "ar": "أطفئه قبل أن تغادر.",
+             "tip": "\"turn it\" links into one flowing sound — no gap between the words."},
+            {"en": "I need an umbrella today.",
+             "ar": "أحتاج مظلة اليوم.",
+             "tip": "\"need an\" links smoothly — the consonant slides straight into the vowel."},
+            {"en": "Check it out when you have time.",
+             "ar": "تحقق منه عندما يكون لديك وقت.",
+             "tip": "\"check it\" links together like one word."},
+            {"en": "Pick up your bag before we go.",
+             "ar": "احمل حقيبتك قبل أن نذهب.",
+             "tip": "\"pick up\" links — the two words flow into each other."},
+            {"en": "Wait a minute, please.",
+             "ar": "انتظر دقيقة من فضلك.",
+             "tip": "\"wait a\" links smoothly, almost like \"way-ta\"."},
+        ],
+    },
+    {
+        "id": "flap-t",
+        "title": "The American Flap T",
+        "level": "Intermediate",
+        "is_premium": True,
+        "focus": "In American English, a T between vowels softens into a quick \"d\" tap.",
+        "phrases": [
+            {"en": "Can you get me a bottle of water?",
+             "ar": "هل يمكنك إحضار زجاجة ماء لي؟",
+             "tip": "\"water\" and \"bottle\" both use the soft flap — the T sounds almost like a fast \"d\"."},
+            {"en": "That's a lot better than before.",
+             "ar": "هذا أفضل بكثير من ذي قبل.",
+             "tip": "\"better\" flaps its middle T into a quick, light \"d\" sound."},
+            {"en": "I'll meet you at the party later.",
+             "ar": "سأقابلك في الحفلة لاحقاً.",
+             "tip": "\"party\" and \"later\" both flap their T the same way."},
+            {"en": "What time is it right now?",
+             "ar": "كم الساعة الآن؟",
+             "tip": "before a consonant, \"what\"'s T often almost disappears entirely."},
+            {"en": "Let it go, it's not a big deal.",
+             "ar": "دعه يذهب، إنه ليس أمراً مهماً.",
+             "tip": "\"let it\" links and flaps together into one smooth sound."},
+        ],
+    },
+    {
+        "id": "stress-rhythm",
+        "title": "Sentence Stress & Rhythm",
+        "level": "Advanced",
+        "is_premium": True,
+        "focus": "English is stress-timed: key words are stretched and loud, small words rush by quiet and fast.",
+        "phrases": [
+            {"en": "I didn't say she stole the money.",
+             "ar": "لم أقل إنها سرقت المال.",
+             "tip": "stress falls on the meaning-carrying words — try leaning hard on \"didn't\", then \"stole\"."},
+            {"en": "I can't believe you did that.",
+             "ar": "لا أستطيع أن أصدق أنك فعلت ذلك.",
+             "tip": "stretch \"can't\" and \"believe\", then rush lightly through \"you did\"."},
+            {"en": "It's not what you think it is.",
+             "ar": "الأمر ليس كما تعتقد.",
+             "tip": "keep \"not\" and \"think\" strong and clear, let the small words fall away quietly."},
+            {"en": "She's the one who told me first.",
+             "ar": "هي من أخبرتني أولاً.",
+             "tip": "emphasize \"she's\" and \"first\" — glide quickly through the words in between."},
+            {"en": "That's exactly what I meant.",
+             "ar": "هذا بالضبط ما قصدته.",
+             "tip": "\"exactly\" carries the whole sentence — give it real weight and length."},
+        ],
+    },
+]

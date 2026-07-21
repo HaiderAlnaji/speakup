@@ -211,6 +211,14 @@
 
   .listen:active{transform:translateY(0) scale(.97)}
 
+  .shadow-tip{background:#FFF7E6;border:1px solid #F3D98B;color:#7A5A00;font-size:13.5px;
+    line-height:1.5;padding:12px 16px;border-radius:12px;max-width:480px;margin:0 auto 18px}
+  .shadow-zone{display:flex;flex-direction:column;align-items:center;gap:8px;margin-bottom:22px}
+  .shadow-hint{font-size:12px;color:var(--muted)}
+  .shadow-playback{display:flex;gap:10px;margin-top:4px}
+  .btn-sm.mini{padding:7px 14px;font-size:12.5px}
+  #shadowRecordBtn.recording{background:var(--danger);color:#fff;border-color:var(--danger)}
+
   .mic-zone{display:flex;flex-direction:column;align-items:center;gap:14px;margin:8px 0 6px}
   .mic{width:88px;height:88px;border-radius:50%;background:var(--brand-grad);color:#fff;
     display:grid;place-items:center;box-shadow:0 10px 30px rgba(15,180,166,.4);
@@ -645,6 +653,12 @@
       </div>
 
       <div class="grid anim-in-3" id="lessonGrid"></div>
+
+      <div class="page-head anim-in-3" style="margin-top:36px">
+        <h2>Shadow Mode</h2>
+        <p>Speak along WITH the recording, not after it — the fastest way to pick up native rhythm, linking, and reductions.</p>
+      </div>
+      <div class="grid anim-in-3" id="shadowGrid"></div>
     </div>
 
     <!-- Practice -->
@@ -713,6 +727,18 @@
         <div class="phrase-actions">
           <button class="listen" id="listenBtn">🔊 Listen</button>
           <button class="listen" id="phraseTrBtn">🌐 Translate</button>
+        </div>
+
+        <!-- Shadow Mode only: speak along with the audio in real time, then
+             hear your own recording right next to the native one. -->
+        <div class="shadow-tip hidden" id="shadowTip"></div>
+        <div class="shadow-zone hidden" id="shadowZone">
+          <button class="btn-sm outline" id="shadowRecordBtn">🎙️ Shadow it (speak along)</button>
+          <div class="shadow-hint">🎧 Best with headphones — play and speak at the exact same time.</div>
+          <div class="shadow-playback hidden" id="shadowPlayback">
+            <button class="btn-sm outline mini" id="playNativeBtn">🔊 Native</button>
+            <button class="btn-sm outline mini" id="playMineBtn">🎧 You</button>
+          </div>
         </div>
 
         <div class="mic-zone">
@@ -905,6 +931,7 @@ const API = "";                         // same origin as this page
 let token = localStorage.getItem("speakup_token") || null;
 let mode = "login";                     // "login" or "register"
 let lessons = [];
+let shadowCats = [];                    // Shadow Mode categories
 let current = null;                     // active practice session
 let sprint = null;                      // sprint data + state
 let scenarios = [];                     // scripted conversation scenarios
@@ -985,13 +1012,14 @@ function enterApp(user){
 }
 async function loadDashboard(){
   show("dashboard");
-  const [ls, prog, sp, sc] = await Promise.all([
-    api("/api/lessons"), api("/api/progress"), api("/api/sprint"), api("/api/scenarios")
+  const [ls, prog, sp, sc, sh] = await Promise.all([
+    api("/api/lessons"), api("/api/progress"), api("/api/sprint"), api("/api/scenarios"), api("/api/shadow")
   ]);
-  lessons = ls; sprint = sp; scenarios = sc.scenarios;
+  lessons = ls; sprint = sp; scenarios = sc.scenarios; shadowCats = sh;
   $("aiOff").classList.toggle("hidden", sc.ai_ready);
   renderStats(prog);
   renderLessons(prog.best_by_lesson || {});
+  renderShadowGrid();
   renderScenarios();
   renderHero();
   $("certReadyBanner").classList.toggle("hidden", !(sprint.state && sprint.state.finished));
@@ -1101,6 +1129,22 @@ function renderLessons(best){
       <div class="meta">${le.locked ? 'Premium lesson' : le.phrases.length + ' phrases'}</div>
       <div class="bar"><i style="width:${score}%"></i></div>`;
     card.onclick = () => le.locked ? show("paywallView") : startLesson(le);
+    grid.appendChild(card);
+  });
+}
+
+function renderShadowGrid(){
+  const grid = $("shadowGrid"); grid.innerHTML = "";
+  shadowCats.forEach(cat => {
+    const card = document.createElement("div");
+    card.className = "card clickable";
+    card.innerHTML = `
+      ${cat.locked ? '<span class="lock-tag">🔒 Pro</span>' : ''}
+      <div class="lvl">${cat.level}</div>
+      <h3>${cat.title}</h3>
+      <div class="meta">${cat.locked ? 'Premium category' : cat.phrases.length + ' phrases'}</div>
+      <div class="meta" style="margin-top:2px">${cat.focus}</div>`;
+    card.onclick = () => cat.locked ? show("paywallView") : startShadow(cat);
     grid.appendChild(card);
   });
 }
@@ -1253,6 +1297,16 @@ function startLesson(le){
   renderPhrase();
 }
 
+function startShadow(cat){
+  current = {mode: "shadow", id: cat.id, phrases: cat.phrases, tips: cat.tips, index: 0, scores: []};
+  showPracticeShell();
+  $("dayBanner").classList.add("hidden");
+  $("challengeBox").classList.add("hidden");
+  $("dots").classList.remove("hidden");
+  $("sessionBar").classList.add("hidden");
+  renderPhrase();
+}
+
 // ---- Sprint day: show the setup screen first, then start a timed session ----
 function startSprintDay(d){
   show("practiceView");
@@ -1368,6 +1422,16 @@ function renderPhrase(){
   $("result").classList.remove("show");
   $("phraseTr").classList.add("hidden");
   $("micHint").textContent = "Tap the mic and say the sentence";
+  resetShadowUI();
+
+  if (current.mode === "shadow"){
+    $("shadowTip").classList.remove("hidden");
+    $("shadowTip").textContent = "💡 " + (current.tips[index] || "");
+    $("shadowZone").classList.remove("hidden");
+  } else {
+    $("shadowTip").classList.add("hidden");
+    $("shadowZone").classList.add("hidden");
+  }
 
   if (isSessionMode()){
     $("nextBtn").textContent = "Next sentence →";
@@ -1389,10 +1453,11 @@ function currentPhraseText(){
 
 $("backBtn").onclick = () => {
   if (sessionTimer){ clearInterval(sessionTimer); sessionTimer = null; }
+  resetShadowUI();
   if (current && current.mode === "sprint-session") openSprint();
   else loadDashboard();
 };
-$("backBtn2").onclick = loadDashboard;
+$("backBtn2").onclick = () => { resetShadowUI(); loadDashboard(); };
 $("listenBtn").onclick = () => {
   const u = new SpeechSynthesisUtterance(currentPhraseText());
   u.lang = "en-US"; u.rate = 0.9;
@@ -1490,6 +1555,63 @@ function resetMic(){
     stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"></rect>
     <path d="M5 10a7 7 0 0 0 14 0"></path><line x1="12" y1="19" x2="12" y2="22"></line></svg>`;
 }
+
+// ---- SHADOW MODE: speak along with the native audio in real time, then
+// hear your own recording right next to it. No AI — just the browser's
+// built-in text-to-speech as the "native" model and the mic as the mirror.
+let shadowRecorder = null;
+let shadowBlobUrl = null;
+
+function resetShadowUI(){
+  if (shadowRecorder && shadowRecorder.state === "recording") shadowRecorder.stop();
+  speechSynthesis.cancel();
+  if (shadowBlobUrl){ URL.revokeObjectURL(shadowBlobUrl); shadowBlobUrl = null; }
+  $("shadowPlayback").classList.add("hidden");
+  $("shadowRecordBtn").disabled = false;
+  $("shadowRecordBtn").classList.remove("recording");
+  $("shadowRecordBtn").textContent = "🎙️ Shadow it (speak along)";
+}
+
+$("shadowRecordBtn").onclick = async () => {
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+    alert("Recording isn't supported in this browser."); return;
+  }
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({audio: true});
+    const chunks = [];
+    shadowRecorder = new MediaRecorder(stream);
+    shadowRecorder.ondataavailable = (e) => { if (e.data.size) chunks.push(e.data); };
+    shadowRecorder.onstop = () => {
+      stream.getTracks().forEach(t => t.stop());
+      if (shadowBlobUrl) URL.revokeObjectURL(shadowBlobUrl);
+      shadowBlobUrl = URL.createObjectURL(new Blob(chunks, {type: "audio/webm"}));
+      $("shadowPlayback").classList.remove("hidden");
+      $("shadowRecordBtn").disabled = false;
+      $("shadowRecordBtn").classList.remove("recording");
+      $("shadowRecordBtn").textContent = "🎙️ Shadow it again";
+    };
+    shadowRecorder.start();
+    $("shadowRecordBtn").disabled = true;
+    $("shadowRecordBtn").classList.add("recording");
+    $("shadowRecordBtn").textContent = "● Speak along now…";
+
+    const u = new SpeechSynthesisUtterance(currentPhraseText());
+    u.lang = "en-US"; u.rate = 0.95;
+    u.onend = () => { if (shadowRecorder && shadowRecorder.state === "recording") shadowRecorder.stop(); };
+    speechSynthesis.cancel();
+    speechSynthesis.speak(u);
+  } catch (e){
+    alert("Microphone access is needed to shadow along: " + e.message);
+  }
+};
+$("playNativeBtn").onclick = () => {
+  const u = new SpeechSynthesisUtterance(currentPhraseText());
+  u.lang = "en-US"; u.rate = 0.95;
+  speechSynthesis.cancel(); speechSynthesis.speak(u);
+};
+$("playMineBtn").onclick = () => {
+  if (shadowBlobUrl) new Audio(shadowBlobUrl).play();
+};
 
 // scoring: compare spoken text to the target sentence
 function normalize(s){ return s.toLowerCase().replace(/[^a-z0-9\s]/g,"").replace(/\s+/g," ").trim(); }
