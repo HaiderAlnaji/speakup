@@ -116,6 +116,33 @@ PRO_PRICE_USD = os.getenv("PRO_PRICE_USD", "4.99").strip()
 PRO_PRICE_IQD = os.getenv("PRO_PRICE_IQD", "6500").strip()
 
 # ----------------------------------------------------------------------
+# 1f. PAYMENTS — QiCard / "Pay with SuperQi" (a second, separate Iraqi
+# payment rail alongside ZainCash — reaches customers who hold a Qi Card
+# issued through Rafidain Bank or Rasheed Bank, a very large slice of
+# Iraq's banked population, e.g. government employees and pensioners)
+# ----------------------------------------------------------------------
+# Unlike ZainCash, QiCard doesn't publish self-serve sandbox credentials —
+# you request a Terminal ID + Basic Auth username/password from Qi Card's
+# merchant team (https://qi.iq/en/merchants/online-payment-gateway or
+# qicard@qi.iq) before this can be tested end-to-end. Their hosted checkout
+# page (the "formUrl" returned below) offers both card payment and "Pay
+# with SuperQi" (their QR/wallet method) — we don't choose between them,
+# QiCard's own page does.
+QICARD_TERMINAL_ID = os.getenv("QICARD_TERMINAL_ID", "").strip()
+QICARD_USERNAME = os.getenv("QICARD_USERNAME", "").strip()
+QICARD_PASSWORD = os.getenv("QICARD_PASSWORD", "").strip()
+QICARD_ENV = os.getenv("QICARD_ENV", "test").strip()   # "test" or "production"
+QICARD_BASE_URL = (
+    # NOTE: the production host isn't published in QiCard's public docs —
+    # confirm the real value with your Qi Card account manager once you
+    # have live credentials, and set QICARD_BASE_URL_OVERRIDE if it differs.
+    os.getenv("QICARD_BASE_URL_OVERRIDE", "").strip()
+    or ("https://api.qi.iq" if QICARD_ENV == "production"
+        else "https://uat-sandbox-3ds-api.qi.iq")
+)
+QICARD_CONFIGURED = bool(QICARD_TERMINAL_ID and QICARD_USERNAME and QICARD_PASSWORD)
+
+# ----------------------------------------------------------------------
 # 1b. CONTENT CONFIG  (everything is offline — no API, no keys, no limits)
 # ----------------------------------------------------------------------
 # SpeakUp runs entirely on built-in content (see content.py). There are no
@@ -151,6 +178,9 @@ class User(SQLModel, table=True):
     # each successful payment buys 30 days of Pro, tracked via pro_expires_at.
     zaincash_transaction_id: str | None = None
     pro_expires_at: dt.datetime | None = None
+    # QiCard (Pay with SuperQi) tracking — same one-time-purchase model as
+    # ZainCash, sharing the same pro_expires_at field.
+    qicard_payment_id: str | None = None
 
 
 class Attempt(SQLModel, table=True):
@@ -925,7 +955,7 @@ def upgrade(user: User = Depends(get_current_user),
     payment webhook (see /api/billing/webhook below). This prevents anyone
     from just calling this endpoint directly to get Pro for free.
     """
-    if PADDLE_CONFIGURED or ZAINCASH_CONFIGURED:
+    if PADDLE_CONFIGURED or ZAINCASH_CONFIGURED or QICARD_CONFIGURED:
         raise HTTPException(403, "Real payments are live — use the Upgrade "
                                  "button to check out.")
     user.is_premium = True
@@ -937,15 +967,31 @@ def upgrade(user: User = Depends(get_current_user),
 @app.get("/api/billing/config")
 def billing_config(user: User = Depends(get_current_user)):
     """
-    Tells the frontend how to open checkout, and which provider is live.
+    Tells the frontend how to open checkout, and which provider(s) are live.
     Only ever exposes PUBLIC values (safe in the browser) — secret keys
-    never leave the server. If both happened to be configured, Paddle wins;
-    in practice for SpeakUp it'll be ZainCash.
+    never leave the server.
+
+    Two DIFFERENT kinds of provider can be configured at once:
+      - Paddle: card-based, uses its own overlay SDK — mutually exclusive
+        with the local providers below (Paddle wins if somehow both are set,
+        since it targets a different audience — customers outside Iraq).
+      - Local Iraqi rails (ZainCash, QiCard): both can be configured
+        SIMULTANEOUSLY, since they reach different customers (ZainCash =
+        Zain mobile wallet; QiCard = Qi Card holders via Rafidain/Rasheed
+        Bank). The frontend shows one "Pay with X" button per local
+        provider that's configured.
     """
-    provider = "paddle" if PADDLE_CONFIGURED else ("zaincash" if ZAINCASH_CONFIGURED else "none")
+    local_providers = []
+    if ZAINCASH_CONFIGURED:
+        local_providers.append({"id": "zaincash", "label": "ZainCash"})
+    if QICARD_CONFIGURED:
+        local_providers.append({"id": "qicard", "label": "Qi Card / SuperQi"})
+
+    provider = "paddle" if PADDLE_CONFIGURED else (local_providers[0]["id"] if local_providers else "none")
     return {
         "configured": provider != "none",
         "provider": provider,
+        "local_providers": local_providers,
         "client_token": PADDLE_CLIENT_TOKEN if PADDLE_CONFIGURED else "",
         "price_id": PADDLE_PRICE_ID if PADDLE_CONFIGURED else "",
         "environment": PADDLE_ENV,
@@ -1227,6 +1273,158 @@ def zaincash_sync(user: User = Depends(get_current_user),
 # explicitly say the webhook is optional and the redirect above is enough
 # to go live; add a /api/billing/zaincash/webhook handler later if you want
 # faster confirmation for customers who don't get redirected back.
+
+
+# ----------------------------------------------------------------------
+# 6c. PAYMENTS — QiCard ("Pay with SuperQi")
+# ----------------------------------------------------------------------
+# A second, separate Iraqi payment rail alongside ZainCash. QiCard's REST
+# API mirrors the same shape: create a payment, redirect the browser to a
+# hosted formUrl, then confirm server-to-server before granting anything —
+# same security posture as zaincash_inquiry() above.
+def qicard_get_status(payment_id: str) -> str | None:
+    """
+    Calls QiCard's payment endpoint to get the authoritative status
+    (SUCCESS / FAILED / CREATED / AUTHENTICATION_FAILED) — never trust a
+    client-side redirect or webhook body alone; always re-check here first.
+    Returns None if the call itself failed (network error, bad credentials).
+    """
+    try:
+        resp = requests.get(
+            f"{QICARD_BASE_URL}/api/v1/payment/{payment_id}",
+            headers={"X-Terminal-Id": QICARD_TERMINAL_ID},
+            auth=(QICARD_USERNAME, QICARD_PASSWORD),
+            timeout=15,
+        )
+        resp.raise_for_status()
+        return resp.json().get("status")
+    except requests.RequestException:
+        return None
+
+
+@app.post("/api/billing/qicard/checkout")
+def qicard_checkout(request: Request,
+                     user: User = Depends(get_current_user),
+                     session: Session = Depends(get_session)):
+    """
+    Starts a QiCard payment. Creates a Payment on QiCard's side and returns
+    their hosted formUrl — the frontend sends the whole browser page there
+    (no overlay/iframe support, same as ZainCash). QiCard's own checkout
+    page offers both card entry AND "Pay with SuperQi" (QR/wallet), so we
+    never have to choose between them ourselves.
+    """
+    if not QICARD_CONFIGURED:
+        raise HTTPException(503, "QiCard is not configured on this server.")
+
+    base = str(request.base_url).rstrip("/")
+    resp = requests.post(
+        f"{QICARD_BASE_URL}/api/v1/payment",
+        headers={"X-Terminal-Id": QICARD_TERMINAL_ID, "Content-Type": "application/json"},
+        auth=(QICARD_USERNAME, QICARD_PASSWORD),
+        json={
+            "requestId": str(uuid.uuid4()),
+            "amount": float(PRO_PRICE_IQD),
+            "currency": "IQD",
+            "locale": "en_US",
+            # Embedding the user id directly here (rather than parsing it back
+            # out of an order-id string like the ZainCash integration has to)
+            # since QiCard's finishPaymentUrl is just a plain query string.
+            "finishPaymentUrl": f"{base}/api/billing/qicard/callback?user_id={user.id}",
+            "notificationUrl": f"{base}/api/billing/qicard/webhook",
+            "customerInfo": {"email": user.email, "accountId": str(user.id)},
+            "appChannel": False,   # this is a web checkout, not a mobile app
+        },
+        timeout=15,
+    )
+    if not resp.ok:
+        raise HTTPException(502, f"QiCard rejected the request ({resp.status_code}): {resp.text[:500]}")
+    body = resp.json()
+    payment_id = body.get("paymentId")
+    redirect_url = body.get("formUrl")
+    if not payment_id or not redirect_url:
+        raise HTTPException(502, f"QiCard didn't return a payment id/formUrl. Raw response: {_json.dumps(body)[:800]}")
+
+    user.qicard_payment_id = payment_id
+    session.add(user)
+    session.commit()
+    return {"redirect_url": redirect_url}
+
+
+def _confirm_and_grant_qicard(user_id: int, session: Session) -> bool:
+    """Looks up the user by id and grants Pro only if QiCard confirms SUCCESS."""
+    user = session.get(User, user_id)
+    if not user or not user.qicard_payment_id:
+        return False
+    if qicard_get_status(user.qicard_payment_id) != "SUCCESS":
+        return False
+    user.is_premium = True
+    user.subscription_status = "active"
+    user.pro_expires_at = dt.datetime.utcnow() + dt.timedelta(days=30)
+    session.add(user)
+    session.commit()
+    return True
+
+
+@app.get("/api/billing/qicard/callback")
+def qicard_callback(user_id: int = 0, session: Session = Depends(get_session)):
+    """
+    QiCard redirects the customer's browser here (finishPaymentUrl) once
+    they finish paying. Pro is only ever granted after independently
+    confirming the payment via qicard_get_status() — never from the
+    redirect alone, which anyone could otherwise forge just by visiting
+    this URL with a guessed user_id.
+    """
+    granted = _confirm_and_grant_qicard(user_id, session) if user_id else False
+    return RedirectResponse(url="/?paid=1" if granted else "/?upgrade=pending")
+
+
+@app.post("/api/billing/qicard/webhook")
+async def qicard_webhook(request: Request, session: Session = Depends(get_session)):
+    """
+    QiCard's notificationUrl webhook — fired server-to-server when a
+    payment's status changes. We couldn't confirm QiCard's exact webhook
+    signature-verification scheme (their docs page for it wasn't reachable
+    while building this), so rather than trust the webhook BODY at all, we
+    treat it purely as a low-latency trigger: pull out the paymentId it
+    mentions and independently re-verify status via our own authenticated
+    API call before granting anything. This is safe even with zero trust
+    in the payload's contents — same principle as the /sync fallback below.
+    """
+    try:
+        body = await request.json()
+    except Exception:
+        return {"received": True, "matched_user": False}
+    payment_id = body.get("paymentId") or body.get("payment_id")
+    if not payment_id:
+        return {"received": True, "matched_user": False}
+    user = session.exec(select(User).where(User.qicard_payment_id == payment_id)).first()
+    if not user:
+        return {"received": True, "matched_user": False}
+    if not user.is_premium and qicard_get_status(payment_id) == "SUCCESS":
+        user.is_premium = True
+        user.subscription_status = "active"
+        user.pro_expires_at = dt.datetime.utcnow() + dt.timedelta(days=30)
+        session.add(user)
+        session.commit()
+    return {"received": True}
+
+
+@app.post("/api/billing/qicard/sync")
+def qicard_sync(user: User = Depends(get_current_user),
+                 session: Session = Depends(get_session)):
+    """
+    Safety net for when the redirect back from QiCard doesn't fire (closed
+    tab, flaky connection, etc). The frontend calls this after returning
+    from checkout to re-check the user's own last payment.
+    """
+    if user.qicard_payment_id and not user.is_premium:
+        if qicard_get_status(user.qicard_payment_id) == "SUCCESS":
+            user.is_premium = True
+            user.subscription_status = "active"
+            user.pro_expires_at = dt.datetime.utcnow() + dt.timedelta(days=30)
+            session.add(user)
+            session.commit()
+    return {"is_premium": user.is_premium}
 
 
 # ----------------------------------------------------------------------

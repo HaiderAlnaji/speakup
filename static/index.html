@@ -505,6 +505,7 @@
     transition:filter .18s var(--ease),transform .15s var(--ease)}
   .btn-gold:hover{filter:brightness(1.05);transform:translateY(-1px)}
   .btn-gold:active{transform:translateY(0) scale(.98)}
+  .upgrade-options{display:flex;flex-direction:column;gap:10px;width:100%}
   .paywall .note{font-size:12px;color:#8089ad;margin-top:14px}
 </style>
 <!-- Paddle.js: does nothing until Paddle.Initialize() is called below, so
@@ -917,6 +918,7 @@
           <li>All Intermediate &amp; Advanced lessons</li>
         </ul>
         <button class="btn-gold" id="upgradeBtn">Upgrade to Pro</button>
+        <div class="upgrade-options hidden" id="upgradeOptions"></div>
         <div class="note" id="proNote">Demo mode: this unlocks instantly.</div>
       </div>
     </div>
@@ -1718,15 +1720,41 @@ async function refreshPriceDisplay(){
   try {
     const cfg = await getBillingCfg();
     $("proPrice").innerHTML = `$${cfg.price_usd}<small> / month</small>`;
-    if (cfg.provider === "zaincash"){
-      $("proPriceIqd").textContent = `≈ ${Number(cfg.price_iqd).toLocaleString()} IQD, charged via ZainCash`;
-      $("proNote").textContent = "Pay with your ZainCash wallet — no card needed.";
-    } else if (cfg.provider === "paddle"){
+    const localProviders = cfg.local_providers || [];
+    const opts = $("upgradeOptions");
+    opts.innerHTML = "";
+
+    if (cfg.provider === "paddle"){
       $("proPriceIqd").textContent = "";
       $("proNote").textContent = "Secure checkout powered by Paddle.";
+      $("upgradeBtn").classList.remove("hidden");
+      opts.classList.add("hidden");
+    } else if (localProviders.length > 1){
+      // More than one Iraqi payment rail is configured (e.g. ZainCash for
+      // mobile-wallet users, QiCard for Rafidain/Rasheed Bank Qi Card
+      // holders) — let the customer pick which one to pay with.
+      $("proPriceIqd").textContent = `≈ ${Number(cfg.price_iqd).toLocaleString()} IQD`;
+      $("proNote").textContent = "Choose how you'd like to pay:";
+      $("upgradeBtn").classList.add("hidden");
+      opts.classList.remove("hidden");
+      localProviders.forEach(p => {
+        const btn = document.createElement("button");
+        btn.className = "btn-gold";
+        btn.textContent = "Pay with " + p.label;
+        btn.onclick = () => startLocalCheckout(p.id, btn);
+        opts.appendChild(btn);
+      });
+    } else if (localProviders.length === 1){
+      const p = localProviders[0];
+      $("proPriceIqd").textContent = `≈ ${Number(cfg.price_iqd).toLocaleString()} IQD, charged via ${p.label}`;
+      $("proNote").textContent = `Pay with your ${p.label} — no card needed.`;
+      $("upgradeBtn").classList.remove("hidden");
+      opts.classList.add("hidden");
     } else {
       $("proPriceIqd").textContent = "";
       $("proNote").textContent = "Demo mode: this unlocks instantly.";
+      $("upgradeBtn").classList.remove("hidden");
+      opts.classList.add("hidden");
     }
   } catch(e){ /* leave the static defaults showing */ }
 }
@@ -1735,10 +1763,11 @@ $("upgradeBtn").onclick = async () => {
   $("upgradeBtn").disabled = true; $("upgradeBtn").textContent = "Loading…";
   try {
     const cfg = await getBillingCfg();
+    const localProviders = cfg.local_providers || [];
     if (cfg.provider === "paddle") {
       await startPaddleCheckout(cfg);
-    } else if (cfg.provider === "zaincash") {
-      await startZainCashCheckout();
+    } else if (localProviders.length === 1) {
+      await startLocalCheckout(localProviders[0].id, $("upgradeBtn"));
     } else {
       // Demo mode: no real payment provider configured on the server yet.
       await api("/api/upgrade","POST");
@@ -1748,14 +1777,22 @@ $("upgradeBtn").onclick = async () => {
   $("upgradeBtn").disabled = false; $("upgradeBtn").textContent = "Upgrade to Pro";
 };
 
-// ZainCash's checkout is a full-page redirect (no overlay/iframe support),
-// so we navigate the whole browser there and pick things back up when it
-// redirects back to /?paid=1 — see the app-init block near the bottom.
-async function startZainCashCheckout(){
-  $("upgradeBtn").textContent = "Opening checkout…";
-  const res = await api("/api/billing/zaincash/checkout", "POST");
-  if (!res.redirect_url) throw new Error("Could not start ZainCash checkout.");
-  window.location.href = res.redirect_url;
+// Every local (non-Paddle) provider follows the same shape: POST to
+// /api/billing/{provider}/checkout, get back a redirect_url, and send the
+// whole browser there (none of these support an embedded overlay/iframe).
+// We pick things back up when it redirects to /?paid=1 — see the app-init
+// block near the bottom.
+async function startLocalCheckout(providerId, btn){
+  const original = btn.textContent;
+  btn.disabled = true; btn.textContent = "Opening checkout…";
+  try {
+    const res = await api(`/api/billing/${providerId}/checkout`, "POST");
+    if (!res.redirect_url) throw new Error("Could not start checkout.");
+    window.location.href = res.redirect_url;
+  } catch(e){
+    alert(e.message);
+    btn.disabled = false; btn.textContent = original;
+  }
 }
 
 // Shared cleanup once the user is confirmed Pro, whichever path got them there.
@@ -2218,21 +2255,25 @@ $("topicInput").addEventListener("keydown", e => { if (e.key === "Enter") $("top
   try { const user = await api("/api/me"); enterApp(user); }
   catch { token = null; localStorage.removeItem("speakup_token"); return; }
 
-  // Returning from a full-page redirect checkout (ZainCash) or a Paddle
-  // successUrl fallback. Clean the URL either way so a refresh doesn't
-  // re-trigger this.
+  // Returning from a full-page redirect checkout (ZainCash, QiCard) or a
+  // Paddle successUrl fallback. Clean the URL either way so a refresh
+  // doesn't re-trigger this.
   const params = new URLSearchParams(window.location.search);
   if (params.has("paid") || params.has("upgrade")){
     const wasPaid = params.get("paid") === "1";
     history.replaceState(null, "", window.location.pathname);
+    // Belt-and-suspenders: ask the server to re-check the last transaction
+    // on EVERY local provider, in case the redirect landed before the
+    // payment was fully confirmed. Each sync endpoint is a no-op if that
+    // particular provider was never used, so calling both is harmless.
+    await Promise.allSettled([
+      api("/api/billing/zaincash/sync", "POST"),
+      api("/api/billing/qicard/sync", "POST"),
+    ]);
     try {
-      // Belt-and-suspenders: ask the server to re-check the last ZainCash
-      // transaction in case the redirect landed before the payment was
-      // fully confirmed.
-      await api("/api/billing/zaincash/sync", "POST");
       const me = await api("/api/me");
       if (me.is_premium) await onBecamePro();
-      else if (wasPaid) alert("Payment received — confirming with ZainCash, this can take a few seconds. Refresh shortly if Pro doesn't appear.");
+      else if (wasPaid) alert("Payment received — confirming with the payment provider, this can take a few seconds. Refresh shortly if Pro doesn't appear.");
     } catch(e){ /* ignore — user is still logged in either way */ }
   }
 })();

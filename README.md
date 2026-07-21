@@ -278,9 +278,12 @@ Squeezy, and Dodo Payments all refuse to onboard sellers registered in Iraq
 (it's on each of their unsupported-country lists — a banking/compliance
 restriction on their end, not something you can work around at signup). The
 route that actually works is **ZainCash**, Iraq's own mobile-wallet payment
-gateway, licensed by the Central Bank of Iraq. If your business is based
-somewhere Paddle *does* support, use the Paddle path below instead — the
-app supports both, and picks whichever one has credentials set.
+gateway, licensed by the Central Bank of Iraq — you can also add **QiCard**
+("Pay with SuperQi") alongside it to reach customers who hold a Qi Card
+issued via Rafidain Bank or Rasheed Bank instead. Both can run at the same
+time; the paywall shows one button per configured local provider. If your
+business is based somewhere Paddle *does* support, use the Paddle path
+below instead.
 
 ### ZainCash (Iraq-based businesses)
 ZainCash settles in **Iraqi Dinar (IQD) only** — customers pay via their
@@ -312,6 +315,34 @@ shows a USD price for reference, but the real charge is in IQD.
    buys 30 days of Pro (`pro_expires_at`), since ZainCash charges one-time
    transactions rather than running recurring subscriptions the way Paddle
    does.
+
+### QiCard / "Pay with SuperQi" (a second, separate Iraqi rail)
+QiCard's checkout page accepts both card payments and their SuperQi
+wallet/QR method — useful for reaching Qi Card holders (a large share of
+Iraq's banked population) separately from ZainCash's mobile-wallet users.
+
+1. **Contact Qi Card's merchant team** to request a Terminal ID and Basic
+   Auth username/password: https://qi.iq/en/merchants/online-payment-gateway
+   or email qicard@qi.iq. Unlike ZainCash, QiCard doesn't publish public
+   self-serve test credentials — you request them directly.
+2. **Add env vars** in Render (Environment tab):
+   ```
+   QICARD_TERMINAL_ID=...
+   QICARD_USERNAME=...
+   QICARD_PASSWORD=...
+   QICARD_ENV=test              (switch to "production" when ready to go live)
+   ```
+3. **How it works in this codebase**: `/api/billing/qicard/checkout` creates
+   a payment via QiCard's REST API and sends the customer to their hosted
+   `formUrl`. After they pay, `/api/billing/qicard/callback` (and a
+   `/api/billing/qicard/webhook` for async confirmation) independently
+   re-check the payment's status via QiCard's API before granting Pro —
+   never trusting the redirect or webhook body alone, same rule as ZainCash.
+   Each payment buys 30 days of Pro, sharing the same `pro_expires_at` field.
+4. **The production API host isn't published in QiCard's docs** — confirm
+   the real value with your account manager once you have live credentials,
+   and set it via `QICARD_BASE_URL_OVERRIDE` if it differs from the default
+   guess (`https://api.qi.iq`) in `main.py`.
 
 ### Paddle (for businesses based somewhere Paddle supports)
 Paddle is a "Merchant of Record" — it handles card charging, sales tax, and
@@ -346,10 +377,10 @@ first to confirm your business's country is eligible.
    whichever payout method it offers for your country.
 
 ### The one rule
-Only a verified payment (ZainCash's Inquiry API result, or Paddle's signed
-webhook) may ever set `is_premium = True`. Never trust the browser to tell
-you someone paid — that's exactly what `billing_test.py` exists to keep
-true for the Paddle path.
+Only a verified payment (ZainCash's or QiCard's own status-check API result,
+or Paddle's signed webhook) may ever set `is_premium = True`. Never trust
+the browser to tell you someone paid — that's exactly what `billing_test.py`
+exists to keep true for the Paddle path.
 
 ---
 
