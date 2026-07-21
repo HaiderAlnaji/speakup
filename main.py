@@ -26,6 +26,7 @@ import uuid
 import datetime as dt
 from pathlib import Path
 from collections import defaultdict
+from urllib.parse import urlparse, parse_qs
 
 from dotenv import load_dotenv
 
@@ -1113,18 +1114,27 @@ def zaincash_checkout(request: Request,
     body = resp.json()
     data = body.get("data", body)  # some responses may not nest under "data"
 
-    # Save the transaction id now so the callback (and the /sync fallback
-    # below) can look it up and confirm the real status via the Inquiry API.
-    user.zaincash_transaction_id = data.get("transactionId") or order_id
-    session.add(user)
-    session.commit()
-
     redirect_url = (data.get("redirectUrl") or data.get("url") or data.get("checkoutUrl")
                      or data.get("redirect_url") or data.get("paymentUrl") or data.get("link"))
     if not redirect_url:
         # None of the known field names matched — surface the exact response
         # so this is fixable from the error message alone, not a guessing game.
         raise HTTPException(502, f"ZainCash didn't return a redirect URL. Raw response: {_json.dumps(body)[:800]}")
+
+    # Save ZainCash's OWN transaction id so the callback (and the /sync
+    # fallback below) can confirm the real status via the Inquiry API.
+    # Their init response doesn't reliably expose it under "transactionId"
+    # (confirmed by testing: it caused the Inquiry API to reject our order_id
+    # with "Failed to convert 'referenceId'"), but the redirect URL always
+    # carries it as ?id=<uuid> — that's the one place we can trust.
+    parsed_id = parse_qs(urlparse(redirect_url).query).get("id", [None])[0]
+    user.zaincash_transaction_id = (
+        parsed_id or data.get("transactionId") or data.get("id")
+        or data.get("transaction_id") or order_id
+    )
+    session.add(user)
+    session.commit()
+
     return {"redirect_url": redirect_url}
 
 
@@ -1164,15 +1174,16 @@ def zaincash_callback(order_id: str = "", session: Session = Depends(get_session
 
 
 @app.get("/api/billing/zaincash/debug")
-def zaincash_debug(user: User = Depends(get_current_user)):
+def zaincash_debug(tx: str = "", user: User = Depends(get_current_user)):
     """
     TEMPORARY debug helper — calls the Inquiry API directly for the CALLING
-    user's own last transaction only (no cross-user data exposure) and
-    returns the raw response so we can see exactly why it isn't being
-    recognized as SUCCESS, instead of the silently-swallowed None from
-    zaincash_inquiry(). Safe to delete once ZainCash integration is verified.
+    user's own last transaction (or an explicit ?tx=<id> override, for
+    re-checking a specific past transaction while debugging) and returns the
+    raw response so we can see exactly why it isn't being recognized as
+    SUCCESS, instead of the silently-swallowed None from zaincash_inquiry().
+    Safe to delete once ZainCash integration is verified.
     """
-    transaction_id = user.zaincash_transaction_id
+    transaction_id = tx or user.zaincash_transaction_id
     if not transaction_id:
         return {"error": "no zaincash_transaction_id on this user"}
     try:
