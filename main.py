@@ -257,6 +257,11 @@ class User(SQLModel, table=True):
     # phrases today" dashboard banner. Compared against today's date so the
     # banner shows once per day instead of nagging on every page load.
     last_seen_phrase_day: str | None = None
+    # Optional learning goal ("travel" | "work" | "exam"), set from Account
+    # Settings. Purely a content-surfacing hint (see GOAL_TAGS) -- nothing
+    # is ever hidden based on it, matching this app's "no artificial limits"
+    # design. None means no preference / show everything unranked.
+    goal: str | None = None
 
 
 class Attempt(SQLModel, table=True):
@@ -1644,6 +1649,7 @@ def public_user(user: User) -> dict:
         "subscription_status": user.subscription_status,
         "pro_expires_at": user.pro_expires_at.isoformat() if user.pro_expires_at else None,
         "pro_provider": pro_provider,
+        "goal": user.goal,
     }
 
 
@@ -1882,6 +1888,26 @@ def update_profile(data: ProfileIn, request: Request,
     return public_user(user)
 
 
+class GoalIn(BaseModel):
+    goal: str | None = None
+
+
+@app.post("/api/account/goal")
+def update_goal(data: GoalIn, user: User = Depends(get_current_user),
+                session: Session = Depends(get_session)):
+    """Sets or clears the optional learning-goal hint (see GOAL_TAGS).
+    Never gates anything -- just changes which existing content is
+    flagged 'recommended' in /api/lessons and /api/scenarios."""
+    goal = (data.goal or "").strip() or None
+    if goal is not None and goal not in GOAL_IDS:
+        raise HTTPException(400, f"Unknown goal. Choose one of: {', '.join(sorted(GOAL_IDS))}.")
+    user.goal = goal
+    session.add(user)
+    session.commit()
+    session.refresh(user)
+    return public_user(user)
+
+
 @app.post("/api/account/password")
 def change_password(data: ChangePasswordIn, request: Request,
                      user: User = Depends(get_current_user), session: Session = Depends(get_session)):
@@ -2028,6 +2054,28 @@ def leaderboard(user: User = Depends(get_current_user), session: Session = Depen
         "my_rank": my_rank,
         "my_xp": xp_by_user.get(user.id, 0),
     }
+
+
+# ----------------------------------------------------------------------
+# 5b-2. GOAL PATHS — a lightweight content-surfacing hint, not a gate.
+# ----------------------------------------------------------------------
+# A user can optionally pick what they're learning English FOR (Account
+# Settings). Nothing is ever hidden or locked based on it -- that would cut
+# against this app's whole "no artificial limits" design. It just flags
+# the existing Lessons/Conversations that best match as "recommended" so
+# they surface first, and (for "exam") points at the two features best
+# suited to IELTS/TOEFL-style speaking: Voice Journal and "Drill any
+# topic", both of which train extended, unscripted, timed speech -- not
+# just short scripted exchanges.
+GOAL_IDS = {"travel", "work", "exam"}
+
+GOAL_TAGS = {
+    "travel": {"lessons": {"travel"}, "conversations": {"airport", "hotel", "directions"}},
+    "work":   {"lessons": {"business", "interview"},
+               "conversations": {"interview", "presentation", "negotiation", "complaint"}},
+    "exam":   {"lessons": {"business", "interview"},
+               "conversations": {"presentation", "negotiation"}},
+}
 
 
 # ----------------------------------------------------------------------
@@ -2198,6 +2246,8 @@ def get_leagues(user: User = Depends(get_current_user), session: Session = Depen
 @app.get("/api/lessons")
 def list_lessons(user: User = Depends(get_current_user)):
     """Free lessons are always unlocked. Premium lessons need is_premium."""
+    goal_tags = GOAL_TAGS.get(user.goal, {}) if user.goal else {}
+    recommended_ids = goal_tags.get("lessons", set())
     out = []
     for lesson in LESSONS:
         locked = lesson["is_premium"] and not user.is_premium
@@ -2209,6 +2259,8 @@ def list_lessons(user: User = Depends(get_current_user)):
             "locked": locked,
             # Only send the actual phrases if the user is allowed to see them.
             "phrases": [] if locked else lesson["phrases"],
+            # A hint, never a gate -- see GOAL_TAGS.
+            "recommended": lesson["id"] in recommended_ids,
         })
     return out
 
@@ -4210,20 +4262,26 @@ def translate(data: TranslateIn, user: User = Depends(get_current_user)):
 
 
 # ---- Scripted conversations (branching, no API) ----
-def _conv_public(c: dict, locked: bool) -> dict:
+def _conv_public(c: dict, locked: bool, recommended: bool = False) -> dict:
     """Scenario card info. Nodes are only sent when actually opened."""
     return {"id": c["id"], "title": c["title"], "level": c["level"],
             "emoji": c["emoji"], "is_premium": c["is_premium"], "locked": locked,
             "setting": "" if locked else c["setting"],
-            "goal": "" if locked else c["goal"]}
+            "goal": "" if locked else c["goal"],
+            # A learning-goal-path hint (see GOAL_TAGS) -- unrelated to the
+            # "goal" key above, which is this scenario's own in-story
+            # objective text and predates goal paths by a long way.
+            "recommended": recommended}
 
 
 @app.get("/api/scenarios")
 def list_scenarios(user: User = Depends(get_current_user)):
+    goal_tags = GOAL_TAGS.get(user.goal, {}) if user.goal else {}
+    recommended_ids = goal_tags.get("conversations", set())
     out = []
     for c in CONVERSATIONS:
         locked = c["is_premium"] and not user.is_premium
-        out.append(_conv_public(c, locked))
+        out.append(_conv_public(c, locked, recommended=c["id"] in recommended_ids))
     # ai_ready stays True so the frontend "conversations off" banner never shows.
     return {"ai_ready": True, "scenarios": out}
 

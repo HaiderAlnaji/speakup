@@ -368,6 +368,14 @@
     padding:5px 12px;border-radius:14px;border:1px solid transparent;transition:all .15s var(--ease)}
   .speed-btn:hover{color:var(--ink)}
   .speed-btn.active{background:var(--brand);color:#fff}
+  .settings-goal-sub{font-size:12.5px;color:var(--muted);margin:-6px 0 12px}
+  .goal-row{display:flex;flex-wrap:wrap;gap:8px}
+  .goal-btn{background:var(--surface-2);color:var(--ink);font-size:13px;font-weight:500;
+    padding:8px 14px;border-radius:16px;border:1.5px solid transparent;transition:all .15s var(--ease)}
+  .goal-btn:hover{border-color:var(--brand)}
+  .goal-btn.active{background:var(--brand);color:#fff}
+  .ww-badge,.rec-badge{display:inline-block;background:var(--brand);color:#fff;font-size:10.5px;
+    font-weight:700;padding:2px 8px;border-radius:10px;margin-inline-start:6px;vertical-align:middle}
 
   /* ---------- Timed practice session ---------- */
   .session-setup{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);
@@ -1350,6 +1358,22 @@
         <button class="btn-primary" id="saveProfileBtn" data-i18n="settings.saveProfile">Save profile</button>
       </div>
 
+      <!-- Learning goal: purely a content-surfacing hint (see GOAL_TAGS in
+           main.py) -- nothing is ever hidden or locked based on this,
+           it just flags the most relevant existing Lessons/Conversations
+           as "recommended" so they surface first. -->
+      <div class="settings-card">
+        <h3 data-i18n="settings.goalTitle">🎯 Learning goal</h3>
+        <p class="settings-goal-sub" data-i18n="settings.goalSub">Optional — we'll surface the content that fits best. Nothing else is hidden.</p>
+        <div class="goal-row">
+          <button class="goal-btn" id="goalTravelBtn" data-goal="travel" data-i18n="settings.goalTravel">✈️ Travel</button>
+          <button class="goal-btn" id="goalWorkBtn" data-goal="work" data-i18n="settings.goalWork">💼 Work</button>
+          <button class="goal-btn" id="goalExamBtn" data-goal="exam" data-i18n="settings.goalExam">📝 Exam prep (IELTS/TOEFL)</button>
+          <button class="goal-btn" id="goalNoneBtn" data-goal="" data-i18n="settings.goalNone">No preference</button>
+        </div>
+        <p class="settings-goal-sub hidden" id="goalExamTip" style="margin-top:10px" data-i18n="settings.goalExamTip">📝 For IELTS/TOEFL-style speaking, Voice Journal and "Drill any topic" on your dashboard are your best tools — both train extended, timed, unscripted speech, not just short scripted exchanges.</p>
+      </div>
+
       <div class="settings-card">
         <h3 data-i18n="settings.planTitle">Plan</h3>
         <div id="settingsPlanBody"></div>
@@ -1502,6 +1526,12 @@ const T = {
     "settings.displayName": "Display name", "settings.displayNamePh": "e.g. Haider",
     "settings.memberSince": "Member since", "settings.saveProfile": "Save profile",
     "settings.profileSaved": "Profile saved.",
+    "settings.goalTitle": "🎯 Learning goal",
+    "settings.goalSub": "Optional — we'll surface the content that fits best. Nothing else is hidden.",
+    "settings.goalTravel": "✈️ Travel", "settings.goalWork": "💼 Work",
+    "settings.goalExam": "📝 Exam prep (IELTS/TOEFL)", "settings.goalNone": "No preference",
+    "settings.goalExamTip": "📝 For IELTS/TOEFL-style speaking, Voice Journal and \"Drill any topic\" on your dashboard are your best tools — both train extended, timed, unscripted speech, not just short scripted exchanges.",
+    "goal.recommended": "🎯 Recommended",
     "settings.planTitle": "Plan", "settings.free": "Free", "settings.pro": "Pro",
     "settings.proAdmin": "Admin — full access", "settings.proPaddle": "Renews automatically via Paddle",
     "settings.proExpires": "Active until {date}",
@@ -1768,6 +1798,12 @@ const T = {
     "settings.displayName": "الاسم المعروض", "settings.displayNamePh": "مثال: حيدر",
     "settings.memberSince": "عضو منذ", "settings.saveProfile": "حفظ الملف الشخصي",
     "settings.profileSaved": "تم حفظ الملف الشخصي.",
+    "settings.goalTitle": "🎯 هدف التعلّم",
+    "settings.goalSub": "اختياري — سنُبرز المحتوى الأنسب لهدفك. لا شيء آخر مخفي.",
+    "settings.goalTravel": "✈️ السفر", "settings.goalWork": "💼 العمل",
+    "settings.goalExam": "📝 التحضير للاختبار (IELTS/TOEFL)", "settings.goalNone": "لا تفضيل",
+    "settings.goalExamTip": "📝 للتحدث بأسلوب IELTS/TOEFL، اليوميات الصوتية و\"تدرّب على أي موضوع\" في لوحتك الرئيسية هما أفضل أداتين — كلاهما يدرّبانك على كلام ممتد ومحدد بوقت وغير مُعد مسبقاً، لا مجرد حوارات قصيرة مكتوبة.",
+    "goal.recommended": "🎯 موصى به",
     "settings.planTitle": "الخطة", "settings.free": "مجاني", "settings.pro": "برو",
     "settings.proAdmin": "إداري — وصول كامل", "settings.proPaddle": "يتجدد تلقائياً عبر Paddle",
     "settings.proExpires": "نشط حتى {date}",
@@ -2656,15 +2692,24 @@ function renderStreak(prog){
   $("streakBest").textContent = longest > streak
     ? t("dash.best", {n: longest}) : t("dash.personalBest");
 }
+// Goal paths: a stable sort putting "recommended" items first (see
+// GOAL_TAGS in main.py) -- never hides anything, just reorders so the
+// content that fits the learner's chosen goal is the first thing they see.
+function sortByRecommended(items){
+  return items.map((item, i) => ({item, i}))
+    .sort((a, b) => (b.item.recommended - a.item.recommended) || (a.i - b.i))
+    .map(x => x.item);
+}
+
 function renderLessons(best){
   const grid = $("lessonGrid"); grid.innerHTML = "";
-  lessons.forEach(le => {
+  sortByRecommended(lessons).forEach(le => {
     const card = document.createElement("div");
     card.className = "card clickable";
     const score = best[le.id] || 0;
     card.innerHTML = `
       ${le.locked ? '<span class="lock-tag">' + t("card.lockPro") + '</span>' : ''}
-      <div class="lvl">${le.level}</div>
+      <div class="lvl">${le.level}${le.recommended ? '<span class="rec-badge">' + t("goal.recommended") + '</span>' : ''}</div>
       <h3 dir="ltr">${le.title}</h3>
       <div class="meta">${le.locked ? t("card.premiumLesson") : t("card.phrasesCount", {n: le.phrases.length})}</div>
       <div class="bar"><i style="width:${score}%"></i></div>`;
@@ -2721,11 +2766,37 @@ async function openSettings(){
     $("settingsMemberSince").textContent = new Date(user.member_since).toLocaleDateString();
     renderPlanSection(user);
     renderPasswordSection(user);
+    renderGoalSection(user);
   } catch(e){
     $("settingsMsg").className = "msg err";
     $("settingsMsg").textContent = e.message;
   }
 }
+
+// Learning goal: a content-surfacing hint only (see GOAL_TAGS in main.py).
+// Saves immediately on click -- no separate "save" button, same as the
+// speed/dictation toggles elsewhere in this app.
+const GOAL_BUTTON_IDS = ["goalTravelBtn", "goalWorkBtn", "goalExamBtn", "goalNoneBtn"];
+function renderGoalSection(user){
+  const active = user.goal || "";
+  GOAL_BUTTON_IDS.forEach(id => {
+    $(id).classList.toggle("active", $(id).dataset.goal === active);
+  });
+  $("goalExamTip").classList.toggle("hidden", active !== "exam");
+}
+GOAL_BUTTON_IDS.forEach(id => {
+  $(id).onclick = async () => {
+    const goal = $(id).dataset.goal || null;
+    try {
+      const user = await api("/api/account/goal", "POST", {goal});
+      currentUser = user;
+      renderGoalSection(user);
+    } catch(e){
+      $("settingsMsg").className = "msg err";
+      $("settingsMsg").textContent = e.message;
+    }
+  };
+});
 
 function renderPlanSection(user){
   const body = $("settingsPlanBody");
@@ -4077,13 +4148,13 @@ async function pollForProConfirmation(){
 
 function renderScenarios(){
   const grid = $("scenarioGrid"); grid.innerHTML = "";
-  scenarios.forEach(s => {
+  sortByRecommended(scenarios).forEach(s => {
     const card = document.createElement("div");
     card.className = "card clickable";
     card.innerHTML = `
       ${s.locked ? '<span class="lock-tag">' + t("card.lockPro") + '</span>' : ''}
       <div style="font-size:26px;line-height:1">${s.emoji}</div>
-      <div class="lvl" style="margin-top:8px">${s.level}</div>
+      <div class="lvl" style="margin-top:8px">${s.level}${s.recommended ? '<span class="rec-badge">' + t("goal.recommended") + '</span>' : ''}</div>
       <h3 dir="ltr">${s.title}</h3>
       <div class="meta" dir="ltr">${s.locked ? t("card.premiumConversation") : s.goal}</div>`;
     card.onclick = () => s.locked ? show("paywallView") : openConvById(s.id, s.emoji, s.title, null);
