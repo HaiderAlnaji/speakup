@@ -921,6 +921,16 @@ def progress(user: User = Depends(get_current_user),
         scores.append(a.score)
         active_days.add(a.created_at.date())
 
+    # XP: a simple, transparent points system (Duolingo-style), computed on
+    # the fly from existing data — same approach as the streak above, so
+    # there's no new column to migrate or keep in sync. 10 XP per practice
+    # attempt (lesson or Shadow Mode), +5 bonus for a strong (85%+) attempt,
+    # and 100 XP per completed Sprint day (a bigger milestone).
+    days_completed = session.exec(
+        select(DayCompletion).where(DayCompletion.user_id == user.id)
+    ).all()
+    xp = len(attempts) * 10 + sum(5 for a in attempts if a.score >= 85) + len(days_completed) * 100
+
     # Daily streak: walk back day by day from today while each day was active.
     today = dt.date.today()
     streak = 0
@@ -952,6 +962,7 @@ def progress(user: User = Depends(get_current_user),
         "practiced_today": today in active_days,
         "avg_score": round(sum(scores) / len(scores)) if scores else 0,
         "best_score": max(scores) if scores else 0,
+        "xp": xp,
     }
 
 

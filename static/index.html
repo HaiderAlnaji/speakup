@@ -123,6 +123,8 @@
   .topbar .user{display:flex;align-items:center;gap:12px;font-size:13.5px;color:var(--muted)}
   .badge-pro{background:var(--gold);color:#3a2600;font-weight:600;font-size:11px;
     padding:3px 9px;border-radius:20px;letter-spacing:.02em}
+  .badge-xp{background:#EAF6FF;color:#0B5C82;font-weight:600;font-size:11.5px;
+    padding:3px 10px;border-radius:20px;letter-spacing:.01em;white-space:nowrap}
   .btn-ghost{background:var(--surface-2);color:var(--ink);font-weight:500;font-size:13px;
     padding:7px 13px;border-radius:9px;transition:background .18s var(--ease),transform .15s var(--ease)}
   .btn-ghost:hover{background:#E9EDF6;transform:translateY(-1px)}
@@ -590,6 +592,7 @@
     </div>
     <div class="user">
       <span id="userEmail"></span>
+      <span id="xpBadge" class="badge-xp hidden">⭐ 0 XP</span>
       <span id="proBadge" class="badge-pro hidden">PRO</span>
       <button class="btn-ghost" id="langToggle">العربية</button>
       <button class="btn-ghost hidden" id="adminBtn" data-i18n="nav.admin">Admin</button>
@@ -676,6 +679,7 @@
         <div class="stat"><div class="num" id="statAttempts">0</div><div class="lbl" data-i18n="stat.totalAttempts">Total attempts</div></div>
         <div class="stat"><div class="num" id="statDone">0</div><div class="lbl" data-i18n="stat.lessonsStarted">Lessons started</div></div>
         <div class="stat"><div class="num" id="statBest">—</div><div class="lbl" data-i18n="stat.bestScore">Best score</div></div>
+        <div class="stat"><div class="num" id="statXp">0</div><div class="lbl" data-i18n="stat.xpEarned">XP earned</div></div>
       </div>
 
       <!-- Progress graph — Pro feature, shows a teaser to free users -->
@@ -1034,7 +1038,8 @@ const T = {
     "lessons.title": "Practice lessons",
     "lessons.sub": "Fixed phrases to warm up with. Pick a lesson, listen, then speak.",
     "stat.totalAttempts": "Total attempts", "stat.lessonsStarted": "Lessons started",
-    "stat.bestScore": "Best score",
+    "stat.bestScore": "Best score", "stat.xpEarned": "XP earned",
+    "xp.badge": "⭐ {n} XP",
     "progress.yourProgress": "Your progress",
     "progress.improving": "📈 Improving", "progress.declining": "📉 Slipping — practice more",
     "progress.steady": "→ Steady",
@@ -1187,7 +1192,8 @@ const T = {
     "lessons.title": "دروس تدريبية",
     "lessons.sub": "عبارات ثابتة للإحماء. اختر درساً، استمع، ثم تحدث.",
     "stat.totalAttempts": "مجموع المحاولات", "stat.lessonsStarted": "الدروس التي بدأتها",
-    "stat.bestScore": "أفضل نتيجة",
+    "stat.bestScore": "أفضل نتيجة", "stat.xpEarned": "نقاط الخبرة",
+    "xp.badge": "⭐ {n} XP",
     "progress.yourProgress": "تقدّمك",
     "progress.improving": "📈 في تحسّن", "progress.declining": "📉 تراجع — تدرّب أكثر",
     "progress.steady": "→ ثابت",
@@ -1463,6 +1469,11 @@ function renderStats(prog){
   $("statDone").textContent = Object.keys(best).length;
   const vals = Object.values(best);
   $("statBest").textContent = vals.length ? Math.max(...vals) + "%" : "—";
+  const xp = prog.xp || 0;
+  $("statXp").textContent = xp.toLocaleString();
+  const xpBadge = $("xpBadge");
+  xpBadge.textContent = t("xp.badge", {n: xp.toLocaleString()});
+  xpBadge.classList.remove("hidden");
   renderStreak(prog);
   loadProgressGraph();
 }
