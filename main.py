@@ -308,6 +308,30 @@ class PasswordReset(SQLModel, table=True):
     created_at: dt.datetime = Field(default_factory=dt.datetime.utcnow)
 
 
+class ReviewItem(SQLModel, table=True):
+    """
+    One row per (user, practiced item) — a simple Leitner-box spaced-
+    repetition schedule for Lessons + Shadow Mode phrases. Box 1 = due
+    again very soon; box 5 = "mastered," reviewed rarely. A strong score
+    (>=85) advances a box (longer gap); a weak one resets to box 1 (back
+    soon), so struggling phrases resurface sooner than ones already nailed.
+
+    item_id is "lesson:{lesson_id}:{phrase_index}" or
+    "shadow:{category_id}:{phrase_index}" — both stable, so a Timed Drill
+    sentence (a big shuffled bank, no stable per-sentence identity) or a
+    scripted conversation (branching dialogue, not a flashcard) never gets
+    tracked here — only the fixed practice content that's actually possible
+    to "finish" and needs a reason to resurface.
+    """
+    id: int | None = Field(default=None, primary_key=True)
+    user_id: int = Field(index=True)
+    item_id: str = Field(index=True)
+    box: int = 1
+    next_review_at: dt.datetime = Field(default_factory=dt.datetime.utcnow)
+    last_score: int = 0
+    updated_at: dt.datetime = Field(default_factory=dt.datetime.utcnow)
+
+
 # ----------------------------------------------------------------------
 # 1c. DATABASE — SQLite locally (zero setup), Postgres in production
 # ----------------------------------------------------------------------
@@ -1319,7 +1343,105 @@ def save_practice(data: PracticeIn, user: User = Depends(get_current_user),
     )
     session.add(attempt)
     session.commit()
+
+    # Every lesson/Shadow attempt also feeds the spaced-repetition schedule --
+    # unconditionally, even for free users, so a full review history already
+    # exists the moment someone upgrades (nothing to backfill).
+    kind = "lesson" if lesson else "shadow"
+    item_id = f"{kind}:{data.lesson_id}:{data.phrase_index}"
+    _upsert_review_item(user.id, item_id, score, session)
+
     return {"saved": True, "score": score}
+
+
+REVIEW_BOX_INTERVALS = {1: 1, 2: 3, 3: 7, 4: 14, 5: 30}   # box -> days until due again
+
+
+def _upsert_review_item(user_id: int, item_id: str, score: int, session: Session):
+    """
+    Reschedules one phrase's spot in its Leitner box after a practice
+    attempt. A strong score (>=85) advances a box (a longer wait before it's
+    due again); anything weaker resets to box 1 (due again very soon). The
+    first attempt at a phrase creates its row here.
+    """
+    existing = session.exec(
+        select(ReviewItem).where(ReviewItem.user_id == user_id, ReviewItem.item_id == item_id)
+    ).first()
+    box = min((existing.box + 1), 5) if (existing and score >= 85) else 1
+    next_at = dt.datetime.utcnow() + dt.timedelta(days=REVIEW_BOX_INTERVALS[box])
+
+    if existing:
+        existing.box = box
+        existing.next_review_at = next_at
+        existing.last_score = score
+        existing.updated_at = dt.datetime.utcnow()
+        session.add(existing)
+    else:
+        session.add(ReviewItem(user_id=user_id, item_id=item_id, box=box,
+                                next_review_at=next_at, last_score=score))
+    session.commit()
+
+
+def _resolve_review_item(item_id: str) -> dict | None:
+    """
+    Turns a stored item_id back into real, displayable phrase content.
+    Returns None if the source lesson/category or phrase index no longer
+    exists (e.g. content.py was edited after this row was created) so the
+    caller can just skip it rather than error.
+    """
+    kind, _, rest = item_id.partition(":")
+    source_id, _, idx_str = rest.rpartition(":")
+    try:
+        idx = int(idx_str)
+    except ValueError:
+        return None
+
+    if kind == "lesson":
+        lesson = LESSON_BY_ID.get(source_id)
+        if not lesson or idx >= len(lesson["phrases"]):
+            return None
+        return {"item_id": item_id, "source_id": source_id, "phrase_index": idx,
+                "en": lesson["phrases"][idx], "tip": "", "source_title": lesson["title"]}
+
+    if kind == "shadow":
+        cat = SHADOW_BY_ID.get(source_id)
+        if not cat or idx >= len(cat["phrases"]):
+            return None
+        phrase = cat["phrases"][idx]
+        return {"item_id": item_id, "source_id": source_id, "phrase_index": idx,
+                "en": phrase["en"], "tip": phrase.get("tip", ""), "source_title": cat["title"]}
+
+    return None
+
+
+@app.get("/api/review/due")
+def review_due(user: User = Depends(get_current_user), session: Session = Depends(get_session)):
+    """
+    Up to 20 phrases due for spaced-repetition review right now -- a Pro
+    perk, and a reason to come back once every Lesson/Shadow category has
+    already been finished once. due_count is the true total due (which may
+    exceed the 20 actually returned), so the dashboard badge stays accurate
+    even though one review session is capped at a manageable size.
+    """
+    if not user.is_premium:
+        raise HTTPException(403, "Spaced-repetition review is a Pro feature.")
+
+    now = dt.datetime.utcnow()
+    due_rows = session.exec(
+        select(ReviewItem)
+        .where(ReviewItem.user_id == user.id, ReviewItem.next_review_at <= now)
+        .order_by(ReviewItem.next_review_at)
+    ).all()
+
+    items = []
+    for row in due_rows:
+        resolved = _resolve_review_item(row.item_id)
+        if resolved:
+            items.append(resolved)
+        if len(items) >= 20:
+            break
+
+    return {"due_count": len(due_rows), "items": items}
 
 
 @app.get("/api/progress/history")

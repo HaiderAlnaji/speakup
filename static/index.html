@@ -696,6 +696,17 @@
         <button class="btn-gold" id="proExpiryRenewBtn" style="width:auto;padding:12px 24px" data-i18n="dash.renewNow">Renew now</button>
       </div>
 
+      <!-- Spaced-repetition review — Pro feature, only shown when phrases
+           are actually due (never nags with a zero count). -->
+      <div class="cert-ready hidden anim-in" id="reviewBanner">
+        <div class="cr-icon">🔁</div>
+        <div class="cr-body">
+          <div class="cr-title" id="reviewBannerTitle"></div>
+          <div class="cr-sub" data-i18n="review.bannerSub">A quick spaced-repetition review keeps old phrases from fading.</div>
+        </div>
+        <button class="btn-gold" id="reviewStartBtn" style="width:auto;padding:12px 24px" data-i18n="review.startBtn">Start review</button>
+      </div>
+
       <!-- Daily streak — the habit driver. Shows once they've practiced. -->
       <div class="streak-banner hidden anim-in" id="streakBanner">
         <div class="sb-flame" id="sbFlame">🔥</div>
@@ -1264,6 +1275,9 @@ const T = {
     "lb.teaserSub": "Pro members compete on a weekly XP leaderboard that resets every Monday.",
     "lb.yourRank": "You're #{n} this week", "lb.notRankedYet": "Practice today to join this week's board",
     "lb.empty": "No one's practiced yet this week — be the first!",
+    "review.bannerTitle": "{n} phrases ready for review",
+    "review.bannerSub": "A quick spaced-repetition review keeps old phrases from fading.",
+    "review.startBtn": "Start review",
     "shadow.title": "Shadow Mode",
     "shadow.sub": "Speak along WITH the recording, not after it — the fastest way to pick up native rhythm, linking, and reductions.",
     "card.premiumLesson": "Premium lesson", "card.premiumCategory": "Premium category",
@@ -1472,6 +1486,9 @@ const T = {
     "lb.teaserSub": "يتنافس أعضاء Pro على لوحة متصدرين أسبوعية لنقاط الخبرة تُصفَّر كل يوم اثنين.",
     "lb.yourRank": "أنت #{n} هذا الأسبوع", "lb.notRankedYet": "تدرّب اليوم لتنضم إلى لوحة هذا الأسبوع",
     "lb.empty": "لم يتدرّب أحد بعد هذا الأسبوع — كن الأول!",
+    "review.bannerTitle": "{n} عبارة جاهزة للمراجعة",
+    "review.bannerSub": "مراجعة سريعة بالتكرار المتباعد تمنع نسيان العبارات القديمة.",
+    "review.startBtn": "ابدأ المراجعة",
     "shadow.title": "وضع المحاكاة (Shadow Mode)",
     "shadow.sub": "تحدث بالتزامن مع التسجيل، لا بعده — أسرع طريقة لاكتساب الإيقاع الطبيعي والربط والاختصارات الصوتية.",
     "card.premiumLesson": "درس مميز", "card.premiumCategory": "فئة مميزة",
@@ -1943,6 +1960,7 @@ function renderStats(prog){
   renderStreak(prog);
   loadProgressGraph();
   loadLeaderboard();
+  loadReviewBanner();
 }
 
 async function loadProgressGraph(){
@@ -1992,6 +2010,23 @@ function renderLeaderboard(lb){
   });
 }
 $("lbUpgradeBtn").onclick = () => show("paywallView");
+
+// Only ever shown when phrases are actually due (due_count > 0) — never a
+// nagging "0 due" banner. Free users never fetch this at all.
+async function loadReviewBanner(){
+  const isPro = currentUser && currentUser.is_premium;
+  if (!isPro){ $("reviewBanner").classList.add("hidden"); return; }
+  try {
+    const r = await api("/api/review/due");
+    if (r.due_count > 0){
+      $("reviewBannerTitle").textContent = t("review.bannerTitle", {n: r.due_count});
+      $("reviewBanner").classList.remove("hidden");
+    } else {
+      $("reviewBanner").classList.add("hidden");
+    }
+  } catch(e){ $("reviewBanner").classList.add("hidden"); }
+}
+$("reviewStartBtn").onclick = () => startReview();
 
 function renderProgressGraph(h){
   const trendEl = $("pcTrend");
@@ -2354,6 +2389,29 @@ function startShadow(cat){
   renderPhrase();
 }
 
+// Spaced-repetition review: reuses the exact same practice-session UI as
+// startLesson/startShadow above (current.phrases + current.index), just
+// pulled from many different lessons/Shadow categories instead of one.
+// Each item still remembers its own original source_id/phrase_index so
+// grading can save the attempt back to the right place (see grade()).
+async function startReview(){
+  try {
+    const r = await api("/api/review/due");
+    if (!r.items.length){ loadDashboard(); return; }
+    current = {
+      mode: "review", items: r.items,
+      phrases: r.items.map(i => i.en), tips: r.items.map(i => i.tip || ""),
+      index: 0, scores: [],
+    };
+    showPracticeShell();
+    $("dayBanner").classList.add("hidden");
+    $("challengeBox").classList.add("hidden");
+    $("dots").classList.remove("hidden");
+    $("sessionBar").classList.add("hidden");
+    renderPhrase();
+  } catch(e){ alert(e.message); }
+}
+
 // ---- Sprint day: show the setup screen first, then start a timed session ----
 function startSprintDay(d){
   show("practiceView");
@@ -2473,18 +2531,26 @@ function renderPhrase(){
   resetShadowUI();
 
   if (current.mode === "shadow"){
-    $("shadowTip").classList.remove("hidden");
-    $("shadowTip").textContent = "💡 " + (current.tips[index] || "");
-    $("shadowTip").dir = "ltr";
     $("shadowZone").classList.remove("hidden");
     // "Shadow it" already records + scores pronunciation in one action (see
     // below), so the separate mic button would just be a confusing second
     // way to do the same thing — hide it while in Shadow Mode.
     $("micZone").classList.add("hidden");
   } else {
-    $("shadowTip").classList.add("hidden");
     $("shadowZone").classList.add("hidden");
     $("micZone").classList.remove("hidden");
+  }
+  // The tip line itself is shown a bit more broadly than the Shadow-specific
+  // recording zone above: Shadow Mode always has one, and a Review session
+  // shows one too whenever the due phrase happens to have come from Shadow
+  // Mode originally (review reuses the plain mic flow either way).
+  const tip = current.tips && current.tips[index];
+  if (current.mode === "shadow" || (current.mode === "review" && tip)){
+    $("shadowTip").classList.remove("hidden");
+    $("shadowTip").textContent = "💡 " + (tip || "");
+    $("shadowTip").dir = "ltr";
+  } else {
+    $("shadowTip").classList.add("hidden");
   }
 
   if (isSessionMode()){
@@ -2775,6 +2841,15 @@ async function grade(alternatives){
   if (current.mode === "lesson" || current.mode === "shadow"){
     try {
       await api("/api/practice","POST",{lesson_id: current.id, phrase_index: current.index,
+                                        score: best, transcript: bestText});
+    } catch(e){ /* saving is best-effort */ }
+  } else if (current.mode === "review"){
+    // Save back to the phrase's ORIGINAL lesson/Shadow source (not a
+    // "review" id — there's no such lesson) so /api/practice reschedules
+    // the very same spaced-repetition row this item came from.
+    const item = current.items[current.index];
+    try {
+      await api("/api/practice","POST",{lesson_id: item.source_id, phrase_index: item.phrase_index,
                                         score: best, transcript: bestText});
     } catch(e){ /* saving is best-effort */ }
   }
