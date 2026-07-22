@@ -283,6 +283,15 @@
   .journal-reward-sub{font-size:14px;color:var(--muted);margin:0 0 16px}
   .journal-comeback{background:var(--surface-2);border-radius:var(--radius);padding:12px;
     font-size:13px;color:var(--muted);margin-bottom:16px}
+
+  /* ---------- Words to Work On ---------- */
+  .ww-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line)}
+  .ww-row:last-child{border-bottom:none}
+  .ww-word{font-family:'Sora';font-weight:600;font-size:14px;min-width:74px}
+  .ww-bar{flex:1;height:6px;background:var(--surface-2);border-radius:3px;overflow:hidden}
+  .ww-bar i{display:block;height:100%;background:var(--danger);border-radius:3px}
+  .ww-count{font-size:12px;color:var(--muted);min-width:34px;text-align:right}
+  .weak-words-empty{font-size:13px;color:var(--muted);margin:4px 0 0}
   .pc-trend{font-size:12px;font-weight:600;padding:4px 10px;border-radius:20px}
   .pc-trend.improving{background:#E7F7EE;color:#1B6B42}
   .pc-trend.declining{background:#FDECEC;color:#B4292E}
@@ -948,6 +957,25 @@
         <button class="btn-sm solid" id="leaguesUpgradeBtn" data-i18n="progress.upgradeBtn">Upgrade to Pro</button>
       </div>
 
+      <!-- Words to Work On — aggregates the same per-word "weak" signal
+           Pronunciation Focus already shows live on a single attempt,
+           across a learner's entire history. Pro, like Pronunciation
+           Focus itself. -->
+      <div class="progress-card anim-in-2 hidden" id="weakWordsCard">
+        <div class="pc-head">
+          <h3 data-i18n="weakWords.title">🎯 Words to Work On</h3>
+        </div>
+        <div id="weakWordsList"></div>
+        <p class="weak-words-empty hidden" id="weakWordsEmpty" data-i18n="weakWords.empty">Practice a few more phrases with the mic — your focus words will show up here once a pattern appears.</p>
+      </div>
+      <div class="progress-teaser anim-in-2 hidden" id="weakWordsTeaser">
+        <div>
+          <b data-i18n="weakWords.teaserTitle">See which words trip you up</b>
+          <p data-i18n="weakWords.teaserSub">Pro members get a running list of the words they mispronounce most, tracked across every attempt.</p>
+        </div>
+        <button class="btn-sm solid" id="weakWordsUpgradeBtn" data-i18n="progress.upgradeBtn">Upgrade to Pro</button>
+      </div>
+
       <!-- Voice Journal — Pro-exclusive daily 60-second unscripted prompt.
            Unlike Lessons/Shadow there's no fixed target sentence, so the
            feedback is honest speaking metrics + a curated grammar catch,
@@ -1554,6 +1582,10 @@ const T = {
     "leagues.yourRank": "You're #{n} of {total} this week",
     "leagues.promoteNote": "Top 5 move up a league",
     "leagues.demoteNote": "Bottom 5 move down a league",
+    "weakWords.title": "🎯 Words to Work On",
+    "weakWords.teaserTitle": "See which words trip you up",
+    "weakWords.teaserSub": "Pro members get a running list of the words they mispronounce most, tracked across every attempt.",
+    "weakWords.empty": "Practice a few more phrases with the mic — your focus words will show up here once a pattern appears.",
     "spotlight.eyebrow": "✨ Daily Spotlight — Pro",
     "spotlight.cta": "Practice this",
     "review.bannerTitle": "{n} phrases ready for review",
@@ -1816,6 +1848,10 @@ const T = {
     "leagues.yourRank": "أنت #{n} من {total} هذا الأسبوع",
     "leagues.promoteNote": "أفضل 5 يصعدون دوري",
     "leagues.demoteNote": "أسوأ 5 ينزلون دوري",
+    "weakWords.title": "🎯 كلمات تحتاج إلى تحسين",
+    "weakWords.teaserTitle": "اكتشف الكلمات التي تصعب عليك",
+    "weakWords.teaserSub": "يحصل أعضاء Pro على قائمة مستمرة بالكلمات التي ينطقونها بشكل خاطئ غالباً، بمتابعة عبر كل محاولة.",
+    "weakWords.empty": "تدرّب على بضع عبارات أخرى باستخدام الميكروفون — ستظهر كلماتك التي تحتاج تركيزاً هنا بمجرد ظهور نمط واضح.",
     "spotlight.eyebrow": "✨ عبارة اليوم المميزة — Pro",
     "spotlight.cta": "تدرّب على هذه",
     "review.bannerTitle": "{n} عبارة جاهزة للمراجعة",
@@ -2329,6 +2365,7 @@ function renderStats(prog){
   loadProgressGraph();
   loadLeaderboard();
   loadLeagues();
+  loadWeakWords();
   loadReviewBanner();
   loadNewPhrasesBanner();
   loadSpotlight();
@@ -2444,6 +2481,36 @@ function renderLeagues(lg){
   }
 }
 $("leaguesUpgradeBtn").onclick = () => show("paywallView");
+
+// Words to Work On — aggregates the same per-word "weak" signal
+// Pronunciation Focus already shows live on a single attempt (see
+// wordWeakPoints() below), across a learner's entire attempt history.
+$("weakWordsUpgradeBtn").onclick = () => show("paywallView");
+async function loadWeakWords(){
+  const isPro = currentUser && currentUser.is_premium;
+  $("weakWordsCard").classList.toggle("hidden", !isPro);
+  $("weakWordsTeaser").classList.toggle("hidden", !!isPro);
+  if (!isPro) return;
+  try {
+    const ww = await api("/api/progress/weak-words");
+    renderWeakWords(ww);
+  } catch(e){ $("weakWordsCard").classList.add("hidden"); }
+}
+function renderWeakWords(ww){
+  const list = $("weakWordsList"); list.innerHTML = "";
+  $("weakWordsEmpty").classList.toggle("hidden", ww.words.length > 0);
+  ww.words.forEach(w => {
+    const row = document.createElement("div"); row.className = "ww-row";
+    const word = document.createElement("span"); word.className = "ww-word"; word.dir = "ltr"; word.textContent = w.word;
+    const bar = document.createElement("div"); bar.className = "ww-bar";
+    const fill = document.createElement("i"); fill.style.width = Math.round(w.weak_ratio * 100) + "%";
+    bar.appendChild(fill);
+    const count = document.createElement("span"); count.className = "ww-count";
+    count.textContent = w.weak_count + "/" + w.total_count;
+    row.appendChild(word); row.appendChild(bar); row.appendChild(count);
+    list.appendChild(row);
+  });
+}
 
 // Only ever shown when phrases are actually due (due_count > 0) — never a
 // nagging "0 due" banner. Free users never fetch this at all.

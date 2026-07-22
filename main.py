@@ -2590,6 +2590,109 @@ def _resolve_review_item(item_id: str) -> dict | None:
     return None
 
 
+def _resolve_attempt_target(lesson_id: str, phrase_index: int) -> str | None:
+    """Same lesson-or-Shadow-category lookup /api/practice already does,
+    just returning the plain English text instead of validating a save."""
+    lesson = LESSON_BY_ID.get(lesson_id)
+    if lesson:
+        return lesson["phrases"][phrase_index] if phrase_index < len(lesson["phrases"]) else None
+    cat = SHADOW_BY_ID.get(lesson_id)
+    if cat:
+        return cat["phrases"][phrase_index]["en"] if phrase_index < len(cat["phrases"]) else None
+    return None
+
+
+# ---- Weak-word tracking: the exact per-word "weak/ok" signal Pronunciation
+# Focus already shows live on a single attempt (see wordWeakPoints() in the
+# frontend), ported to Python so it can be aggregated across a learner's
+# ENTIRE attempt history -- "which words do I keep mispronouncing" instead
+# of just "how did I do on this one phrase". Same normalize/levenshtein/
+# similarity math, same 60% weak threshold, so the two views never disagree.
+def _normalize_word(s: str) -> str:
+    s = s.lower()
+    s = re.sub(r"[^a-z0-9\s]", "", s)
+    s = re.sub(r"\s+", " ", s).strip()
+    return s
+
+
+def _levenshtein(a: str, b: str) -> int:
+    m, n = len(a), len(b)
+    d = [[0] * (n + 1) for _ in range(m + 1)]
+    for j in range(n + 1):
+        d[0][j] = j
+    for i in range(m + 1):
+        d[i][0] = i
+    for i in range(1, m + 1):
+        for j in range(1, n + 1):
+            cost = 0 if a[i - 1] == b[j - 1] else 1
+            d[i][j] = min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + cost)
+    return d[m][n]
+
+
+def _word_similarity(target: str, said: str) -> int:
+    t, s = _normalize_word(target), _normalize_word(said)
+    if not s:
+        return 0
+    dist = _levenshtein(t, s)
+    return round((1 - dist / max(len(t), len(s), 1)) * 100)
+
+
+def _word_weak_points(target: str, heard_text: str) -> list[dict]:
+    target_words = [w for w in target.split() if w]
+    heard_words = [w for w in _normalize_word(heard_text).split() if w]
+    out = []
+    for tw in target_words:
+        t_clean = _normalize_word(tw)
+        best = 0
+        for hw in heard_words:
+            best = max(best, _word_similarity(t_clean, hw))
+        out.append({"word": tw, "weak": best < 60})
+    return out
+
+
+@app.get("/api/progress/weak-words")
+def weak_words(user: User = Depends(get_current_user), session: Session = Depends(get_session)):
+    """
+    "Words to work on" -- a Pro feature, matching the live per-word
+    Pronunciation Focus feedback it's built from. Walks every attempt that
+    has a saved transcript, resolves its target phrase, and tallies how
+    often each word came back flagged "weak". Only surfaces words seen at
+    least twice AND weak at least half the time, so one rough take doesn't
+    brand a word a problem.
+    """
+    if not user.is_premium:
+        raise HTTPException(403, "Weak-word tracking is a Pro feature.")
+
+    attempts = session.exec(
+        select(Attempt).where(Attempt.user_id == user.id, Attempt.transcript != "")
+    ).all()
+
+    counts: dict[str, list[int]] = defaultdict(lambda: [0, 0])   # word -> [weak, total]
+    analyzed = 0
+    for a in attempts:
+        target = _resolve_attempt_target(a.lesson_id, a.phrase_index)
+        if not target:
+            continue
+        analyzed += 1
+        for wp in _word_weak_points(target, a.transcript):
+            key = _normalize_word(wp["word"])
+            if not key:
+                continue
+            counts[key][1] += 1
+            if wp["weak"]:
+                counts[key][0] += 1
+
+    words = [
+        {"word": word, "weak_count": weak, "total_count": total,
+         "weak_ratio": round(weak / total, 2)}
+        for word, (weak, total) in counts.items()
+        if total >= 2 and weak / total >= 0.5
+    ]
+    words.sort(key=lambda w: (w["weak_count"], w["weak_ratio"]), reverse=True)
+
+    return {"words": words[:10], "attempts_analyzed": analyzed}
+
+
 @app.get("/api/review/due")
 def review_due(user: User = Depends(get_current_user), session: Session = Depends(get_session)):
     """
