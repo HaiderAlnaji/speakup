@@ -429,17 +429,46 @@ What's actually in place:
   attackers can't discover which emails have accounts.
 - **Content is gated on the server.** Locked lessons and future Sprint days are
   never sent to the browser — "view source" reveals nothing.
+- **Password reset** uses a single-use, 1-hour-expiry token — see below.
 
 **Before real users:**
 - [ ] Strong `SECRET_KEY` from an env var (`render.yaml` generates one for you).
       Locally: `python -c "import secrets; print(secrets.token_hex(32))"`. Never commit `.env`.
 - [ ] **HTTPS** — Render gives it to you, and the mic requires it anyway.
 - [ ] Move to **PostgreSQL** (see §4) so data survives.
-- [ ] Add **email verification** and **password reset**.
+- [x] ~~Add password reset.~~ Done — see below. **Email verification** is still
+      a nice-to-have, not yet built.
 - [ ] Never use `--reload` in production.
 - [ ] Put **Cloudflare** in front for DDoS and bot filtering.
 - [ ] Keep packages patched: `pip list --outdated`.
 - [ ] Back up the database regularly.
+
+### Password reset ("Forgot password?")
+
+Click "Forgot password?" on the login screen → enter your email → get a reset
+link. The token is random (`secrets.token_urlsafe`), expires in 1 hour, and
+can only be used once.
+
+Until you set up email sending, this runs in **demo mode**: instead of an
+email landing in an inbox, `/api/forgot-password` hands the reset link
+straight back in its response and the login screen shows it as a clickable
+link. The flow is fully functional this way — you just have to copy/paste
+the link yourself instead of checking email.
+
+To send real emails, add these to your `.env` (see `env.example` for the
+full comment block):
+```
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USERNAME=you@gmail.com
+SMTP_PASSWORD=your-16-char-app-password
+PUBLIC_URL=https://speakup-h4k8.onrender.com
+```
+Any SMTP account works — a Gmail address with an
+[app password](https://myaccount.google.com/apppasswords), Zoho, Outlook, or
+the SMTP relay of a free-tier transactional service (Resend, Mailgun,
+SendGrid). No new Python package needed — it uses `smtplib` from the
+standard library.
 
 ---
 

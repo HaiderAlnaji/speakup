@@ -21,9 +21,12 @@ import hmac
 import hashlib
 import json as _json
 import re
+import secrets
+import smtplib
 import time
 import uuid
 import datetime as dt
+from email.message import EmailMessage
 from pathlib import Path
 from collections import defaultdict
 from urllib.parse import urlparse, parse_qs
@@ -67,6 +70,34 @@ ADMIN_EMAILS = {e.strip().lower() for e in os.getenv("ADMIN_EMAIL", "").split(",
 # to your first ADMIN_EMAIL so you don't have to set anything extra to get
 # started — set SUPPORT_EMAIL explicitly once you have a dedicated address.
 SUPPORT_EMAIL = os.getenv("SUPPORT_EMAIL", "").strip() or (sorted(ADMIN_EMAILS)[0] if ADMIN_EMAILS else "support@example.com")
+
+# ----------------------------------------------------------------------
+# 1c-2. EMAIL — for "forgot password" reset links
+# ----------------------------------------------------------------------
+# Uses plain SMTP (Python's built-in smtplib, no extra package to install).
+# Any SMTP account works: a Gmail address with an "app password"
+# (myaccount.google.com/apppasswords), Zoho, Outlook, or the SMTP relay of
+# a transactional service like Resend/Mailgun/SendGrid's free tier.
+#   SMTP_HOST=smtp.gmail.com
+#   SMTP_PORT=587
+#   SMTP_USERNAME=you@gmail.com
+#   SMTP_PASSWORD=your-16-char-app-password
+#   SMTP_FROM=you@gmail.com                 (optional, defaults to SMTP_USERNAME)
+# Until these are set, SpeakUp runs in DEMO MODE for password resets: instead
+# of emailing a link, /api/forgot-password hands the reset link straight back
+# in its response so you can still test (and use) the flow before setting up
+# real email sending.
+SMTP_HOST = os.getenv("SMTP_HOST", "").strip()
+SMTP_PORT = int(os.getenv("SMTP_PORT", "587") or "587")
+SMTP_USERNAME = os.getenv("SMTP_USERNAME", "").strip()
+SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "").strip()
+SMTP_FROM = os.getenv("SMTP_FROM", "").strip() or SMTP_USERNAME
+EMAIL_CONFIGURED = bool(SMTP_HOST and SMTP_USERNAME and SMTP_PASSWORD)
+
+# Used to build the absolute reset link in the email (e.g.
+# https://speakup-h4k8.onrender.com). Falls back to a same-origin relative
+# link if unset, which still works fine for the demo-mode response.
+PUBLIC_URL = os.getenv("PUBLIC_URL", "").strip().rstrip("/")
 
 # ----------------------------------------------------------------------
 # 1d. PAYMENTS — Paddle (Merchant of Record; supports payout via Payoneer,
@@ -227,6 +258,20 @@ class DayConvDone(SQLModel, table=True):
     sprint_id: str
     day_number: int
     completed_at: dt.datetime = Field(default_factory=dt.datetime.utcnow)
+
+
+class PasswordReset(SQLModel, table=True):
+    """
+    One row per "forgot password" request. The token is a long random
+    string (not guessable), expires in an hour, and can only be used once —
+    standard password-reset hygiene.
+    """
+    id: int | None = Field(default=None, primary_key=True)
+    user_id: int = Field(index=True)
+    token: str = Field(index=True, unique=True)
+    expires_at: dt.datetime
+    used: bool = False
+    created_at: dt.datetime = Field(default_factory=dt.datetime.utcnow)
 
 
 # ----------------------------------------------------------------------
@@ -632,6 +677,27 @@ def create_token(user_id: int) -> str:
     return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
 
 
+def send_password_reset_email(to_email: str, reset_link: str) -> None:
+    """
+    Plain SMTP send — no third-party email package needed. Only called when
+    EMAIL_CONFIGURED is True; callers should not call this otherwise.
+    """
+    msg = EmailMessage()
+    msg["Subject"] = "Reset your SpeakUp password"
+    msg["From"] = SMTP_FROM
+    msg["To"] = to_email
+    msg.set_content(
+        "We got a request to reset your SpeakUp password.\n\n"
+        f"Reset it here (valid for 1 hour): {reset_link}\n\n"
+        "If you didn't request this, you can safely ignore this email — "
+        "your password won't change."
+    )
+    with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=10) as server:
+        server.starttls()
+        server.login(SMTP_USERNAME, SMTP_PASSWORD)
+        server.send_message(msg)
+
+
 def _sync_admin_status(user: User, session: Session):
     """
     Keeps the stored admin flag in EXACT lockstep with ADMIN_EMAIL.
@@ -718,6 +784,15 @@ class AuthIn(BaseModel):
     password: str
 
 
+class ForgotPasswordIn(BaseModel):
+    email: str
+
+
+class ResetPasswordIn(BaseModel):
+    token: str
+    new_password: str
+
+
 class PracticeIn(BaseModel):
     lesson_id: str
     phrase_index: int
@@ -785,6 +860,74 @@ def login(data: AuthIn, request: Request, session: Session = Depends(get_session
     # Same error whether email or password is wrong (don't leak which one).
     if not user or not verify_password(data.password, user.hashed_password):
         raise HTTPException(401, "Wrong email or password.")
+    _sync_admin(user, session)
+    return {"token": create_token(user.id), "user": public_user(user)}
+
+
+@app.post("/api/forgot-password")
+def forgot_password(data: ForgotPasswordIn, request: Request,
+                     session: Session = Depends(get_session)):
+    """
+    Always returns the same generic message whether or not that email has
+    an account — so this endpoint can't be used to check who's registered.
+    The one exception is DEMO MODE (no SMTP configured yet): there, the
+    reset link is handed back directly in the response so you can still
+    test and use the flow before setting up real email sending.
+    """
+    rate_limit(request, "forgot-password", limit=5, window=300)
+    email = data.email.strip().lower()
+    user = session.exec(select(User).where(User.email == email)).first()
+
+    generic = {"sent": True,
+               "message": "If an account exists for that email, a reset link has been sent."}
+
+    if not user:
+        return generic  # don't reveal whether the email exists
+
+    token = secrets.token_urlsafe(32)
+    reset = PasswordReset(
+        user_id=user.id, token=token,
+        expires_at=dt.datetime.utcnow() + dt.timedelta(hours=1),
+    )
+    session.add(reset)
+    session.commit()
+
+    base = PUBLIC_URL or str(request.base_url).rstrip("/")
+    reset_link = f"{base}/?reset={token}"
+
+    if EMAIL_CONFIGURED:
+        try:
+            send_password_reset_email(user.email, reset_link)
+        except Exception:
+            # Don't leak SMTP errors to the client — just log server-side.
+            print(f"[forgot-password] failed to send reset email to {user.email}")
+        return generic
+
+    # Demo mode: no SMTP set up yet, so hand the link straight back.
+    return {"sent": True, "message": "Email isn't configured yet — here's your reset link:",
+            "demo_reset_link": reset_link}
+
+
+@app.post("/api/reset-password")
+def reset_password(data: ResetPasswordIn, request: Request,
+                    session: Session = Depends(get_session)):
+    rate_limit(request, "reset-password", limit=10, window=300)
+    if len(data.new_password) < 8:
+        raise HTTPException(400, "Password must be at least 8 characters.")
+
+    reset = session.exec(select(PasswordReset).where(PasswordReset.token == data.token)).first()
+    if not reset or reset.used or reset.expires_at < dt.datetime.utcnow():
+        raise HTTPException(400, "This reset link is invalid or has expired. Please request a new one.")
+
+    user = session.get(User, reset.user_id)
+    if not user:
+        raise HTTPException(400, "This reset link is invalid or has expired. Please request a new one.")
+
+    user.hashed_password = hash_password(data.new_password)
+    reset.used = True
+    session.add(user)
+    session.add(reset)
+    session.commit()
     _sync_admin(user, session)
     return {"token": create_token(user.id), "user": public_user(user)}
 

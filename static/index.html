@@ -116,6 +116,9 @@
   .btn-primary:disabled{opacity:.6;cursor:default;transform:none}
   .auth-toggle{text-align:center;font-size:14px;color:var(--muted);margin-top:18px}
   .auth-toggle button{background:none;color:var(--brand);font-weight:600;padding:0}
+  .auth-forgot{text-align:center;margin-top:12px}
+  .linklike{background:none;color:var(--muted);font-size:13px;padding:0;text-decoration:underline}
+  .linklike:hover{color:var(--brand)}
   .lang-toggle{position:absolute;top:18px;inset-inline-end:18px;background:var(--surface-2);
     color:var(--ink);font-size:12.5px;font-weight:600;padding:6px 12px;border-radius:20px}
   .auth-card{position:relative}
@@ -586,15 +589,18 @@
     <h1 id="authTitle" data-i18n="auth.welcomeBack">Welcome back</h1>
     <p class="auth-sub" id="authSub" data-i18n="auth.loginSub">Log in to keep practicing</p>
     <div id="authMsg" class="msg"></div>
-    <div class="field">
+    <div class="field" id="emailField">
       <label data-i18n="auth.emailLabel">Email</label>
       <input id="email" type="email" placeholder="you@email.com" autocomplete="email">
     </div>
-    <div class="field">
+    <div class="field" id="passwordField">
       <label data-i18n="auth.passwordLabel">Password</label>
       <input id="password" type="password" placeholder="At least 8 characters" data-i18n-ph="auth.passwordPh" autocomplete="current-password">
     </div>
     <button id="authBtn" class="btn-primary" data-i18n="auth.login">Log in</button>
+    <div class="auth-forgot" id="forgotLinkWrap">
+      <button id="forgotLinkBtn" class="linklike" data-i18n="auth.forgotPassword">Forgot password?</button>
+    </div>
     <div class="auth-toggle">
       <span id="toggleText" data-i18n="auth.newHere">New here?</span>
       <button id="toggleBtn" data-i18n="auth.createAnAccount">Create an account</button>
@@ -1035,6 +1041,16 @@ const T = {
     "auth.createAnAccount": "Create an account", "auth.emailLabel": "Email",
     "auth.passwordLabel": "Password", "auth.passwordPh": "At least 8 characters",
     "auth.fillBoth": "Please fill in both fields.",
+    "auth.forgotPassword": "Forgot password?",
+    "auth.forgotTitle": "Reset your password", "auth.forgotSub": "Enter your email and we'll send you a reset link.",
+    "auth.sendResetLink": "Send reset link", "auth.enterEmail": "Please enter your email.",
+    "auth.rememberPassword": "Remembered it?",
+    "auth.forgotSent": "If an account exists for that email, a reset link has been sent — check your inbox.",
+    "auth.demoResetLink": "Email isn't set up yet, so here's your reset link — click it below:",
+    "auth.resetTitle": "Set a new password", "auth.resetSub": "Choose a new password for your account.",
+    "auth.setNewPassword": "Set new password", "auth.newPasswordPh": "At least 8 characters",
+    "auth.resetSuccess": "Password updated — logging you in…",
+    "auth.invalidResetLink": "That reset link looks invalid. Please request a new one.",
     "nav.admin": "Admin", "nav.logout": "Log out", "nav.langToggle": "العربية",
     "dash.certReadyTitle": "Your certificate is ready!",
     "dash.certReadySub": "You completed all 14 days of the Sprint. Come see it.",
@@ -1200,6 +1216,16 @@ const T = {
     "auth.createAnAccount": "إنشاء حساب", "auth.emailLabel": "البريد الإلكتروني",
     "auth.passwordLabel": "كلمة المرور", "auth.passwordPh": "8 أحرف على الأقل",
     "auth.fillBoth": "يرجى تعبئة كلا الحقلين.",
+    "auth.forgotPassword": "نسيت كلمة المرور؟",
+    "auth.forgotTitle": "إعادة تعيين كلمة المرور", "auth.forgotSub": "أدخل بريدك الإلكتروني وسنرسل لك رابط إعادة التعيين.",
+    "auth.sendResetLink": "إرسال رابط إعادة التعيين", "auth.enterEmail": "يرجى إدخال بريدك الإلكتروني.",
+    "auth.rememberPassword": "تذكرتها؟",
+    "auth.forgotSent": "إذا كان هناك حساب بهذا البريد، تم إرسال رابط إعادة التعيين — تحقق من بريدك الوارد.",
+    "auth.demoResetLink": "البريد الإلكتروني غير مُفعّل بعد، إليك رابط إعادة التعيين — اضغط عليه أدناه:",
+    "auth.resetTitle": "تعيين كلمة مرور جديدة", "auth.resetSub": "اختر كلمة مرور جديدة لحسابك.",
+    "auth.setNewPassword": "تعيين كلمة المرور الجديدة", "auth.newPasswordPh": "8 أحرف على الأقل",
+    "auth.resetSuccess": "تم تحديث كلمة المرور — جارٍ تسجيل الدخول…",
+    "auth.invalidResetLink": "رابط إعادة التعيين هذا غير صالح. يرجى طلب رابط جديد.",
     "nav.admin": "الإدارة", "nav.logout": "تسجيل الخروج", "nav.langToggle": "English",
     "dash.certReadyTitle": "شهادتك جاهزة!",
     "dash.certReadySub": "أكملت الأيام الـ14 من السبرنت. تعال شاهدها.",
@@ -1396,6 +1422,10 @@ function setLang(lang){
     if (admin && !admin.classList.contains("hidden")) loadUserTable();
     const sprintView = $("sprintView");
     if (sprintView && !sprintView.classList.contains("hidden") && sprint && sprint.state && sprint.state.enrolled) renderSprintMain();
+  } else if (typeof renderAuthMode === "function") {
+    // Not logged in yet — re-render the auth card's current mode (login,
+    // register, forgot, or reset) so its text switches language too.
+    renderAuthMode();
   }
 }
 $("langToggle") && ($("langToggle").onclick = () => setLang(LANG === "ar" ? "en" : "ar"));
@@ -1425,32 +1455,107 @@ function show(view){
 }
 
 // ---- AUTH ----
-$("toggleBtn").onclick = () => {
-  mode = mode === "login" ? "register" : "login";
-  const login = mode === "login";
-  $("authTitle").textContent = login ? t("auth.welcomeBack") : t("auth.createAccount");
-  $("authSub").textContent   = login ? t("auth.loginSub") : t("auth.registerSub");
-  $("authBtn").textContent   = login ? t("auth.login") : t("auth.createAccountBtn");
-  $("toggleText").textContent= login ? t("auth.newHere") : t("auth.alreadyHave");
-  $("toggleBtn").textContent = login ? t("auth.createAnAccount") : t("auth.login");
+// mode is one of "login" | "register" | "forgot" | "reset".
+let resetToken = null;   // set when the page loads with ?reset=TOKEN
+
+function renderAuthMode(){
   $("authMsg").className = "msg";
+  if (mode === "login" || mode === "register"){
+    const login = mode === "login";
+    $("authTitle").textContent = login ? t("auth.welcomeBack") : t("auth.createAccount");
+    $("authSub").textContent   = login ? t("auth.loginSub") : t("auth.registerSub");
+    $("authBtn").textContent   = login ? t("auth.login") : t("auth.createAccountBtn");
+    $("toggleText").textContent= login ? t("auth.newHere") : t("auth.alreadyHave");
+    $("toggleBtn").textContent = login ? t("auth.createAnAccount") : t("auth.login");
+    $("emailField").classList.remove("hidden");
+    $("passwordField").classList.remove("hidden");
+    $("password").placeholder = t("auth.passwordPh");
+    $("forgotLinkWrap").classList.toggle("hidden", !login);
+    $("toggleText").parentElement.classList.remove("hidden");
+  } else if (mode === "forgot"){
+    $("authTitle").textContent = t("auth.forgotTitle");
+    $("authSub").textContent = t("auth.forgotSub");
+    $("authBtn").textContent = t("auth.sendResetLink");
+    $("emailField").classList.remove("hidden");
+    $("passwordField").classList.add("hidden");
+    $("forgotLinkWrap").classList.add("hidden");
+    $("toggleText").textContent = t("auth.rememberPassword");
+    $("toggleBtn").textContent = t("auth.login");
+    $("toggleText").parentElement.classList.remove("hidden");
+  } else if (mode === "reset"){
+    $("authTitle").textContent = t("auth.resetTitle");
+    $("authSub").textContent = t("auth.resetSub");
+    $("authBtn").textContent = t("auth.setNewPassword");
+    $("emailField").classList.add("hidden");
+    $("passwordField").classList.remove("hidden");
+    $("password").placeholder = t("auth.newPasswordPh");
+    $("forgotLinkWrap").classList.add("hidden");
+    $("toggleText").parentElement.classList.add("hidden");
+  }
+}
+
+$("forgotLinkBtn").onclick = () => { mode = "forgot"; renderAuthMode(); };
+
+$("toggleBtn").onclick = () => {
+  if (mode === "forgot" || mode === "reset"){
+    mode = "login";
+    resetToken = null;
+    history.replaceState(null, "", window.location.pathname);
+  } else {
+    mode = mode === "login" ? "register" : "login";
+  }
+  renderAuthMode();
 };
+
 $("authBtn").onclick = async () => {
   const email = $("email").value.trim();
   const password = $("password").value;
   const msg = $("authMsg");
   msg.className = "msg";
-  if (!email || !password){ msg.className="msg err"; msg.textContent=t("auth.fillBoth"); return; }
   $("authBtn").disabled = true;
   try {
-    const data = await api("/api/" + mode, "POST", {email, password});
-    token = data.token;
-    localStorage.setItem("speakup_token", token);
-    enterApp(data.user);
-  } catch(e){ msg.className="msg err"; msg.textContent = e.message; }
+    if (mode === "forgot"){
+      if (!email){ msg.className = "msg err"; msg.textContent = t("auth.enterEmail"); return; }
+      const data = await api("/api/forgot-password", "POST", {email});
+      msg.className = "msg ok";
+      if (data.demo_reset_link){
+        msg.innerHTML = t("auth.demoResetLink") + `<br><a href="${data.demo_reset_link}">${data.demo_reset_link}</a>`;
+      } else {
+        msg.textContent = t("auth.forgotSent");
+      }
+    } else if (mode === "reset"){
+      if (!password){ msg.className = "msg err"; msg.textContent = t("auth.fillBoth"); return; }
+      const data = await api("/api/reset-password", "POST", {token: resetToken, new_password: password});
+      msg.className = "msg ok";
+      msg.textContent = t("auth.resetSuccess");
+      token = data.token;
+      localStorage.setItem("speakup_token", token);
+      resetToken = null;
+      history.replaceState(null, "", window.location.pathname);
+      setTimeout(() => enterApp(data.user), 900);
+    } else {
+      if (!email || !password){ msg.className = "msg err"; msg.textContent = t("auth.fillBoth"); return; }
+      const data = await api("/api/" + mode, "POST", {email, password});
+      token = data.token;
+      localStorage.setItem("speakup_token", token);
+      enterApp(data.user);
+    }
+  } catch(e){ msg.className = "msg err"; msg.textContent = e.message; }
   $("authBtn").disabled = false;
 };
 [ "email","password" ].forEach(id => $(id).addEventListener("keydown", e => { if(e.key==="Enter") $("authBtn").click(); }));
+
+// If the page loaded from a reset-password email link (?reset=TOKEN), jump
+// straight into "set a new password" mode instead of the normal login form.
+(function checkForResetLink(){
+  const params = new URLSearchParams(window.location.search);
+  const tok = params.get("reset");
+  if (tok){
+    resetToken = tok;
+    mode = "reset";
+    renderAuthMode();
+  }
+})();
 
 $("logoutBtn").onclick = () => {
   token = null; localStorage.removeItem("speakup_token");
@@ -2825,6 +2930,9 @@ if ("serviceWorker" in navigator){
 
 // ---- auto-login if we already have a token ----
 (async () => {
+  // A password-reset link always wins — show the "set a new password" form
+  // even if there's a stale/valid session token sitting in localStorage.
+  if (resetToken) return;
   if (!token) return;
   try { const user = await api("/api/me"); enterApp(user); }
   catch { token = null; localStorage.removeItem("speakup_token"); return; }
