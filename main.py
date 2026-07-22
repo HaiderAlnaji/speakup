@@ -2251,7 +2251,18 @@ def _sprint_gated(user: User, sprint_def: dict, session: Session) -> bool:
     """True if this Sprint has a prerequisite (unlock_after) that isn't
     finished yet -- e.g. the Business Sprint stays gated until the Core
     Sprint is done, so there's something new to unlock after "finishing
-    everything," instead of dumping all content on day one."""
+    everything," instead of dumping all content on day one.
+
+    Admins always bypass this. The gate is a retention mechanic for real
+    subscribers; it should never block an admin's own testing. This matters
+    in practice: /api/admin/sprint/unlock-all deliberately does NOT
+    fake-complete a Sprint's days (you still practice each one for real --
+    see its docstring), so an admin who just unlocked the calendar hasn't
+    actually "finished" the prerequisite yet, and would otherwise stay
+    gated out of the very thing they're trying to test.
+    """
+    if user.is_admin:
+        return False
     unlock_after = sprint_def.get("unlock_after")
     if not unlock_after:
         return False
