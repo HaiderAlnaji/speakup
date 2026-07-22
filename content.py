@@ -2648,3 +2648,109 @@ SHADOW_CATEGORIES = [
         ],
     },
 ]
+
+
+# ----------------------------------------------------------------------
+# 6) VOICE JOURNAL — a daily 60-second unscripted prompt (Pro). Unlike
+#    Lessons/Shadow/Sentences, there is no fixed target sentence here, so
+#    there's nothing to Levenshtein-compare against for a pronunciation
+#    score. Instead the feedback is two honest, fully offline signals:
+#      1. Speaking metrics (word count, seconds spoken) computed straight
+#         from the transcript + recording timer — no scoring, just facts.
+#      2. A tiny, well-known ESL error pattern: Arabic-speaking (and most)
+#         learners very commonly "regularize" irregular English past-tense
+#         verbs ("drinked" instead of "drank", "goed" instead of "went").
+#         IRREGULAR_VERB_MISTAKES below is a curated, finite lookup of
+#         these -- deliberately NOT a general grammar checker (that would
+#         need a real NLP model/API this app doesn't use), just this one
+#         specific, well-documented, catchable mistake.
+# ----------------------------------------------------------------------
+
+JOURNAL_PROMPTS = [
+    {"en": "What did you do this morning? Talk for 60 seconds.",
+     "ar": "ماذا فعلت هذا الصباح؟ تحدث لمدة 60 ثانية.",
+     "hint_words": ["first", "then", "after that"]},
+    {"en": "Describe your favorite meal. Why do you like it?",
+     "ar": "صف وجبتك المفضلة. لماذا تحبها؟",
+     "hint_words": ["because", "my favorite", "tastes"]},
+    {"en": "Talk about your plans for this weekend.",
+     "ar": "تحدث عن خططك لعطلة نهاية الأسبوع.",
+     "hint_words": ["going to", "planning to", "first"]},
+    {"en": "Describe someone in your family.",
+     "ar": "صف أحد أفراد عائلتك.",
+     "hint_words": ["always", "usually", "because"]},
+    {"en": "What's the weather like today, and how does it make you feel?",
+     "ar": "كيف هو الطقس اليوم، وكيف يجعلك تشعر؟",
+     "hint_words": ["today", "because", "makes me feel"]},
+    {"en": "Talk about a place you'd like to visit someday.",
+     "ar": "تحدث عن مكان تود زيارته يوماً ما.",
+     "hint_words": ["would like to", "because", "someday"]},
+    {"en": "Describe your daily trip to work or school.",
+     "ar": "صف رحلتك اليومية إلى العمل أو الدراسة.",
+     "hint_words": ["first", "then", "usually"]},
+    {"en": "Why are you learning English? Talk about your goal.",
+     "ar": "لماذا تتعلم الإنجليزية؟ تحدث عن هدفك.",
+     "hint_words": ["because", "my goal", "in the future"]},
+    {"en": "Talk about a hobby you enjoy.",
+     "ar": "تحدث عن هواية تستمتع بها.",
+     "hint_words": ["I enjoy", "usually", "because"]},
+    {"en": "Describe your best friend.",
+     "ar": "صف صديقك المقرب.",
+     "hint_words": ["always", "since", "because"]},
+    {"en": "What did you eat for breakfast today?",
+     "ar": "ماذا تناولت في الفطور اليوم؟",
+     "hint_words": ["first", "then", "after that"]},
+    {"en": "Talk about a memorable trip you took.",
+     "ar": "تحدث عن رحلة لا تُنسى قمت بها.",
+     "hint_words": ["last year", "first", "then"]},
+    {"en": "Describe your job or what you're studying.",
+     "ar": "صف وظيفتك أو ما تدرسه.",
+     "hint_words": ["I work as", "every day", "usually"]},
+    {"en": "What do you usually do on weekends?",
+     "ar": "ماذا تفعل عادة في عطلة نهاية الأسبوع؟",
+     "hint_words": ["usually", "sometimes", "first"]},
+    {"en": "Talk about your favorite season and why you like it.",
+     "ar": "تحدث عن فصلك المفضل ولماذا تحبه.",
+     "hint_words": ["because", "I like", "during"]},
+    {"en": "Describe your home or neighborhood.",
+     "ar": "صف منزلك أو حيّك.",
+     "hint_words": ["there is", "near", "usually"]},
+    {"en": "What's a skill you'd like to learn?",
+     "ar": "ما هي المهارة التي تود تعلمها؟",
+     "hint_words": ["would like to", "because", "someday"]},
+    {"en": "Talk about a challenge you faced recently, and how it ended.",
+     "ar": "تحدث عن تحدٍ واجهته مؤخراً، وكيف انتهى.",
+     "hint_words": ["last week", "but", "finally"]},
+    {"en": "Describe your morning routine step by step.",
+     "ar": "صف روتينك الصباحي خطوة بخطوة.",
+     "hint_words": ["first", "then", "after that", "finally"]},
+    {"en": "What are you grateful for today?",
+     "ar": "ما الذي تشعر بالامتنان له اليوم؟",
+     "hint_words": ["because", "today", "grateful for"]},
+]
+
+# wrong regularized form -> (correct irregular past tense, base verb), used
+# to phrase "past tense of {base} is {correct}, not {wrong}". Lowercase,
+# matched as a whole word against the transcript (never a substring), so
+# it can never misfire on an unrelated real word.
+IRREGULAR_VERB_MISTAKES = {
+    "drinked": ("drank", "drink"), "goed": ("went", "go"), "eated": ("ate", "eat"),
+    "buyed": ("bought", "buy"), "runned": ("ran", "run"), "swimmed": ("swam", "swim"),
+    "teached": ("taught", "teach"), "catched": ("caught", "catch"),
+    "bringed": ("brought", "bring"), "thinked": ("thought", "think"),
+    "feeled": ("felt", "feel"), "finded": ("found", "find"), "maked": ("made", "make"),
+    "tooked": ("took", "take"), "seed": ("saw", "see"), "comed": ("came", "come"),
+    "getted": ("got", "get"), "writed": ("wrote", "write"), "speaked": ("spoke", "speak"),
+    "breaked": ("broke", "break"), "choosed": ("chose", "choose"), "knowed": ("knew", "know"),
+    "growed": ("grew", "grow"), "throwed": ("threw", "throw"), "flyed": ("flew", "fly"),
+    "drived": ("drove", "drive"), "sleeped": ("slept", "sleep"), "keeped": ("kept", "keep"),
+    "sended": ("sent", "send"), "builded": ("built", "build"), "telled": ("told", "tell"),
+    "selled": ("sold", "sell"), "standed": ("stood", "stand"),
+    "understanded": ("understood", "understand"), "weared": ("wore", "wear"),
+    "holded": ("held", "hold"), "leaved": ("left", "leave"), "meeted": ("met", "meet"),
+    "losed": ("lost", "lose"), "winned": ("won", "win"), "forgetted": ("forgot", "forget"),
+    "hided": ("hid", "hide"), "rided": ("rode", "ride"), "falled": ("fell", "fall"),
+    "feeded": ("fed", "feed"), "bited": ("bit", "bite"), "hurted": ("hurt", "hurt"),
+    "cutted": ("cut", "cut"), "sitted": ("sat", "sit"), "layed": ("laid", "lay"),
+    "shutted": ("shut", "shut"),
+}

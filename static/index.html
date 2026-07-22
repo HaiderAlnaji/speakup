@@ -253,6 +253,36 @@
   .atc-item:first-child{padding-top:0;border-top:none}
   .atc-sound{font-family:'Sora';font-size:13.5px;font-weight:700;color:var(--brand)}
   .atc-desc{font-size:13.5px;color:var(--muted);line-height:1.5}
+
+  /* ---------- Voice Journal ---------- */
+  .journal-streak-label{font-size:12.5px;font-weight:700;color:var(--brand)}
+  .journal-prompt-preview{font-size:14px;color:var(--muted);margin:2px 0 14px;line-height:1.4}
+  .journal-center{text-align:center}
+  .journal-label{font-size:13px;color:var(--muted);margin:0 0 4px}
+  .journal-prompt-text{font-family:'Sora';font-size:19px;font-weight:600;line-height:1.4;margin:0 0 16px}
+  .journal-hint{display:flex;gap:8px;align-items:center;background:var(--surface-2);border-radius:var(--radius);
+    padding:9px 13px;margin-bottom:18px;font-size:13px;color:var(--brand)}
+  .journal-start-btn{width:100%}
+  .journal-wave{display:flex;align-items:center;justify-content:center;gap:4px;height:48px;margin:0 auto 12px}
+  .journal-wave span{width:4px;border-radius:2px;background:var(--danger);transition:height .12s var(--ease)}
+  .journal-timer{font-family:monospace;font-size:26px;font-weight:600;margin:0 0 4px}
+  .journal-rec-hint{font-size:12.5px;color:var(--muted);margin:0 0 18px}
+  .journal-transcript{font-size:14.5px;line-height:1.6;margin:0 0 16px}
+  .journal-transcript .jt-mistake{background:#FFF3D6;color:#8a6412;padding:1px 4px;border-radius:4px}
+  .journal-stats{display:flex;gap:10px;margin-bottom:14px}
+  .journal-stat{flex:1;background:var(--surface-2);border-radius:var(--radius);padding:11px;text-align:center}
+  .journal-stat b{display:block;font-size:19px;font-weight:700;color:var(--ink)}
+  .journal-stat span{font-size:11px;color:var(--muted)}
+  .journal-tips{margin-bottom:16px}
+  .journal-tip{font-size:12.5px;padding:9px 12px;border-radius:var(--radius);margin-bottom:8px;line-height:1.5}
+  .journal-tip.grammar{background:#FFF3D6;color:#8a6412}
+  .journal-tip.encouragement{background:#E7F6EC;color:#1e6b3a}
+  .journal-reward-icon{width:56px;height:56px;border-radius:50%;background:var(--surface-2);
+    display:flex;align-items:center;justify-content:center;margin:0 auto 12px;font-size:28px}
+  .journal-reward-title{font-family:'Sora';font-size:19px;font-weight:700;margin:0 0 4px}
+  .journal-reward-sub{font-size:14px;color:var(--muted);margin:0 0 16px}
+  .journal-comeback{background:var(--surface-2);border-radius:var(--radius);padding:12px;
+    font-size:13px;color:var(--muted);margin-bottom:16px}
   .pc-trend{font-size:12px;font-weight:600;padding:4px 10px;border-radius:20px}
   .pc-trend.improving{background:#E7F7EE;color:#1B6B42}
   .pc-trend.declining{background:#FDECEC;color:#B4292E}
@@ -918,6 +948,27 @@
         <button class="btn-sm solid" id="leaguesUpgradeBtn" data-i18n="progress.upgradeBtn">Upgrade to Pro</button>
       </div>
 
+      <!-- Voice Journal — Pro-exclusive daily 60-second unscripted prompt.
+           Unlike Lessons/Shadow there's no fixed target sentence, so the
+           feedback is honest speaking metrics + a curated grammar catch,
+           never a fabricated pronunciation score. Its own streak, separate
+           from the main practice streak above. -->
+      <div class="progress-card anim-in-2 hidden" id="journalCard">
+        <div class="pc-head">
+          <h3 data-i18n="journal.title">🎙️ Voice Journal</h3>
+          <span class="journal-streak-label" id="journalStreakLabel"></span>
+        </div>
+        <p class="journal-prompt-preview" id="journalPromptPreview" dir="ltr"></p>
+        <button class="btn-sm solid" id="journalBtn"></button>
+      </div>
+      <div class="progress-teaser anim-in-2 hidden" id="journalTeaser">
+        <div>
+          <b data-i18n="journal.teaserTitle">Talk about your day, out loud</b>
+          <p data-i18n="journal.teaserSub">A new 60-second speaking prompt every day, with feedback and its own streak.</p>
+        </div>
+        <button class="btn-sm solid" id="journalUpgradeBtn" data-i18n="progress.upgradeBtn">Upgrade to Pro</button>
+      </div>
+
       <div class="grid anim-in-3" id="lessonGrid"></div>
 
       <div class="page-head anim-in-3" style="margin-top:36px">
@@ -1134,6 +1185,62 @@
       </div>
     </div>
 
+    <!-- Voice Journal: 4-screen daily flow (prompt -> recording -> playback
+         + feedback -> reward). No fixed target sentence to compare
+         pronunciation against, so Screen 3's "stats" are honest speaking
+         metrics (word count, seconds spoken) and its "tip" is a curated,
+         finite grammar catch -- never a fabricated score. -->
+    <div id="journalView" class="hidden">
+      <button class="back" id="backBtnJournal" data-i18n="back.home">← Home</button>
+
+      <div id="journalScreenPrompt">
+        <div class="progress-card">
+          <p class="journal-label" data-i18n="journal.todaysPrompt">Today's prompt</p>
+          <p class="journal-prompt-text" id="journalPromptText" dir="ltr"></p>
+          <div class="journal-hint" id="journalHintBox">
+            <span data-i18n="journal.tryToUse">Try to use:</span> <b id="journalHintWords" dir="ltr"></b>
+          </div>
+          <div class="unsupported hidden" id="journalUnsupported" data-i18n="mic.noSupport">Your browser doesn't support speech recognition. Try Chrome.</div>
+          <button class="btn-gold journal-start-btn" id="journalStartBtn" data-i18n="journal.startSpeaking">🎙️ Start speaking</button>
+        </div>
+      </div>
+
+      <div id="journalScreenRecording" class="hidden">
+        <div class="progress-card journal-center">
+          <div class="journal-wave" id="journalWave">
+            <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+          </div>
+          <p class="journal-timer" id="journalTimer">0:00</p>
+          <p class="journal-rec-hint" data-i18n="journal.recordingHint">Recording… tap to stop</p>
+          <button class="btn-sm outline" id="journalStopBtn" data-i18n="journal.stop">⏹ Stop</button>
+        </div>
+      </div>
+
+      <div id="journalScreenReview" class="hidden">
+        <div class="progress-card">
+          <audio controls id="journalAudioPlayer" style="width:100%;margin-bottom:16px"></audio>
+          <p class="journal-label" data-i18n="journal.yourTranscript">Your transcript</p>
+          <p class="journal-transcript" id="journalTranscriptText" dir="ltr"></p>
+          <div class="journal-stats">
+            <div class="journal-stat"><b id="journalWordCount"></b><span data-i18n="journal.words">words</span></div>
+            <div class="journal-stat"><b id="journalDuration"></b><span data-i18n="journal.spokeFor">spoke for</span></div>
+          </div>
+          <div class="journal-tips" id="journalTipsBox"></div>
+          <button class="btn-gold" id="journalFinishBtn" data-i18n="journal.finish">Finish</button>
+        </div>
+      </div>
+
+      <div id="journalScreenReward" class="hidden">
+        <div class="progress-card journal-center">
+          <div class="journal-reward-icon">🔥</div>
+          <p class="journal-reward-title" data-i18n="journal.complete">Journal complete</p>
+          <p class="journal-reward-sub" id="journalRewardSub"></p>
+          <div class="journal-comeback" data-i18n="journal.comeback">Come back tomorrow for a new prompt</div>
+          <button class="btn-sm outline" id="journalDoneBtn" data-i18n="back.home">← Home</button>
+        </div>
+      </div>
+    </div>
+
     <!-- Certificate -->
     <div id="certView" class="hidden">
       <button class="back" id="backBtn4" data-i18n="back.toSprint">← Back to the Sprint</button>
@@ -1297,6 +1404,7 @@
           <li data-i18n="paywall.perk5">Speaking Leagues — climb from Bronze to Speaker's Circle</li>
           <li data-i18n="paywall.perk6">Weekly leaderboard + spaced-repetition review</li>
           <li data-i18n="paywall.perk7">A daily Spotlight phrase, hand-picked each day</li>
+          <li data-i18n="paywall.perk8">Voice Journal — a daily 60-second speaking prompt with its own streak</li>
         </ul>
         <button class="btn-gold" id="upgradeBtn" data-i18n="paywall.upgradeBtn">Upgrade to Pro</button>
         <div class="upgrade-options hidden" id="upgradeOptions"></div>
@@ -1484,6 +1592,24 @@ const T = {
     "speed.label": "Speed", "speed.slow": "🐢 Slow", "speed.normal": "Normal", "speed.fast": "🐇 Fast",
     "dictation.toggleOff": "🎧 Dictation: Off", "dictation.toggleOn": "🎧 Dictation: On",
     "dictation.placeholder": "🎧 Listen first, then say what you heard",
+    "journal.title": "🎙️ Voice Journal",
+    "journal.teaserTitle": "Talk about your day, out loud",
+    "journal.teaserSub": "A new 60-second speaking prompt every day, with feedback and its own streak.",
+    "journal.start": "Start today's journal", "journal.doneToday": "✓ Done today — see it again",
+    "journal.streakLabel": "🔥 {n}-day journal streak",
+    "journal.todaysPrompt": "Today's prompt",
+    "journal.tryToUse": "Try to use:",
+    "journal.startSpeaking": "🎙️ Start speaking",
+    "journal.recordingHint": "Recording… tap to stop",
+    "journal.stop": "⏹ Stop",
+    "journal.yourTranscript": "Your transcript",
+    "journal.words": "words", "journal.spokeFor": "spoke for",
+    "journal.finish": "Finish",
+    "journal.complete": "Journal complete",
+    "journal.comeback": "Come back tomorrow for a new prompt",
+    "journal.noSpeechHeard": "(No speech was recognized — try again tomorrow.)",
+    "journal.rewardSub": "+20 XP · {n}-day journal streak",
+    "journal.alreadyDoneSub": "Already done for today · {n}-day journal streak",
     "shadow.recordDefault": "🎙️ Shadow it (speak along)", "shadow.recordAgain": "🎙️ Shadow it again",
     "shadow.recording": "● Speak along now…",
     "shadow.hint": "🎧 Best with headphones — play and speak at the exact same time.",
@@ -1563,6 +1689,7 @@ const T = {
     "paywall.perk5": "Speaking Leagues — climb from Bronze to Speaker's Circle",
     "paywall.perk6": "Weekly leaderboard + spaced-repetition review",
     "paywall.perk7": "A daily Spotlight phrase, hand-picked each day",
+    "paywall.perk8": "Voice Journal — a daily 60-second speaking prompt with its own streak",
     "paywall.upgradeBtn": "Upgrade to Pro", "paywall.loading": "Loading…",
     "paywall.demoMode": "Demo mode: this unlocks instantly.",
     "billing.oneTimeNote": "This is a one-time 30-day pass, not a subscription — it won't auto-renew or charge you again. Come back and pay once more anytime you want to keep going.",
@@ -1727,6 +1854,24 @@ const T = {
     "speed.label": "السرعة", "speed.slow": "🐢 بطيء", "speed.normal": "عادي", "speed.fast": "🐇 سريع",
     "dictation.toggleOff": "🎧 الإملاء: متوقف", "dictation.toggleOn": "🎧 الإملاء: مفعّل",
     "dictation.placeholder": "🎧 استمع أولاً، ثم قل ما سمعته",
+    "journal.title": "🎙️ اليوميات الصوتية",
+    "journal.teaserTitle": "تحدث عن يومك، بصوت عالٍ",
+    "journal.teaserSub": "تمرين تحدث جديد لمدة 60 ثانية كل يوم، مع ملاحظات وسلسلة أيام خاصة به.",
+    "journal.start": "ابدأ يوميات اليوم", "journal.doneToday": "✓ تم اليوم — شاهدها مرة أخرى",
+    "journal.streakLabel": "🔥 سلسلة {n} يوم",
+    "journal.todaysPrompt": "موضوع اليوم",
+    "journal.tryToUse": "حاول استخدام:",
+    "journal.startSpeaking": "🎙️ ابدأ التحدث",
+    "journal.recordingHint": "جارٍ التسجيل… اضغط للإيقاف",
+    "journal.stop": "⏹ إيقاف",
+    "journal.yourTranscript": "ما قلته",
+    "journal.words": "كلمة", "journal.spokeFor": "مدة الحديث",
+    "journal.finish": "إنهاء",
+    "journal.complete": "اكتملت اليوميات",
+    "journal.comeback": "عد غداً لموضوع جديد",
+    "journal.noSpeechHeard": "(لم يتم التعرف على أي كلام — حاول مرة أخرى غداً.)",
+    "journal.rewardSub": "+20 نقطة خبرة · سلسلة {n} يوم",
+    "journal.alreadyDoneSub": "تم إنجازها اليوم بالفعل · سلسلة {n} يوم",
     "shadow.recordDefault": "🎙️ حاكِ (تحدث بالتزامن)", "shadow.recordAgain": "🎙️ حاكِ مرة أخرى",
     "shadow.recording": "● تحدث الآن…",
     "shadow.hint": "🎧 الأفضل باستخدام سماعات الرأس — شغّل وتحدث في نفس اللحظة تماماً.",
@@ -1806,6 +1951,7 @@ const T = {
     "paywall.perk5": "دوريات التحدث — تصعد من البرونزي حتى دائرة المتحدثين",
     "paywall.perk6": "لوحة الصدارة الأسبوعية + مراجعة بالتكرار المتباعد",
     "paywall.perk7": "عبارة يومية مميزة، مختارة كل يوم",
+    "paywall.perk8": "اليوميات الصوتية — تمرين تحدث يومي لمدة 60 ثانية بسلسلة أيام خاصة به",
     "paywall.upgradeBtn": "الترقية إلى Pro", "paywall.loading": "جارٍ التحميل…",
     "paywall.demoMode": "وضع تجريبي: يتم الفتح فوراً.",
     "billing.oneTimeNote": "هذه بطاقة دخول لمرة واحدة لمدة 30 يوماً، وليست اشتراكاً — لن تتجدد تلقائياً ولن تُخصم منك مرة أخرى. عد وادفع مرة أخرى في أي وقت تريد المتابعة فيه.",
@@ -1884,7 +2030,7 @@ async function api(path, method = "GET", body = null){
   return data;
 }
 function show(view){
-  ["dashboard","practiceView","paywallView","sprintView","certView","adminView","convView","settingsView"]
+  ["dashboard","practiceView","paywallView","sprintView","certView","adminView","convView","settingsView","journalView"]
     .forEach(v => $(v).classList.add("hidden"));
   const el = $(view);
   el.classList.remove("hidden");
@@ -2186,6 +2332,7 @@ function renderStats(prog){
   loadReviewBanner();
   loadNewPhrasesBanner();
   loadSpotlight();
+  loadJournalCard();
   loadBizSprintCard();
 }
 
@@ -3299,6 +3446,212 @@ function wordWeakPoints(target, heardText){
   });
 }
 
+
+// ---- VOICE JOURNAL ----
+// A daily 60-second unscripted prompt (Pro). No fixed target sentence like
+// Lessons/Shadow, so there's no Levenshtein score here -- feedback is
+// honest speaking metrics (word count, seconds spoken) plus a curated,
+// finite grammar catch from the server (_journal_tips in main.py). Its own
+// streak, separate from the main practice streak.
+let journalToday = null;
+
+async function loadJournalCard(){
+  const isPro = currentUser && currentUser.is_premium;
+  $("journalCard").classList.toggle("hidden", !isPro);
+  $("journalTeaser").classList.toggle("hidden", !!isPro);
+  if (!isPro) return;
+  try {
+    journalToday = await api("/api/journal/today");
+    $("journalPromptPreview").textContent = journalToday.prompt_en;
+    $("journalStreakLabel").textContent = journalToday.journal_streak > 0
+      ? t("journal.streakLabel", {n: journalToday.journal_streak}) : "";
+    $("journalBtn").textContent = journalToday.already_done_today
+      ? t("journal.doneToday") : t("journal.start");
+    $("journalCard").classList.remove("hidden");
+  } catch(e){ $("journalCard").classList.add("hidden"); }
+}
+$("journalUpgradeBtn").onclick = () => show("paywallView");
+$("journalBtn").onclick = () => openJournal();
+
+function showJournalScreen(name){
+  ["journalScreenPrompt","journalScreenRecording","journalScreenReview","journalScreenReward"]
+    .forEach(id => $(id).classList.toggle("hidden", id !== name));
+}
+
+async function openJournal(){
+  if (!journalToday){ await loadJournalCard(); }
+  show("journalView");
+  if (journalToday.already_done_today && journalToday.today_entry){
+    renderJournalReward(journalToday.journal_streak, true);
+    showJournalScreen("journalScreenReward");
+    return;
+  }
+  $("journalPromptText").textContent = journalToday.prompt_en;
+  $("journalHintWords").textContent = journalToday.hint_words.join(", ");
+  $("journalUnsupported").classList.toggle("hidden", !!SR);
+  $("journalStartBtn").disabled = !SR;
+  showJournalScreen("journalScreenPrompt");
+}
+$("backBtnJournal").onclick = () => { journalStopEverything(); loadDashboard(); };
+$("journalDoneBtn").onclick = () => loadDashboard();
+
+// Recording: MediaRecorder captures audio for playback, SpeechRecognition
+// (continuous mode) transcribes in parallel, and a small AnalyserNode
+// drives the live waveform bars -- same building blocks Shadow Mode uses,
+// just running continuously for up to ~2 minutes instead of one phrase.
+let journalRecorder = null, journalStream = null, journalRec = null;
+let journalTranscript = "", journalRecording = false, journalStartedAt = 0;
+let journalTimerHandle = null, journalWaveHandle = null, journalAudioCtx = null;
+let journalBlobUrl = null;
+const JOURNAL_MAX_SEC = 120;
+
+$("journalStartBtn").onclick = async () => {
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+    alert(t("shadow.noRecording")); return;
+  }
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({audio: true});
+    journalStream = stream;
+    journalTranscript = "";
+    const chunks = [];
+    journalRecorder = new MediaRecorder(stream);
+    journalRecorder.ondataavailable = (e) => { if (e.data.size) chunks.push(e.data); };
+    journalRecorder.onstop = () => {
+      if (journalBlobUrl) URL.revokeObjectURL(journalBlobUrl);
+      journalBlobUrl = URL.createObjectURL(new Blob(chunks, {type: "audio/webm"}));
+    };
+    journalRecorder.start();
+    journalRecording = true;
+    journalStartedAt = Date.now();
+
+    if (SR){
+      journalRec = new SR();
+      journalRec.lang = "en-US"; journalRec.continuous = true; journalRec.interimResults = false;
+      journalRec.onresult = (ev) => {
+        for (let i = ev.resultIndex; i < ev.results.length; i++){
+          if (ev.results[i].isFinal){
+            const chunk = ev.results[i][0].transcript.trim();
+            if (chunk) journalTranscript += (journalTranscript ? " " : "") + chunk;
+          }
+        }
+      };
+      journalRec.onerror = () => {};
+      // Chrome sometimes ends recognition after a pause even in continuous
+      // mode -- if we're still supposed to be recording, restart it right
+      // away so a natural pause never truncates the transcript.
+      journalRec.onend = () => { if (journalRecording){ try { journalRec.start(); } catch(e){} } };
+      try { journalRec.start(); } catch(e){}
+    }
+
+    startJournalWave(stream);
+    journalTimerHandle = setInterval(updateJournalTimer, 250);
+    updateJournalTimer();
+    showJournalScreen("journalScreenRecording");
+  } catch(e){
+    alert(t("shadow.micNeeded") + e.message);
+  }
+};
+
+function updateJournalTimer(){
+  const elapsed = Math.floor((Date.now() - journalStartedAt) / 1000);
+  const m = Math.floor(elapsed / 60), s = elapsed % 60;
+  $("journalTimer").textContent = m + ":" + String(s).padStart(2, "0");
+  if (elapsed >= JOURNAL_MAX_SEC) journalStop();
+}
+
+function startJournalWave(stream){
+  try {
+    journalAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const source = journalAudioCtx.createMediaStreamSource(stream);
+    const analyser = journalAudioCtx.createAnalyser();
+    analyser.fftSize = 64;
+    source.connect(analyser);
+    const data = new Uint8Array(analyser.frequencyBinCount);
+    const bars = $("journalWave").querySelectorAll("span");
+    journalWaveHandle = setInterval(() => {
+      analyser.getByteFrequencyData(data);
+      bars.forEach((bar, i) => {
+        const v = data[i * Math.floor(data.length / bars.length)] || 0;
+        bar.style.height = Math.max(6, Math.round((v / 255) * 40)) + "px";
+      });
+    }, 100);
+  } catch(e){ /* waveform is a nice-to-have; recording still works without it */ }
+}
+
+function journalStopEverything(){
+  journalRecording = false;
+  if (journalTimerHandle){ clearInterval(journalTimerHandle); journalTimerHandle = null; }
+  if (journalWaveHandle){ clearInterval(journalWaveHandle); journalWaveHandle = null; }
+  if (journalRec){ try { journalRec.onend = null; journalRec.stop(); } catch(e){} journalRec = null; }
+  if (journalRecorder && journalRecorder.state !== "inactive"){ try { journalRecorder.stop(); } catch(e){} }
+  if (journalStream){ journalStream.getTracks().forEach(tr => tr.stop()); journalStream = null; }
+  if (journalAudioCtx){ try { journalAudioCtx.close(); } catch(e){} journalAudioCtx = null; }
+}
+
+$("journalStopBtn").onclick = () => journalStop();
+async function journalStop(){
+  const durationSec = Math.floor((Date.now() - journalStartedAt) / 1000);
+  journalStopEverything();
+  // Give the recorder's onstop a beat to build the blob URL before reading it.
+  await new Promise(r => setTimeout(r, 200));
+
+  $("journalAudioPlayer").src = journalBlobUrl || "";
+  $("journalTranscriptText").textContent = journalTranscript || t("journal.noSpeechHeard");
+  $("journalWordCount").textContent = journalTranscript ? journalTranscript.trim().split(/\s+/).length : 0;
+  $("journalDuration").textContent = durationSec + "s";
+  showJournalScreen("journalScreenReview");
+
+  if (!journalTranscript){
+    $("journalTipsBox").innerHTML = "";
+    $("journalFinishBtn").onclick = () => loadDashboard();
+    return;
+  }
+
+  try {
+    const res = await api("/api/journal/entry", "POST", {transcript: journalTranscript, duration_sec: durationSec});
+    // Reconcile with the server's authoritative count (regex-based, may
+    // differ slightly from the quick client-side split above).
+    $("journalWordCount").textContent = res.word_count;
+    renderJournalTips(res.tips);
+    $("journalFinishBtn").onclick = () => {
+      renderJournalReward(res.journal_streak, false);
+      showJournalScreen("journalScreenReward");
+      loadJournalCard();
+    };
+  } catch(e){
+    $("journalTipsBox").innerHTML = "";
+    $("journalFinishBtn").onclick = () => loadDashboard();
+  }
+}
+
+function renderJournalTips(tips){
+  const box = $("journalTipsBox"); box.innerHTML = "";
+  (tips || []).forEach(tip => {
+    const div = document.createElement("div");
+    div.className = "journal-tip " + (tip.kind === "grammar" ? "grammar" : "encouragement");
+    div.dir = "ltr";
+    div.textContent = (LANG === "ar" ? tip.text_ar : tip.text_en) || tip.text_en;
+    box.appendChild(div);
+  });
+  // Highlight the exact mistaken word(s) in the transcript above, using the
+  // wrong_word the server already identified -- never guessed client-side.
+  const mistakeWords = (tips || []).filter(t => t.kind === "grammar" && t.wrong_word).map(t => t.wrong_word);
+  if (mistakeWords.length){
+    const el = $("journalTranscriptText");
+    let html = el.textContent.replace(/[&<>]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
+    mistakeWords.forEach(w => {
+      const re = new RegExp("\\b(" + w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + ")\\b", "gi");
+      html = html.replace(re, '<span class="jt-mistake">$1</span>');
+    });
+    el.innerHTML = html;
+  }
+}
+
+function renderJournalReward(streak, alreadyDone){
+  $("journalRewardSub").textContent = alreadyDone
+    ? t("journal.alreadyDoneSub", {n: streak})
+    : t("journal.rewardSub", {n: streak});
+}
 
 // ---- UPGRADE ----
 let billingCfg = null;

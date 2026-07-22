@@ -211,7 +211,8 @@ QICARD_CONFIGURED = bool(QICARD_TERMINAL_ID and QICARD_USERNAME and QICARD_PASSW
 # conversations are all pre-written and translated, so the app works the
 # same for one user or a million.
 from content import (SENTENCE_BANK, CONVERSATIONS, CONVERSATION_BY_ID,
-                     SPRINT_CONVS, SPRINT_CONVS_BIZ, SHADOW_CATEGORIES)
+                     SPRINT_CONVS, SPRINT_CONVS_BIZ, SHADOW_CATEGORIES,
+                     JOURNAL_PROMPTS, IRREGULAR_VERB_MISTAKES)
 
 # The learner's first language, for showing translations. Arabic is default.
 # Translations are baked into content.py per sentence/line.
@@ -375,6 +376,23 @@ class StreakShieldUse(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     user_id: int = Field(index=True)
     shielded_date: str = Field(index=True)   # ISO date string of the protected day
+
+
+class JournalEntry(SQLModel, table=True):
+    """
+    One row per (user, calendar day) they completed the Voice Journal --
+    a free-form 60-second spoken prompt (Pro). At most one per user per
+    day; a second attempt the same day just returns the existing row
+    instead of creating a duplicate (no double XP, no gaming the streak).
+    """
+    id: int | None = Field(default=None, primary_key=True)
+    user_id: int = Field(index=True)
+    entry_date: str = Field(index=True)      # ISO date string, the day this entry counts for
+    prompt_en: str = ""
+    transcript: str = ""
+    duration_sec: int = 0
+    word_count: int = 0
+    created_at: dt.datetime = Field(default_factory=dt.datetime.utcnow)
 
 
 # ----------------------------------------------------------------------
@@ -1934,24 +1952,29 @@ def _mask_email(email: str) -> str:
 def _xp_earned_between(start: dt.datetime, end: dt.datetime | None, session: Session) -> dict[int, int]:
     """
     The shared XP formula (10/attempt + 5 bonus for 85%+, 100/completed
-    Sprint day) scoped to a date range. /api/leaderboard always calls this
-    with end=None (start of this week -> now); Speaking Leagues' weekly
-    rollover calls it with an explicit end so it can score a week that has
-    already finished, the same way.
+    Sprint day, 20/Voice Journal entry) scoped to a date range.
+    /api/leaderboard always calls this with end=None (start of this week ->
+    now); Speaking Leagues' weekly rollover calls it with an explicit end so
+    it can score a week that has already finished, the same way.
     """
     attempt_q = select(Attempt).where(Attempt.created_at >= start)
     day_q = select(DayCompletion).where(DayCompletion.completed_at >= start)
+    journal_q = select(JournalEntry).where(JournalEntry.created_at >= start)
     if end is not None:
         attempt_q = attempt_q.where(Attempt.created_at < end)
         day_q = day_q.where(DayCompletion.completed_at < end)
+        journal_q = journal_q.where(JournalEntry.created_at < end)
     attempts = session.exec(attempt_q).all()
     days_done = session.exec(day_q).all()
+    journal_entries = session.exec(journal_q).all()
 
     xp: dict[int, int] = defaultdict(int)
     for a in attempts:
         xp[a.user_id] += 10 + (5 if a.score >= 85 else 0)
     for d in days_done:
         xp[d.user_id] += 100
+    for j in journal_entries:
+        xp[j.user_id] += 20
     return xp
 
 
@@ -2334,6 +2357,147 @@ def phrase_spotlight(user: User = Depends(get_current_user)):
     }
 
 
+# ---- Voice Journal (Pro): a daily 60-second unscripted spoken prompt ----
+def _journal_streak(user_id: int, session: Session) -> int:
+    """
+    Same "consecutive days ending today or yesterday" walk /api/progress
+    uses for the main practice streak, but over JournalEntry.entry_date --
+    Voice Journal is its own daily habit (reflect on your day out loud),
+    tracked separately from lesson/Shadow practice.
+    """
+    rows = session.exec(select(JournalEntry).where(JournalEntry.user_id == user_id)).all()
+    active_days = {dt.date.fromisoformat(r.entry_date) for r in rows}
+    today = dt.date.today()
+    streak = 0
+    cursor = today if today in active_days else (today - dt.timedelta(days=1))
+    while cursor in active_days:
+        streak += 1
+        cursor -= dt.timedelta(days=1)
+    return streak
+
+
+_WORD_RE = re.compile(r"[a-zA-Z']+")
+
+
+def _journal_tips(transcript: str, hint_words: list[str]) -> list[dict]:
+    """
+    Deterministic, fully offline feedback for a free-form transcript with no
+    fixed target sentence to compare against. Up to two grammar tips (a
+    curated, finite catch of the classic "regularized irregular verb" ESL
+    mistake -- "drinked" for "drank" -- see IRREGULAR_VERB_MISTAKES) take
+    priority; otherwise a positive nudge if they used one of the prompt's
+    suggested connector words; otherwise plain encouragement. Never claims
+    to be a general grammar checker -- just this one well-known, catchable
+    pattern.
+    """
+    words = _WORD_RE.findall(transcript.lower())
+    mistakes: list[tuple[str, str, str]] = []
+    seen = set()
+    for w in words:
+        if w in IRREGULAR_VERB_MISTAKES and w not in seen:
+            seen.add(w)
+            correct, base = IRREGULAR_VERB_MISTAKES[w]
+            mistakes.append((w, correct, base))
+        if len(mistakes) >= 2:
+            break
+
+    if mistakes:
+        return [{"kind": "grammar", "wrong_word": wrong,
+                 "text_en": f'Tip: past tense of "{base}" is "{correct}", not "{wrong}".',
+                 "text_ar": f'ملاحظة: صيغة الماضي لفعل "{base}" هي "{correct}"، وليست "{wrong}".'}
+                for wrong, correct, base in mistakes]
+
+    lower_transcript = transcript.lower()
+    used_hint = next((h for h in hint_words if h.lower() in lower_transcript), None)
+    if used_hint:
+        return [{"kind": "encouragement",
+                 "text_en": f'Nice — you used "{used_hint}" just like the prompt suggested!',
+                 "text_ar": f'أحسنت — استخدمت "{used_hint}" تماماً كما اقترح التمرين!'}]
+
+    return [{"kind": "encouragement",
+             "text_en": "Good effort — keep talking every day, it adds up fast.",
+             "text_ar": "مجهود جيد — استمر بالتحدث كل يوم، والنتيجة تتراكم بسرعة."}]
+
+
+def _today_journal_prompt(today: dt.date) -> dict:
+    idx = (today - PHRASE_ROTATION_EPOCH).days % len(JOURNAL_PROMPTS)
+    return JOURNAL_PROMPTS[idx]
+
+
+@app.get("/api/journal/today")
+def journal_today(user: User = Depends(get_current_user), session: Session = Depends(get_session)):
+    if not user.is_premium:
+        raise HTTPException(403, "Voice Journal is a Pro feature.")
+
+    today = dt.date.today()
+    prompt = _today_journal_prompt(today)
+    existing = session.exec(
+        select(JournalEntry).where(JournalEntry.user_id == user.id,
+                                    JournalEntry.entry_date == today.isoformat())
+    ).first()
+
+    today_entry = None
+    if existing:
+        today_entry = {
+            "word_count": existing.word_count,
+            "duration_sec": existing.duration_sec,
+            "tips": _journal_tips(existing.transcript, prompt["hint_words"]),
+        }
+
+    return {
+        "prompt_en": prompt["en"],
+        "prompt_ar": prompt["ar"],
+        "hint_words": prompt["hint_words"],
+        "already_done_today": existing is not None,
+        "journal_streak": _journal_streak(user.id, session),
+        "today_entry": today_entry,
+    }
+
+
+@app.post("/api/journal/entry")
+def journal_entry(payload: dict, user: User = Depends(get_current_user),
+                  session: Session = Depends(get_session)):
+    if not user.is_premium:
+        raise HTTPException(403, "Voice Journal is a Pro feature.")
+
+    transcript = (payload.get("transcript") or "").strip()
+    duration_sec = max(0, int(payload.get("duration_sec") or 0))
+    if not transcript:
+        raise HTTPException(400, "No speech was recognized -- try again.")
+
+    today = dt.date.today()
+    prompt = _today_journal_prompt(today)
+    existing = session.exec(
+        select(JournalEntry).where(JournalEntry.user_id == user.id,
+                                    JournalEntry.entry_date == today.isoformat())
+    ).first()
+
+    if existing:
+        return {
+            "already_existed": True,
+            "xp_earned": 0,
+            "journal_streak": _journal_streak(user.id, session),
+            "word_count": existing.word_count,
+            "duration_sec": existing.duration_sec,
+            "tips": _journal_tips(existing.transcript, prompt["hint_words"]),
+        }
+
+    word_count = len(_WORD_RE.findall(transcript))
+    row = JournalEntry(user_id=user.id, entry_date=today.isoformat(), prompt_en=prompt["en"],
+                       transcript=transcript, duration_sec=duration_sec, word_count=word_count)
+    session.add(row)
+    session.commit()
+
+    return {
+        "already_existed": False,
+        "xp_earned": 20,
+        "journal_streak": _journal_streak(user.id, session),
+        "word_count": word_count,
+        "duration_sec": duration_sec,
+        "tips": _journal_tips(transcript, prompt["hint_words"]),
+    }
+
+
 @app.post("/api/practice")
 def save_practice(data: PracticeIn, user: User = Depends(get_current_user),
                   session: Session = Depends(get_session)):
@@ -2519,7 +2683,11 @@ def progress(user: User = Depends(get_current_user),
     days_completed = session.exec(
         select(DayCompletion).where(DayCompletion.user_id == user.id)
     ).all()
-    xp = len(attempts) * 10 + sum(5 for a in attempts if a.score >= 85) + len(days_completed) * 100
+    journal_entries_count = session.exec(
+        select(JournalEntry).where(JournalEntry.user_id == user.id)
+    ).all()
+    xp = (len(attempts) * 10 + sum(5 for a in attempts if a.score >= 85)
+          + len(days_completed) * 100 + len(journal_entries_count) * 20)
 
     today = dt.date.today()
 
