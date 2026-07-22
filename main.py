@@ -1746,7 +1746,7 @@ def badges_data(user: User = Depends(get_current_user),
     attempts = session.exec(select(Attempt).where(Attempt.user_id == user.id)).all()
     shadow_attempts = sum(1 for a in attempts if a.lesson_id in SHADOW_BY_ID)
     perfect_scores = sum(1 for a in attempts if a.score == 100)
-    sprint_state = _sprint_state(user, session)
+    sprint_state = _sprint_state(user, DEFAULT_SPRINT_ID, session)
     return {
         "shadow_attempts": shadow_attempts,
         "perfect_scores": perfect_scores,
@@ -2683,7 +2683,7 @@ def admin_list_users(admin: User = Depends(require_admin),
     users = session.exec(select(User)).all()
     out = []
     for u in users:
-        st = _sprint_state(u, session)
+        st = _sprint_state(u, DEFAULT_SPRINT_ID, session)
         out.append({
             "id": u.id, "email": u.email, "is_premium": u.is_premium,
             "is_admin": u.is_admin, "created_at": u.created_at.isoformat(),
