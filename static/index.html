@@ -125,6 +125,10 @@
   .msg{font-size:13.5px;padding:10px 12px;border-radius:10px;margin-bottom:14px;display:none}
   .msg.err{display:block;background:#FDECEC;color:#B4292E}
   .msg.ok{display:block;background:#E6F7EE;color:#137a45}
+  .google-signin-wrap{margin-bottom:18px}
+  .google-btn-container{display:flex;justify-content:center;margin-bottom:16px;min-height:40px}
+  .auth-divider{display:flex;align-items:center;color:var(--muted);font-size:12.5px;gap:10px}
+  .auth-divider::before,.auth-divider::after{content:"";flex:1;height:1px;background:var(--line)}
 
   /* ---------- App shell ---------- */
   .topbar{background:var(--surface);border-bottom:1px solid var(--line);
@@ -575,6 +579,10 @@
      it's safe to include even when running in demo mode with no Paddle
      account configured. -->
 <script src="https://cdn.paddle.com/paddle/v2/paddle.js"></script>
+<!-- Google Identity Services — powers the "Sign in with Google" button.
+     Harmless to load even when Google sign-in isn't configured yet: the
+     button only appears once /api/auth/config returns a real client ID. -->
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
 
@@ -589,6 +597,10 @@
     <h1 id="authTitle" data-i18n="auth.welcomeBack">Welcome back</h1>
     <p class="auth-sub" id="authSub" data-i18n="auth.loginSub">Log in to keep practicing</p>
     <div id="authMsg" class="msg"></div>
+    <div id="googleSignInWrap" class="google-signin-wrap hidden">
+      <div id="googleBtnContainer" class="google-btn-container"></div>
+      <div class="auth-divider"><span data-i18n="auth.orDivider">or</span></div>
+    </div>
     <div class="field" id="emailField">
       <label data-i18n="auth.emailLabel">Email</label>
       <input id="email" type="email" placeholder="you@email.com" autocomplete="email">
@@ -1051,6 +1063,7 @@ const T = {
     "auth.setNewPassword": "Set new password", "auth.newPasswordPh": "At least 8 characters",
     "auth.resetSuccess": "Password updated — logging you in…",
     "auth.invalidResetLink": "That reset link looks invalid. Please request a new one.",
+    "auth.orDivider": "or",
     "nav.admin": "Admin", "nav.logout": "Log out", "nav.langToggle": "العربية",
     "dash.certReadyTitle": "Your certificate is ready!",
     "dash.certReadySub": "You completed all 14 days of the Sprint. Come see it.",
@@ -1226,6 +1239,7 @@ const T = {
     "auth.setNewPassword": "تعيين كلمة المرور الجديدة", "auth.newPasswordPh": "8 أحرف على الأقل",
     "auth.resetSuccess": "تم تحديث كلمة المرور — جارٍ تسجيل الدخول…",
     "auth.invalidResetLink": "رابط إعادة التعيين هذا غير صالح. يرجى طلب رابط جديد.",
+    "auth.orDivider": "أو",
     "nav.admin": "الإدارة", "nav.logout": "تسجيل الخروج", "nav.langToggle": "English",
     "dash.certReadyTitle": "شهادتك جاهزة!",
     "dash.certReadySub": "أكملت الأيام الـ14 من السبرنت. تعال شاهدها.",
@@ -1457,9 +1471,12 @@ function show(view){
 // ---- AUTH ----
 // mode is one of "login" | "register" | "forgot" | "reset".
 let resetToken = null;   // set when the page loads with ?reset=TOKEN
+let googleConfigured = false;   // set true once /api/auth/config returns a client ID
 
 function renderAuthMode(){
   $("authMsg").className = "msg";
+  $("googleSignInWrap").classList.toggle("hidden",
+    !(googleConfigured && (mode === "login" || mode === "register")));
   if (mode === "login" || mode === "register"){
     const login = mode === "login";
     $("authTitle").textContent = login ? t("auth.welcomeBack") : t("auth.createAccount");
@@ -1556,6 +1573,43 @@ $("authBtn").onclick = async () => {
     renderAuthMode();
   }
 })();
+
+// ---- SIGN IN WITH GOOGLE ----
+// Only shows up once the site owner has set GOOGLE_CLIENT_ID on the server
+// (see /api/auth/config) — same "hidden until configured" pattern already
+// used for the payment buttons on the paywall screen. Safe to always run
+// this: if it's not configured, /api/auth/config just says so and the
+// button never appears.
+async function initGoogleSignIn(){
+  try {
+    const cfg = await api("/api/auth/config");
+    if (!cfg.google_client_id) return;
+    googleConfigured = true;
+    renderAuthMode();
+    // The GSI script tag is "async defer", so it may still be loading —
+    // wait for it rather than assuming it's ready.
+    const start = Date.now();
+    while (!window.google && Date.now() - start < 8000){
+      await new Promise(r => setTimeout(r, 100));
+    }
+    if (!window.google) return;   // blocked/failed to load — button just won't appear
+    google.accounts.id.initialize({ client_id: cfg.google_client_id, callback: onGoogleCredential });
+    google.accounts.id.renderButton($("googleBtnContainer"),
+      { theme: "outline", size: "large", width: 280, text: "continue_with" });
+  } catch { /* Google sign-in is optional — never block normal login/register */ }
+}
+
+async function onGoogleCredential(response){
+  const msg = $("authMsg");
+  msg.className = "msg";
+  try {
+    const data = await api("/api/auth/google", "POST", {credential: response.credential});
+    token = data.token;
+    localStorage.setItem("speakup_token", token);
+    enterApp(data.user);
+  } catch(e){ msg.className = "msg err"; msg.textContent = e.message; }
+}
+initGoogleSignIn();
 
 $("logoutBtn").onclick = () => {
   token = null; localStorage.removeItem("speakup_token");

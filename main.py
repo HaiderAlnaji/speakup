@@ -100,6 +100,30 @@ EMAIL_CONFIGURED = bool(SMTP_HOST and SMTP_USERNAME and SMTP_PASSWORD)
 PUBLIC_URL = os.getenv("PUBLIC_URL", "").strip().rstrip("/")
 
 # ----------------------------------------------------------------------
+# 1c-3. GOOGLE SIGN-IN — one-click registration/login as an alternative to
+# typing an email + password
+# ----------------------------------------------------------------------
+# Unlike every other credential in this file, a Client ID is NOT a secret —
+# Google's own docs say it's safe to ship in public frontend code (it just
+# identifies which app is asking, the same way a Stripe "publishable key"
+# does). So there's no password/API-secret step here at all: create one
+# free at console.cloud.google.com/apis/credentials -> "Create Credentials"
+# -> "OAuth client ID" -> Application type "Web application" -> add your
+# site's URL under "Authorized JavaScript origins".
+#
+# Until GOOGLE_CLIENT_ID is set, the "Sign in with Google" button simply
+# doesn't render — same demo-mode-until-configured pattern as every payment
+# provider below.
+GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "").strip()
+GOOGLE_CONFIGURED = bool(GOOGLE_CLIENT_ID)
+
+# Google's public keys, used to verify the signature on every Google sign-in
+# token. PyJWT fetches + caches these automatically over its lifetime — no
+# extra dependency, since PyJWT is already used above for our own login
+# tokens (see create_token in section 4).
+_google_jwks_client = jwt.PyJWKClient("https://www.googleapis.com/oauth2/v3/certs") if GOOGLE_CONFIGURED else None
+
+# ----------------------------------------------------------------------
 # 1d. PAYMENTS — Paddle (Merchant of Record; supports payout via Payoneer,
 # which works in countries Stripe doesn't, including Iraq)
 # ----------------------------------------------------------------------
@@ -798,6 +822,10 @@ class ResetPasswordIn(BaseModel):
     new_password: str
 
 
+class GoogleAuthIn(BaseModel):
+    credential: str  # the ID token Google's "Sign in with Google" button hands back
+
+
 class PracticeIn(BaseModel):
     lesson_id: str
     phrase_index: int
@@ -950,6 +978,77 @@ def reset_password(data: ResetPasswordIn, request: Request,
     session.add(reset)
     session.commit()
     _sync_admin(user, session)
+    return {"token": create_token(user.id), "user": public_user(user)}
+
+
+@app.get("/api/auth/config")
+def auth_config():
+    """
+    Public, no login needed — tells the frontend whether to show "Sign in
+    with Google", and which Client ID to use if so. Safe to expose: a
+    Client ID is a public identifier, not a secret (see section 1c-3).
+    """
+    return {"google_client_id": GOOGLE_CLIENT_ID if GOOGLE_CONFIGURED else None}
+
+
+@app.post("/api/auth/google")
+def auth_google(data: GoogleAuthIn, request: Request, session: Session = Depends(get_session)):
+    """
+    "Sign in with Google" — verifies the ID token Google's button handed the
+    frontend, then finds or creates a SpeakUp account for that email.
+
+    Verification checks three things a forged/replayed token can't fake:
+      1. Signature matches one of Google's current public keys (fetched
+         live from Google the first time, cached after that).
+      2. "aud" (audience) is OUR Client ID — proves this token was issued
+         for THIS app, not for some other site's Google sign-in button.
+      3. "email_verified" is true — Google only sets this once the person
+         has actually confirmed that mailbox, so we can trust the email
+         without sending our own verification link.
+    """
+    if not GOOGLE_CONFIGURED:
+        raise HTTPException(503, "Google sign-in isn't set up yet.")
+    rate_limit(request, "google-auth", limit=20, window=300)
+
+    try:
+        signing_key = _google_jwks_client.get_signing_key_from_jwt(data.credential)
+    except jwt.PyJWTError:
+        raise HTTPException(401, "Google sign-in failed — please try again.")
+    except Exception:
+        # e.g. couldn't reach Google to fetch its public keys right now.
+        raise HTTPException(503, "Couldn't verify with Google right now — please try again in a moment.")
+
+    try:
+        payload = jwt.decode(data.credential, signing_key.key, algorithms=["RS256"],
+                              audience=GOOGLE_CLIENT_ID)
+    except jwt.PyJWTError:
+        raise HTTPException(401, "Google sign-in failed — please try again.")
+
+    # Checked separately from jwt.decode()'s own claim checks above, so this
+    # works the same across older/newer PyJWT versions.
+    if payload.get("iss") not in ("https://accounts.google.com", "accounts.google.com"):
+        raise HTTPException(401, "Google sign-in failed — please try again.")
+    if not payload.get("email_verified"):
+        raise HTTPException(401, "Your Google email isn't verified.")
+
+    email = (payload.get("email") or "").strip().lower()
+    if not email:
+        raise HTTPException(401, "Google didn't share an email address.")
+
+    user = session.exec(select(User).where(User.email == email)).first()
+    if not user:
+        # New account. This random password is never shown to anyone and
+        # never used to sign in with — this account can only be reached via
+        # "Sign in with Google" (or a password reset later, if ever needed).
+        is_admin = email in ADMIN_EMAILS
+        user = User(email=email, hashed_password=hash_password(secrets.token_urlsafe(32)),
+                    is_admin=is_admin, is_premium=is_admin)
+        session.add(user)
+        session.commit()
+        session.refresh(user)
+    else:
+        _sync_admin(user, session)
+
     return {"token": create_token(user.id), "user": public_user(user)}
 
 

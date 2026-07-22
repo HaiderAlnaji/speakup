@@ -430,6 +430,8 @@ What's actually in place:
 - **Content is gated on the server.** Locked lessons and future Sprint days are
   never sent to the browser — "view source" reveals nothing.
 - **Password reset** uses a single-use, 1-hour-expiry token — see below.
+- **Sign in with Google** (optional) skips passwords entirely for anyone who
+  uses it — see below.
 
 **Before real users:**
 - [ ] Strong `SECRET_KEY` from an env var (`render.yaml` generates one for you).
@@ -469,6 +471,39 @@ Any SMTP account works — a Gmail address with an
 the SMTP relay of a free-tier transactional service (Resend, Mailgun,
 SendGrid). No new Python package needed — it uses `smtplib` from the
 standard library.
+
+### Sign in with Google
+
+A "Sign in with Google" button on the login screen, as a one-click
+alternative to typing an email + password. New users get a SpeakUp account
+automatically the first time they use it (matched/created by their verified
+Google email); returning users just log straight in.
+
+Unlike everything else in this section, the only thing you need is a
+**Client ID** — not a secret. Google's own docs say Client IDs are safe to
+publish in frontend code (same idea as a Stripe "publishable key"), so
+there's no password or API key to protect here.
+
+To get one:
+1. Go to the [Google Cloud Console credentials page](https://console.cloud.google.com/apis/credentials)
+   (create a project first if you don't have one).
+2. If prompted, configure the **OAuth consent screen** first — choose
+   "External," add an app name and your support email.
+3. **Create Credentials → OAuth client ID → Application type: Web application.**
+4. Under **Authorized JavaScript origins**, add your live URL
+   (`https://speakup-h4k8.onrender.com`) and, for local testing,
+   `http://localhost:8000`.
+5. Create it, then copy the Client ID (looks like
+   `123456789-abc123.apps.googleusercontent.com`).
+
+Add it to your `.env` (or as a Render env var):
+```
+GOOGLE_CLIENT_ID=123456789-abc123.apps.googleusercontent.com
+```
+Until this is set, the button simply doesn't appear — everyone uses
+email + password as usual. No new Python package needed — verification
+uses `PyJWT` (`PyJWKClient`), already a dependency for this app's own
+login tokens.
 
 ---
 
