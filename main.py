@@ -2004,6 +2004,59 @@ def refund_page():
     return _serve_legal_page("refund.html")
 
 
+# ----------------------------------------------------------------------
+# 8b. PWA — installable "Add to Home Screen" support
+# ----------------------------------------------------------------------
+# No build step needed: a manifest + a service worker + a few icon sizes
+# is all a browser needs to offer installation. Served as plain files
+# (like the legal pages above) rather than a StaticFiles mount, since
+# that's the pattern this app already uses everywhere else.
+@app.get("/manifest.json")
+def pwa_manifest():
+    return FileResponse(BASE_DIR / "static" / "manifest.json", media_type="application/manifest+json")
+
+
+@app.get("/sw.js")
+def service_worker():
+    # No caching on the service worker script itself — the browser needs to
+    # notice updates to it promptly (same reasoning as index.html above).
+    return FileResponse(
+        BASE_DIR / "static" / "sw.js", media_type="application/javascript",
+        headers={"Cache-Control": "no-store, no-cache, must-revalidate, max-age=0"},
+    )
+
+
+@app.get("/icon-192.png")
+def icon_192():
+    return FileResponse(BASE_DIR / "static" / "icon-192.png", media_type="image/png")
+
+
+@app.get("/icon-512.png")
+def icon_512():
+    return FileResponse(BASE_DIR / "static" / "icon-512.png", media_type="image/png")
+
+
+@app.get("/apple-touch-icon.png")
+def apple_touch_icon():
+    return FileResponse(BASE_DIR / "static" / "apple-touch-icon.png", media_type="image/png")
+
+
+@app.get("/favicon-32.png")
+def favicon_32():
+    return FileResponse(BASE_DIR / "static" / "favicon-32.png", media_type="image/png")
+
+
+@app.get("/favicon-16.png")
+def favicon_16():
+    return FileResponse(BASE_DIR / "static" / "favicon-16.png", media_type="image/png")
+
+
+@app.get("/favicon.ico")
+def favicon_ico():
+    # Some browsers request this exact path regardless of <link rel="icon">.
+    return FileResponse(BASE_DIR / "static" / "favicon-32.png", media_type="image/png")
+
+
 @app.get("/api/debug/config")
 def debug_config():
     """

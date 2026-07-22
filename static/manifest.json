@@ -1,0 +1,19 @@
+{
+  "name": "SpeakUp — Practice Speaking English",
+  "short_name": "SpeakUp",
+  "description": "Practice speaking English out loud with instant pronunciation scoring, no AI required.",
+  "start_url": "/",
+  "scope": "/",
+  "id": "/",
+  "display": "standalone",
+  "background_color": "#0E1533",
+  "theme_color": "#12B8A6",
+  "orientation": "portrait-primary",
+  "lang": "en",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
