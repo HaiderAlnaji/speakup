@@ -208,6 +208,35 @@
   .sb-sub{font-size:13.5px;color:#9A6B12;margin-top:2px}
   .sb-best{font-size:12.5px;color:#9A6B12;background:#fff;border:1px solid #F0D89B;
     border-radius:20px;padding:5px 12px;white-space:nowrap}
+  .shield-badge{font-size:16px;margin-left:8px;vertical-align:middle}
+
+  /* ---------- Daily Spotlight Phrase (Pro) ---------- */
+  .spotlight-banner{margin-bottom:20px;background:linear-gradient(100deg,#0E1533,#1B2A5E);
+    border:1.5px solid var(--gold);border-radius:16px;padding:20px 24px;color:#fff;
+    box-shadow:0 6px 20px rgba(231,166,58,.12)}
+  .sp-eyebrow{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
+    color:var(--gold);margin-bottom:10px}
+  .sp-phrase{font-family:'Sora';font-size:22px;font-weight:700;line-height:1.35;margin-bottom:6px}
+  .sp-tr{font-size:14px;color:#B9C2E0;margin-bottom:14px}
+  .sp-foot{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+  .sp-unit{font-size:12.5px;color:#8D9AC4}
+
+  /* ---------- Speaking Leagues (Pro) ---------- */
+  .league-tier-track{display:flex;gap:6px;margin-bottom:16px}
+  .league-tier-step{flex:1;text-align:center;font-size:10.5px;font-weight:600;color:var(--muted);
+    padding:7px 4px;border-radius:8px;background:var(--surface-2);white-space:nowrap;overflow:hidden;
+    text-overflow:ellipsis}
+  .league-tier-step.current{background:var(--gold);color:#3a2600}
+  .league-tier-step.passed{background:#FCEFD8;color:#8a6316}
+  .lb-row.promote{background:#E7F7EE;border-radius:10px}
+  .lb-row.promote .lb-rank{color:var(--good)}
+  .lb-row.demote{background:#FDECEC;border-radius:10px}
+  .lb-row.demote .lb-rank{color:var(--danger)}
+  .league-zone-note{font-size:12px;color:var(--muted);margin-top:10px;display:flex;gap:14px;flex-wrap:wrap}
+  .league-zone-note span{display:inline-flex;align-items:center;gap:5px}
+  .zone-dot{width:8px;height:8px;border-radius:50%;display:inline-block}
+  .zone-dot.promote{background:var(--good)}
+  .zone-dot.demote{background:var(--danger)}
 
   /* ---------- Progress graph (Pro) ---------- */
   .progress-card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);
@@ -720,11 +749,24 @@
         <button class="btn-gold" id="newPhrasesBtn" style="width:auto;padding:12px 24px" data-i18n="newPhrases.cta">Take a look</button>
       </div>
 
+      <!-- Daily Spotlight Phrase — Pro-exclusive, EWA-inspired bite-sized
+           daily habit hook. One hand-cycled phrase, front and center,
+           distinct from the generic new-phrases-count banner above. -->
+      <div class="spotlight-banner hidden anim-in" id="spotlightBanner">
+        <div class="sp-eyebrow" data-i18n="spotlight.eyebrow">✨ Daily Spotlight — Pro</div>
+        <div class="sp-phrase" id="spotlightPhrase" dir="ltr"></div>
+        <div class="sp-tr" id="spotlightTr" dir="rtl"></div>
+        <div class="sp-foot">
+          <span class="sp-unit" id="spotlightUnit"></span>
+          <button class="btn-gold" id="spotlightBtn" style="width:auto;padding:9px 18px" data-i18n="spotlight.cta">Practice this</button>
+        </div>
+      </div>
+
       <!-- Daily streak — the habit driver. Shows once they've practiced. -->
       <div class="streak-banner hidden anim-in" id="streakBanner">
         <div class="sb-flame" id="sbFlame">🔥</div>
         <div class="sb-body">
-          <div class="sb-count"><span id="streakNum">0</span><span id="streakSuffix">-day streak</span></div>
+          <div class="sb-count"><span id="streakNum">0</span><span id="streakSuffix">-day streak</span><span class="shield-badge hidden" id="streakShieldBadge" title="Streak Shield — Pro perk">🛡️</span></div>
           <div class="sb-sub" id="streakSub">Practice today to keep it alive.</div>
         </div>
         <div class="sb-best" id="streakBest"></div>
@@ -836,6 +878,26 @@
           <p data-i18n="lb.teaserSub">Pro members compete on a weekly XP leaderboard that resets every Monday.</p>
         </div>
         <button class="btn-sm solid" id="lbUpgradeBtn" data-i18n="progress.upgradeBtn">Upgrade to Pro</button>
+      </div>
+
+      <!-- Speaking Leagues — a Pro-exclusive, SpeakUp-specific twist on
+           tiered weekly leagues. A small cohort (~30 similarly-active
+           learners), not the whole global leaderboard -- top 5 promote,
+           bottom 5 demote, every week. -->
+      <div class="progress-card anim-in-2 hidden" id="leaguesCard">
+        <div class="pc-head">
+          <h3><span id="leaguesTierName"></span> <span data-i18n="leagues.title">League</span></h3>
+          <span class="pc-trend steady" id="leaguesMyRank"></span>
+        </div>
+        <div class="league-tier-track" id="leaguesTierTrack"></div>
+        <div id="leaguesList"></div>
+      </div>
+      <div class="progress-teaser anim-in-2 hidden" id="leaguesTeaser">
+        <div>
+          <b data-i18n="leagues.teaserTitle">Climb the Speaking Leagues</b>
+          <p data-i18n="leagues.teaserSub">A small weekly cohort, not the whole world — finish top 5 to move up a league.</p>
+        </div>
+        <button class="btn-sm solid" id="leaguesUpgradeBtn" data-i18n="progress.upgradeBtn">Upgrade to Pro</button>
       </div>
 
       <div class="grid anim-in-3" id="lessonGrid"></div>
@@ -1256,6 +1318,7 @@ const T = {
     "dash.streakSuffix": "-day streak",
     "dash.practicedToday": "You've practiced today — nicely done. Keep it going tomorrow!",
     "dash.practiceTodayKeep": "Practice today to keep your streak alive.",
+    "dash.streakShieldSaved": "🛡️ Your Streak Shield covered a missed day — the chain holds!",
     "dash.personalBest": "Personal best 🎉",
     "dash.best": "Best: {n} days",
     "sprint.eyebrow": "The flagship program",
@@ -1307,6 +1370,14 @@ const T = {
     "lb.teaserSub": "Pro members compete on a weekly XP leaderboard that resets every Monday.",
     "lb.yourRank": "You're #{n} this week", "lb.notRankedYet": "Practice today to join this week's board",
     "lb.empty": "No one's practiced yet this week — be the first!",
+    "leagues.title": "League",
+    "leagues.teaserTitle": "Climb the Speaking Leagues",
+    "leagues.teaserSub": "A small weekly cohort, not the whole world — finish top 5 to move up a league.",
+    "leagues.yourRank": "You're #{n} of {total} this week",
+    "leagues.promoteNote": "Top 5 move up a league",
+    "leagues.demoteNote": "Bottom 5 move down a league",
+    "spotlight.eyebrow": "✨ Daily Spotlight — Pro",
+    "spotlight.cta": "Practice this",
     "review.bannerTitle": "{n} phrases ready for review",
     "review.bannerSub": "A quick spaced-repetition review keeps old phrases from fading.",
     "review.startBtn": "Start review",
@@ -1476,6 +1547,7 @@ const T = {
     "dash.streakSuffix": " يوماً متتالياً",
     "dash.practicedToday": "لقد تدرّبت اليوم — أحسنت! تابع غداً.",
     "dash.practiceTodayKeep": "تدرّب اليوم للحفاظ على سلسلتك.",
+    "dash.streakShieldSaved": "🛡️ درع السلسلة حمى يوماً فائتاً — السلسلة ما زالت مستمرة!",
     "dash.personalBest": "رقمك القياسي 🎉",
     "dash.best": "الأفضل: {n} يوماً",
     "sprint.eyebrow": "البرنامج الرئيسي",
@@ -1527,6 +1599,14 @@ const T = {
     "lb.teaserSub": "يتنافس أعضاء Pro على لوحة متصدرين أسبوعية لنقاط الخبرة تُصفَّر كل يوم اثنين.",
     "lb.yourRank": "أنت #{n} هذا الأسبوع", "lb.notRankedYet": "تدرّب اليوم لتنضم إلى لوحة هذا الأسبوع",
     "lb.empty": "لم يتدرّب أحد بعد هذا الأسبوع — كن الأول!",
+    "leagues.title": "الدوري",
+    "leagues.teaserTitle": "تسلّق دوريات التحدث",
+    "leagues.teaserSub": "مجموعة أسبوعية صغيرة، وليس العالم كله — احتل أفضل 5 مراكز لتصعد دوري.",
+    "leagues.yourRank": "أنت #{n} من {total} هذا الأسبوع",
+    "leagues.promoteNote": "أفضل 5 يصعدون دوري",
+    "leagues.demoteNote": "أسوأ 5 ينزلون دوري",
+    "spotlight.eyebrow": "✨ عبارة اليوم المميزة — Pro",
+    "spotlight.cta": "تدرّب على هذه",
     "review.bannerTitle": "{n} عبارة جاهزة للمراجعة",
     "review.bannerSub": "مراجعة سريعة بالتكرار المتباعد تمنع نسيان العبارات القديمة.",
     "review.startBtn": "ابدأ المراجعة",
@@ -2004,8 +2084,10 @@ function renderStats(prog){
   renderStreak(prog);
   loadProgressGraph();
   loadLeaderboard();
+  loadLeagues();
   loadReviewBanner();
   loadNewPhrasesBanner();
+  loadSpotlight();
   loadBizSprintCard();
 }
 
@@ -2057,6 +2139,67 @@ function renderLeaderboard(lb){
 }
 $("lbUpgradeBtn").onclick = () => show("paywallView");
 
+// Speaking Leagues — a small (~30-person) weekly cohort instead of the
+// whole global leaderboard. Admins never see this (they don't have a real
+// cohort), same as they're excluded from the flat leaderboard's rankings.
+async function loadLeagues(){
+  const isPro = currentUser && currentUser.is_premium && !currentUser.is_admin;
+  $("leaguesCard").classList.toggle("hidden", !isPro);
+  $("leaguesTeaser").classList.toggle("hidden", !!isPro);
+  if (!isPro) return;
+  try {
+    const lg = await api("/api/leagues");
+    renderLeagues(lg);
+  } catch(e){ $("leaguesCard").classList.add("hidden"); }
+}
+function renderLeagues(lg){
+  $("leaguesTierName").textContent = lg.tier_name;
+  $("leaguesMyRank").textContent = lg.my_rank
+    ? t("leagues.yourRank", {n: lg.my_rank, total: lg.cohort_size})
+    : t("lb.notRankedYet");
+
+  const track = $("leaguesTierTrack"); track.innerHTML = "";
+  lg.all_tiers.forEach((name, i) => {
+    const step = document.createElement("div");
+    step.className = "league-tier-step" + (i === lg.tier_index ? " current" : (i < lg.tier_index ? " passed" : ""));
+    step.textContent = name;
+    track.appendChild(step);
+  });
+
+  const list = $("leaguesList"); list.innerHTML = "";
+  lg.standings.forEach(r => {
+    const row = document.createElement("div");
+    row.className = "lb-row" + (r.is_me ? " me" : "") + (r.zone === "promote" ? " promote" : r.zone === "demote" ? " demote" : "");
+    const rank = document.createElement("span"); rank.className = "lb-rank"; rank.textContent = r.rank;
+    const name = document.createElement("span"); name.className = "lb-name"; name.textContent = r.display;
+    const xp = document.createElement("span"); xp.className = "lb-xp"; xp.textContent = r.xp.toLocaleString() + " XP";
+    row.appendChild(rank); row.appendChild(name); row.appendChild(xp);
+    list.appendChild(row);
+  });
+
+  let note = $("leaguesZoneNote");
+  if (!note){
+    note = document.createElement("div");
+    note.className = "league-zone-note";
+    note.id = "leaguesZoneNote";
+    $("leaguesCard").appendChild(note);
+  }
+  note.innerHTML = "";
+  if (!lg.is_top_tier){
+    const up = document.createElement("span");
+    up.innerHTML = '<span class="zone-dot promote"></span>';
+    up.append(t("leagues.promoteNote"));
+    note.appendChild(up);
+  }
+  if (!lg.is_bottom_tier){
+    const down = document.createElement("span");
+    down.innerHTML = '<span class="zone-dot demote"></span>';
+    down.append(t("leagues.demoteNote"));
+    note.appendChild(down);
+  }
+}
+$("leaguesUpgradeBtn").onclick = () => show("paywallView");
+
 // Only ever shown when phrases are actually due (due_count > 0) — never a
 // nagging "0 due" banner. Free users never fetch this at all.
 async function loadReviewBanner(){
@@ -2092,6 +2235,27 @@ $("newPhrasesBtn").onclick = async () => {
   $("newPhrasesBanner").classList.add("hidden");
   try { await api("/api/phrases/whats-new/seen", "POST"); } catch(e){}
   const grid = $("lessonGrid");
+  if (grid) grid.scrollIntoView({behavior: "smooth", block: "start"});
+};
+
+// Daily Spotlight Phrase -- Pro-exclusive, EWA-inspired single-phrase daily
+// habit hook (distinct from the generic new-phrases-count banner above).
+let spotlightUnitInfo = null;
+async function loadSpotlight(){
+  const isPro = currentUser && currentUser.is_premium;
+  if (!isPro){ $("spotlightBanner").classList.add("hidden"); return; }
+  try {
+    const sp = await api("/api/phrases/spotlight");
+    spotlightUnitInfo = sp;
+    $("spotlightPhrase").textContent = sp.en;
+    $("spotlightTr").textContent = sp.ar || sp.tip || "";
+    $("spotlightUnit").textContent = sp.unit_title;
+    $("spotlightBanner").classList.remove("hidden");
+  } catch(e){ $("spotlightBanner").classList.add("hidden"); }
+}
+$("spotlightBtn").onclick = () => {
+  if (!spotlightUnitInfo) return;
+  const grid = spotlightUnitInfo.kind === "lesson" ? $("lessonGrid") : $("shadowGrid");
   if (grid) grid.scrollIntoView({behavior: "smooth", block: "start"});
 };
 
@@ -2167,7 +2331,13 @@ function renderStreak(prog){
   const suffixEl = $("streakSuffix"); if (suffixEl) suffixEl.textContent = t("dash.streakSuffix");
   // Flame grows a little as the streak gets longer — a small reward.
   $("sbFlame").style.fontSize = Math.min(36 + streak * 2, 56) + "px";
-  $("streakSub").textContent = prog.practiced_today
+  // Streak Shield -- a Pro-exclusive always-on perk that auto-protects a
+  // single missed day. Shown as a small badge, with a one-time callout the
+  // moment it actually saves the streak.
+  $("streakShieldBadge").classList.toggle("hidden", !prog.streak_shield_active);
+  $("streakSub").textContent = prog.streak_shield_just_saved
+    ? t("dash.streakShieldSaved")
+    : prog.practiced_today
     ? t("dash.practicedToday")
     : t("dash.practiceTodayKeep");
   const longest = prog.longest_streak || streak;

@@ -20,6 +20,7 @@ import os
 import hmac
 import hashlib
 import json as _json
+import random
 import re
 import secrets
 import smtplib
@@ -334,6 +335,46 @@ class ReviewItem(SQLModel, table=True):
     next_review_at: dt.datetime = Field(default_factory=dt.datetime.utcnow)
     last_score: int = 0
     updated_at: dt.datetime = Field(default_factory=dt.datetime.utcnow)
+
+
+class LeagueMembership(SQLModel, table=True):
+    """
+    Which Speaking League tier a user is currently in, and which week that
+    reflects. Cohorts themselves are deliberately NOT stored as their own
+    table -- like the daily phrase rotation, a cohort is recomputed
+    deterministically each week from (tier, week, sorted user_ids), so
+    there's nothing to keep in sync and no separate cleanup needed when
+    users come and go.
+    """
+    id: int | None = Field(default=None, primary_key=True)
+    user_id: int = Field(index=True, unique=True)
+    tier: int = 0   # index into LEAGUE_TIERS -- 0 = Bronze
+    updated_week: str = ""   # ISO date (Monday) this tier assignment reflects
+
+
+class LeagueRollupState(SQLModel, table=True):
+    """
+    Singleton row (there's only ever one) tracking the last week whose
+    promotions/demotions were fully processed. Whichever request happens
+    to be the first one made after a new week starts triggers the
+    rollover for EVERYONE at once, so every user's cohort for the new week
+    is computed from a consistent, already-settled set of tiers -- never a
+    mix of some users rolled over and others not yet.
+    """
+    id: int | None = Field(default=None, primary_key=True)
+    last_rolled_week: str = ""
+
+
+class StreakShieldUse(SQLModel, table=True):
+    """
+    One row per calendar day a Pro user's daily streak was auto-protected
+    by their always-on Streak Shield perk. Recorded permanently (rather
+    than just silently fudging the streak number) so it only ever covers
+    a given missed day once, and so it's auditable.
+    """
+    id: int | None = Field(default=None, primary_key=True)
+    user_id: int = Field(index=True)
+    shielded_date: str = Field(index=True)   # ISO date string of the protected day
 
 
 # ----------------------------------------------------------------------
@@ -1890,6 +1931,30 @@ def _mask_email(email: str) -> str:
     return f"{local[:2]}***@{domain}" if domain else f"{local[:2]}***"
 
 
+def _xp_earned_between(start: dt.datetime, end: dt.datetime | None, session: Session) -> dict[int, int]:
+    """
+    The shared XP formula (10/attempt + 5 bonus for 85%+, 100/completed
+    Sprint day) scoped to a date range. /api/leaderboard always calls this
+    with end=None (start of this week -> now); Speaking Leagues' weekly
+    rollover calls it with an explicit end so it can score a week that has
+    already finished, the same way.
+    """
+    attempt_q = select(Attempt).where(Attempt.created_at >= start)
+    day_q = select(DayCompletion).where(DayCompletion.completed_at >= start)
+    if end is not None:
+        attempt_q = attempt_q.where(Attempt.created_at < end)
+        day_q = day_q.where(DayCompletion.completed_at < end)
+    attempts = session.exec(attempt_q).all()
+    days_done = session.exec(day_q).all()
+
+    xp: dict[int, int] = defaultdict(int)
+    for a in attempts:
+        xp[a.user_id] += 10 + (5 if a.score >= 85 else 0)
+    for d in days_done:
+        xp[d.user_id] += 100
+    return xp
+
+
 @app.get("/api/leaderboard")
 def leaderboard(user: User = Depends(get_current_user), session: Session = Depends(get_session)):
     """
@@ -1909,14 +1974,7 @@ def leaderboard(user: User = Depends(get_current_user), session: Session = Depen
     ranked_users = session.exec(
         select(User).where(User.is_premium == True, User.is_admin == False)  # noqa: E712
     ).all()
-    attempts = session.exec(select(Attempt).where(Attempt.created_at >= week_start)).all()
-    days_done = session.exec(select(DayCompletion).where(DayCompletion.completed_at >= week_start)).all()
-
-    xp_by_user: dict[int, int] = defaultdict(int)
-    for a in attempts:
-        xp_by_user[a.user_id] += 10 + (5 if a.score >= 85 else 0)
-    for d in days_done:
-        xp_by_user[d.user_id] += 100
+    xp_by_user = _xp_earned_between(week_start, None, session)
 
     standings = sorted(
         ({"user_id": u.id, "name": u.name, "email": u.email, "xp": xp_by_user.get(u.id, 0)}
@@ -1946,6 +2004,171 @@ def leaderboard(user: User = Depends(get_current_user), session: Session = Depen
         "rows": rows,
         "my_rank": my_rank,
         "my_xp": xp_by_user.get(user.id, 0),
+    }
+
+
+# ----------------------------------------------------------------------
+# 5c. SPEAKING LEAGUES — a Pro-exclusive, SpeakUp-specific twist on
+# Duolingo's tiered weekly leagues.
+# ----------------------------------------------------------------------
+# The flat /api/leaderboard above pits every Pro user on the platform
+# against each other, which stops feeling "winnable" once there are a lot
+# of very active users. Leagues instead group you into a cohort of ~30
+# similarly-active learners: finish in the top 5 of your cohort this week
+# and you move up a tier; finish in the bottom 5 and you move down.
+# Everyone else holds. Ranked by the exact same real-speaking-practice XP
+# as the main leaderboard — this rewards actually practicing, not just
+# grinding taps.
+LEAGUE_TIERS = ["Bronze", "Silver", "Gold", "Diamond", "Speaker's Circle"]
+LEAGUE_COHORT_SIZE = 30
+LEAGUE_PROMOTE_COUNT = 5
+LEAGUE_DEMOTE_COUNT = 5
+
+
+def _league_cohort_chunks(user_ids: list[int], seed_key: str) -> list[list[int]]:
+    """Deterministically splits a tier's members into cohorts of up to
+    LEAGUE_COHORT_SIZE, reshuffled each week (seed_key includes the week)
+    so cohort composition varies over time instead of always the same
+    people. No cohort membership is ever stored -- it's recomputed from
+    this pure function whenever it's needed."""
+    order = sorted(user_ids)
+    random.Random(seed_key).shuffle(order)
+    return [order[i:i + LEAGUE_COHORT_SIZE] for i in range(0, len(order), LEAGUE_COHORT_SIZE)]
+
+
+def _ensure_league_rollover(session: Session):
+    """
+    Runs the promotion/demotion pass for EVERY tier at once, but only once
+    per week no matter how many requests come in — whichever request
+    happens to be the first one made after Monday triggers it. This keeps
+    every user's cohort for the new week computed from a consistent,
+    already-settled set of tiers, rather than some users rolled over and
+    others not yet (which would happen if this were done lazily per-user
+    instead).
+    """
+    current_week = _week_start()
+    current_week_str = current_week.isoformat()
+    state = session.exec(select(LeagueRollupState)).first()
+    if state is None:
+        session.add(LeagueRollupState(last_rolled_week=current_week_str))
+        session.commit()
+        return   # first run ever -- nothing to roll over yet
+
+    if state.last_rolled_week == current_week_str:
+        return   # already processed this week
+
+    prev_week_start = dt.datetime.fromisoformat(state.last_rolled_week)
+    admin_ids = {u.id for u in session.exec(select(User).where(User.is_admin == True)).all()}  # noqa: E712
+    members = session.exec(
+        select(LeagueMembership).where(LeagueMembership.updated_week == state.last_rolled_week)
+    ).all()
+    members = [m for m in members if m.user_id not in admin_ids]
+
+    if members:
+        xp = _xp_earned_between(prev_week_start, current_week, session)
+        by_tier: dict[int, list[LeagueMembership]] = defaultdict(list)
+        for m in members:
+            by_tier[m.tier].append(m)
+
+        for tier, tier_members in by_tier.items():
+            by_id = {m.user_id: m for m in tier_members}
+            chunks = _league_cohort_chunks([m.user_id for m in tier_members],
+                                            f"league-cohort:{state.last_rolled_week}")
+            for chunk in chunks:
+                ranked = sorted(chunk, key=lambda uid: xp.get(uid, 0), reverse=True)
+                n = len(ranked)
+                movable = n > LEAGUE_PROMOTE_COUNT + LEAGUE_DEMOTE_COUNT
+                promote_n = LEAGUE_PROMOTE_COUNT if movable else 0
+                demote_n = LEAGUE_DEMOTE_COUNT if movable else 0
+                for i, uid in enumerate(ranked):
+                    m = by_id[uid]
+                    if i < promote_n:
+                        m.tier = min(m.tier + 1, len(LEAGUE_TIERS) - 1)
+                    elif i >= n - demote_n:
+                        m.tier = max(m.tier - 1, 0)
+                    m.updated_week = current_week_str
+                    session.add(m)
+
+    state.last_rolled_week = current_week_str
+    session.add(state)
+    session.commit()
+
+
+@app.get("/api/leagues")
+def get_leagues(user: User = Depends(get_current_user), session: Session = Depends(get_session)):
+    """Speaking Leagues standings for the current user's cohort this week."""
+    if not user.is_premium:
+        raise HTTPException(403, "Speaking Leagues is a Pro feature.")
+    if user.is_admin:
+        raise HTTPException(400, "Admins don't compete in Speaking Leagues -- there's no real cohort for one.")
+
+    _ensure_league_rollover(session)
+    current_week = _week_start()
+    current_week_str = current_week.isoformat()
+
+    # Every Pro (non-admin) user is automatically "in" Leagues, the same
+    # way the flat leaderboard already includes every Pro user without
+    # requiring an explicit join -- so cohorts reflect the real Pro
+    # population, not just whoever happened to open this screen first.
+    pro_users = session.exec(
+        select(User).where(User.is_premium == True, User.is_admin == False)  # noqa: E712
+    ).all()
+    existing = {m.user_id: m for m in session.exec(
+        select(LeagueMembership).where(LeagueMembership.user_id.in_([u.id for u in pro_users]))
+    ).all()}
+    for u in pro_users:
+        m = existing.get(u.id)
+        if m is None:
+            m = LeagueMembership(user_id=u.id, tier=0, updated_week=current_week_str)
+            session.add(m)
+            existing[u.id] = m
+        elif m.updated_week != current_week_str:
+            # Missed the batch rollover (e.g. had no XP to be ranked on
+            # last week's pass) -- just carry them into the current week
+            # at their existing tier.
+            m.updated_week = current_week_str
+            session.add(m)
+    session.commit()
+    membership = existing[user.id]
+    session.refresh(membership)
+
+    tier_user_ids = [uid for uid, m in existing.items()
+                     if m.tier == membership.tier and m.updated_week == current_week_str]
+    chunks = _league_cohort_chunks(tier_user_ids, f"league-cohort:{current_week_str}")
+    cohort_ids = next((c for c in chunks if user.id in c), [user.id])
+
+    xp = _xp_earned_between(current_week, None, session)
+    cohort_users = {u.id: u for u in session.exec(select(User).where(User.id.in_(cohort_ids))).all()}
+
+    standings = sorted(
+        ({"user_id": uid,
+          "xp": xp.get(uid, 0),
+          "display": (cohort_users[uid].name or _mask_email(cohort_users[uid].email)) if uid in cohort_users else "?",
+          "is_me": uid == user.id}
+         for uid in cohort_ids),
+        key=lambda r: r["xp"], reverse=True,
+    )
+    n = len(standings)
+    movable = n > LEAGUE_PROMOTE_COUNT + LEAGUE_DEMOTE_COUNT
+    promote_n = LEAGUE_PROMOTE_COUNT if movable else 0
+    demote_n = LEAGUE_DEMOTE_COUNT if movable else 0
+    for i, row in enumerate(standings):
+        row["rank"] = i + 1
+        row["zone"] = "promote" if i < promote_n else ("demote" if i >= n - demote_n else "safe")
+
+    my_row = next((r for r in standings if r["is_me"]), None)
+
+    return {
+        "tier_index": membership.tier,
+        "tier_name": LEAGUE_TIERS[membership.tier],
+        "all_tiers": LEAGUE_TIERS,
+        "is_top_tier": membership.tier == len(LEAGUE_TIERS) - 1,
+        "is_bottom_tier": membership.tier == 0,
+        "week_start": current_week_str,
+        "cohort_size": n,
+        "standings": standings,
+        "my_rank": my_row["rank"] if my_row else None,
+        "my_xp": my_row["xp"] if my_row else 0,
     }
 
 
@@ -2008,8 +2231,6 @@ def list_shadow_categories(user: User = Depends(get_current_user)):
 # tables -- only one nullable column on User to remember whether *this*
 # user has already seen *today's* batch (so the banner doesn't nag on
 # every page load).
-import random as _phrase_random
-
 PHRASE_ROTATION_SIZE = 20
 PHRASE_ROTATION_EPOCH = dt.date(2026, 1, 1)   # arbitrary fixed reference point
 
@@ -2031,7 +2252,7 @@ def _phrase_rotation_window(pool_size: int, unit_seed: str, today: dt.date) -> l
     cycle_number = days_elapsed // cycle_len
     day_in_cycle = days_elapsed % cycle_len
     order = list(range(pool_size))
-    _phrase_random.Random(f"{unit_seed}:{cycle_number}").shuffle(order)
+    random.Random(f"{unit_seed}:{cycle_number}").shuffle(order)
     start = day_in_cycle * PHRASE_ROTATION_SIZE
     return order[start:start + PHRASE_ROTATION_SIZE]
 
@@ -2072,6 +2293,45 @@ def phrases_whats_new_seen(user: User = Depends(get_current_user),
     session.add(user)
     session.commit()
     return {"ok": True}
+
+
+@app.get("/api/phrases/spotlight")
+def phrase_spotlight(user: User = Depends(get_current_user)):
+    """
+    Daily Spotlight Phrase — a Pro-exclusive, EWA-inspired bite-sized daily
+    habit hook: one hand-cycled phrase, front and center. Distinct from the
+    generic "N new phrases today" rotation banner (which is available to
+    everyone and just reports a count) -- this is a premium, single-phrase
+    highlight. Cycles through all 9 units (5 Lessons + 4 Shadow categories)
+    one per day, then spotlights the FIRST phrase of that unit's featured
+    rotation window for today (so it's always one of today's "new" ones).
+    """
+    if not user.is_premium:
+        raise HTTPException(403, "The Daily Spotlight is a Pro feature.")
+
+    today = dt.date.today()
+    units = [("lesson", l["id"], l["title"], l["phrases"]) for l in LESSONS] + \
+            [("shadow", c["id"], c["title"], c["phrases"]) for c in SHADOW_CATEGORIES]
+    day_index = (today - PHRASE_ROTATION_EPOCH).days % len(units)
+    kind, unit_id, unit_title, phrases = units[day_index]
+
+    idxs = _phrase_rotation_window(len(phrases), f"{kind}:{unit_id}", today)
+    phrase_index = idxs[0] if idxs else 0
+    raw = phrases[phrase_index]
+    en = raw if kind == "lesson" else raw["en"]
+    ar = LESSON_TRANSLATIONS.get(en, "") if kind == "lesson" else raw.get("ar", "")
+    tip = "" if kind == "lesson" else raw.get("tip", "")
+
+    return {
+        "kind": kind,
+        "unit_id": unit_id,
+        "unit_title": unit_title,
+        "phrase_index": phrase_index,
+        "en": en,
+        "ar": ar,
+        "tip": tip,
+        "date": today.isoformat(),
+    }
 
 
 @app.post("/api/practice")
@@ -2261,8 +2521,36 @@ def progress(user: User = Depends(get_current_user),
     ).all()
     xp = len(attempts) * 10 + sum(5 for a in attempts if a.score >= 85) + len(days_completed) * 100
 
-    # Daily streak: walk back day by day from today while each day was active.
     today = dt.date.today()
+
+    # Streak Shield — a Pro-exclusive, always-on perk (SpeakUp's take on
+    # Duolingo's streak freeze). Free users' streaks are untouched below:
+    # a single missed day just breaks the chain, same as always. Pro users
+    # get exactly one missed day auto-protected whenever it happens (not a
+    # stockpiled/spendable currency — just a standing subscriber benefit),
+    # recorded permanently in StreakShieldUse so it only ever covers a
+    # given date once and stays auditable.
+    shield_just_saved = False
+    if user.is_premium and active_days:
+        latest_active = max(active_days)
+        gap_days = (today - latest_active).days
+        if gap_days == 2:   # exactly one day missing between last practice and today
+            missed_date = (latest_active + dt.timedelta(days=1)).isoformat()
+            already_shielded = session.exec(
+                select(StreakShieldUse).where(StreakShieldUse.user_id == user.id,
+                                               StreakShieldUse.shielded_date == missed_date)
+            ).first()
+            if not already_shielded:
+                session.add(StreakShieldUse(user_id=user.id, shielded_date=missed_date))
+                session.commit()
+                shield_just_saved = True
+    if user.is_premium:
+        shielded = session.exec(select(StreakShieldUse).where(StreakShieldUse.user_id == user.id)).all()
+        for row in shielded:
+            active_days.add(dt.date.fromisoformat(row.shielded_date))
+
+    # Daily streak: walk back day by day from today while each day was
+    # active (a day protected by the Streak Shield above counts as active).
     streak = 0
     # Allow the streak to be "alive" if they practised today OR yesterday
     # (so it doesn't reset the instant midnight passes before they log in).
@@ -2293,6 +2581,8 @@ def progress(user: User = Depends(get_current_user),
         "avg_score": round(sum(scores) / len(scores)) if scores else 0,
         "best_score": max(scores) if scores else 0,
         "xp": xp,
+        "streak_shield_active": user.is_premium,
+        "streak_shield_just_saved": shield_just_saved,
     }
 
 
