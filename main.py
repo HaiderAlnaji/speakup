@@ -291,6 +291,11 @@ DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
 if DATABASE_URL.startswith("postgres://"):
     DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
+# The same signal doubles as a general "are we running for real" flag —
+# used to lock down local-only conveniences (like the password-reset demo
+# link below) so they can never accidentally run in production.
+IS_PRODUCTION = bool(DATABASE_URL)
+
 if DATABASE_URL:
     engine = create_engine(
         DATABASE_URL,
@@ -870,9 +875,15 @@ def forgot_password(data: ForgotPasswordIn, request: Request,
     """
     Always returns the same generic message whether or not that email has
     an account — so this endpoint can't be used to check who's registered.
-    The one exception is DEMO MODE (no SMTP configured yet): there, the
-    reset link is handed back directly in the response so you can still
-    test and use the flow before setting up real email sending.
+
+    DEMO MODE (handing the reset link straight back in the response, instead
+    of emailing it) is a LOCAL-ONLY convenience for testing before you've set
+    up SMTP. It is deliberately disabled in production (detected the same way
+    the rest of this app already tells local vs. production apart: whether
+    DATABASE_URL is set — see section 1c). Handing out a working reset link
+    to whoever asks for it, for ANY email, would be a live account-takeover
+    hole on a real deployed site — anyone could "reset" anyone else's
+    password just by knowing their email address.
     """
     rate_limit(request, "forgot-password", limit=5, window=300)
     email = data.email.strip().lower()
@@ -903,9 +914,19 @@ def forgot_password(data: ForgotPasswordIn, request: Request,
             print(f"[forgot-password] failed to send reset email to {user.email}")
         return generic
 
-    # Demo mode: no SMTP set up yet, so hand the link straight back.
-    return {"sent": True, "message": "Email isn't configured yet — here's your reset link:",
-            "demo_reset_link": reset_link}
+    if not IS_PRODUCTION:
+        # Local dev only, and only when SMTP isn't set up yet: hand the link
+        # straight back so you can still test the flow on your own machine.
+        return {"sent": True, "message": "Email isn't configured yet — here's your reset link:",
+                "demo_reset_link": reset_link}
+
+    # Production, but SMTP isn't configured yet: log it server-side (for an
+    # admin to retrieve from the Render logs if truly needed) and tell the
+    # requester nothing beyond the generic message. Never expose the link to
+    # whoever made the request — this is the fix for the account-takeover
+    # issue above.
+    print(f"[forgot-password] SMTP not configured — reset link for {user.email}: {reset_link}")
+    return generic
 
 
 @app.post("/api/reset-password")
