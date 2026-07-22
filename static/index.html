@@ -676,6 +676,17 @@
         <button class="btn-gold" id="certReadyBtn" style="width:auto;padding:12px 24px" data-i18n="dash.viewCert">View certificate</button>
       </div>
 
+      <!-- Pro pass expiring soon — only for ZainCash/QiCard's one-time,
+           non-auto-renewing 30-day passes. Paddle/admin never show this. -->
+      <div class="cert-ready hidden anim-in" id="proExpiryBanner">
+        <div class="cr-icon">⏳</div>
+        <div class="cr-body">
+          <div class="cr-title" id="proExpiryTitle"></div>
+          <div class="cr-sub" data-i18n="dash.proExpirySub">Renew to keep your Pro access without any interruption.</div>
+        </div>
+        <button class="btn-gold" id="proExpiryRenewBtn" style="width:auto;padding:12px 24px" data-i18n="dash.renewNow">Renew now</button>
+      </div>
+
       <!-- Daily streak — the habit driver. Shows once they've practiced. -->
       <div class="streak-banner hidden anim-in" id="streakBanner">
         <div class="sb-flame" id="sbFlame">🔥</div>
@@ -1096,6 +1107,7 @@
         <button class="btn-gold" id="upgradeBtn" data-i18n="paywall.upgradeBtn">Upgrade to Pro</button>
         <div class="upgrade-options hidden" id="upgradeOptions"></div>
         <div class="note" id="proNote" data-i18n="paywall.demoMode">Demo mode: this unlocks instantly.</div>
+        <div class="note note-renewal hidden" id="proRenewalNote"></div>
       </div>
     </div>
   </div>
@@ -1319,6 +1331,11 @@ const T = {
     "paywall.perk4": "All Intermediate & Advanced lessons",
     "paywall.upgradeBtn": "Upgrade to Pro", "paywall.loading": "Loading…",
     "paywall.demoMode": "Demo mode: this unlocks instantly.",
+    "billing.oneTimeNote": "This is a one-time 30-day pass, not a subscription — it won't auto-renew or charge you again. Come back and pay once more anytime you want to keep going.",
+    "dash.proExpirySub": "Renew to keep your Pro access without any interruption.",
+    "dash.renewNow": "Renew now",
+    "dash.proExpiresToday": "Your Pro access expires today",
+    "dash.proExpiresIn": "Your Pro access expires in {n} days",
     "paywall.paddleSecure": "Secure checkout powered by Paddle.",
     "paywall.choosePayment": "Choose how you'd like to pay:",
     "paywall.payWith": "Pay with {p}",
@@ -1517,6 +1534,11 @@ const T = {
     "paywall.perk4": "كل الدروس المتوسطة والمتقدمة",
     "paywall.upgradeBtn": "الترقية إلى Pro", "paywall.loading": "جارٍ التحميل…",
     "paywall.demoMode": "وضع تجريبي: يتم الفتح فوراً.",
+    "billing.oneTimeNote": "هذه بطاقة دخول لمرة واحدة لمدة 30 يوماً، وليست اشتراكاً — لن تتجدد تلقائياً ولن تُخصم منك مرة أخرى. عد وادفع مرة أخرى في أي وقت تريد المتابعة فيه.",
+    "dash.proExpirySub": "جدّد اشتراكك لتحافظ على وصولك إلى Pro دون انقطاع.",
+    "dash.renewNow": "جدّد الآن",
+    "dash.proExpiresToday": "وصولك إلى Pro ينتهي اليوم",
+    "dash.proExpiresIn": "وصولك إلى Pro ينتهي خلال {n} أيام",
     "paywall.paddleSecure": "دفع آمن عبر Paddle.",
     "paywall.choosePayment": "اختر طريقة الدفع:",
     "paywall.payWith": "الدفع عبر {p}",
@@ -1768,10 +1790,16 @@ function enterApp(user){
 }
 async function loadDashboard(){
   show("dashboard");
-  const [ls, prog, sp, sc, sh, bd] = await Promise.all([
-    api("/api/lessons"), api("/api/progress"), api("/api/sprint"), api("/api/scenarios"),
+  const [me_, ls, prog, sp, sc, sh, bd] = await Promise.all([
+    api("/api/me"), api("/api/lessons"), api("/api/progress"), api("/api/sprint"), api("/api/scenarios"),
     api("/api/shadow"), api("/api/badges")
   ]);
+  // Refreshed on every dashboard load (not just at login) so a Pro pass
+  // that expired while the tab was sitting open — or a display name
+  // changed in Settings — is reflected right away, everywhere.
+  currentUser = me_;
+  $("userEmail").textContent = me_.name || me_.email;
+  $("proBadge").classList.toggle("hidden", !me_.is_premium);
   lessons = ls; sprint = sp; scenarios = sc.scenarios; shadowCats = sh;
   $("aiOff").classList.toggle("hidden", sc.ai_ready);
   renderStats(prog);
@@ -1789,7 +1817,23 @@ async function loadDashboard(){
     isPremium: !!(currentUser && currentUser.is_premium),
   });
   $("certReadyBanner").classList.toggle("hidden", !(sprint.state && sprint.state.finished));
+  renderProExpiryBanner(me_);
 }
+
+// Only ZainCash/QiCard passes need this — they're one-time 30-day
+// purchases that genuinely lapse, unlike Paddle (auto-renews) or an
+// admin-comped account (never expires). Shown starting 5 days out.
+function renderProExpiryBanner(user){
+  const banner = $("proExpiryBanner");
+  const eligible = user.is_premium && user.pro_expires_at &&
+                   (user.pro_provider === "zaincash" || user.pro_provider === "qicard");
+  if (!eligible){ banner.classList.add("hidden"); return; }
+  const daysLeft = Math.ceil((new Date(user.pro_expires_at) - new Date()) / 86400000);
+  if (daysLeft > 5 || daysLeft < 0){ banner.classList.add("hidden"); return; }
+  banner.classList.remove("hidden");
+  $("proExpiryTitle").textContent = daysLeft <= 0 ? t("dash.proExpiresToday") : t("dash.proExpiresIn", {n: daysLeft});
+}
+$("proExpiryRenewBtn").onclick = () => show("paywallView");
 
 // ---- ACHIEVEMENTS: computed client-side from stats the server already
 // gives us — thresholds live in one place (here) and are easy to tune
@@ -1997,10 +2041,17 @@ function renderPlanSection(user){
   }
   $("settingsUpgradeBtn").classList.add("hidden");
   let detail = "";
-  if (user.pro_provider === "admin") detail = t("settings.proAdmin");
-  else if (user.pro_provider === "paddle") detail = t("settings.proPaddle");
-  else if (user.pro_expires_at) detail = t("settings.proExpires", {date: new Date(user.pro_expires_at).toLocaleDateString()});
-  body.innerHTML = `<div class="plan-row"><span class="plan-pill pro">${t("settings.pro")}</span><span>${detail}</span></div>`;
+  let note = "";
+  if (user.pro_provider === "admin"){
+    detail = t("settings.proAdmin");
+  } else if (user.pro_provider === "paddle"){
+    detail = t("settings.proPaddle");
+  } else if (user.pro_expires_at){
+    detail = t("settings.proExpires", {date: new Date(user.pro_expires_at).toLocaleDateString()});
+    note = t("billing.oneTimeNote");
+  }
+  body.innerHTML = `<div class="plan-row"><span class="plan-pill pro">${t("settings.pro")}</span><span>${detail}</span></div>` +
+    (note ? `<p class="settings-note">${note}</p>` : "");
 }
 $("settingsUpgradeBtn").onclick = () => show("paywallView");
 
@@ -2694,6 +2745,7 @@ async function refreshPriceDisplay(){
       $("proNote").textContent = t("paywall.paddleSecure");
       $("upgradeBtn").classList.remove("hidden");
       opts.classList.add("hidden");
+      $("proRenewalNote").classList.add("hidden");
     } else if (localProviders.length > 1){
       // More than one Iraqi payment rail is configured (e.g. ZainCash for
       // mobile-wallet users, QiCard for Rafidain/Rasheed Bank Qi Card
@@ -2709,17 +2761,22 @@ async function refreshPriceDisplay(){
         btn.onclick = () => startLocalCheckout(p.id, btn);
         opts.appendChild(btn);
       });
+      $("proRenewalNote").textContent = t("billing.oneTimeNote");
+      $("proRenewalNote").classList.remove("hidden");
     } else if (localProviders.length === 1){
       const p = localProviders[0];
       $("proPriceIqd").textContent = t("paywall.iqdApproxVia", {n: Number(cfg.price_iqd).toLocaleString(), p: p.label});
       $("proNote").textContent = t("paywall.payWithNoCard", {p: p.label});
       $("upgradeBtn").classList.remove("hidden");
       opts.classList.add("hidden");
+      $("proRenewalNote").textContent = t("billing.oneTimeNote");
+      $("proRenewalNote").classList.remove("hidden");
     } else {
       $("proPriceIqd").textContent = "";
       $("proNote").textContent = t("paywall.demoMode");
       $("upgradeBtn").classList.remove("hidden");
       opts.classList.add("hidden");
+      $("proRenewalNote").classList.add("hidden");
     }
   } catch(e){ /* leave the static defaults showing */ }
 }
