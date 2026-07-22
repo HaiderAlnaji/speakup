@@ -1012,21 +1012,26 @@ def auth_google(data: GoogleAuthIn, request: Request, session: Session = Depends
 
     try:
         signing_key = _google_jwks_client.get_signing_key_from_jwt(data.credential)
-    except jwt.PyJWTError:
+    except jwt.PyJWTError as e:
+        # Logged server-side only — never shown to the client — so we can
+        # actually see WHY a real sign-in got rejected instead of guessing.
+        print(f"[auth/google] couldn't get signing key: {type(e).__name__}: {e}")
         raise HTTPException(401, "Google sign-in failed — please try again.")
-    except Exception:
-        # e.g. couldn't reach Google to fetch its public keys right now.
+    except Exception as e:
+        print(f"[auth/google] JWKS fetch failed: {type(e).__name__}: {e}")
         raise HTTPException(503, "Couldn't verify with Google right now — please try again in a moment.")
 
     try:
         payload = jwt.decode(data.credential, signing_key.key, algorithms=["RS256"],
                               audience=GOOGLE_CLIENT_ID)
-    except jwt.PyJWTError:
+    except jwt.PyJWTError as e:
+        print(f"[auth/google] token verification failed: {type(e).__name__}: {e}")
         raise HTTPException(401, "Google sign-in failed — please try again.")
 
     # Checked separately from jwt.decode()'s own claim checks above, so this
     # works the same across older/newer PyJWT versions.
     if payload.get("iss") not in ("https://accounts.google.com", "accounts.google.com"):
+        print(f"[auth/google] unexpected issuer: {payload.get('iss')!r}")
         raise HTTPException(401, "Google sign-in failed — please try again.")
     if not payload.get("email_verified"):
         raise HTTPException(401, "Your Google email isn't verified.")
