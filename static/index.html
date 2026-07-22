@@ -311,6 +311,12 @@
     padding:8px 15px;border-radius:20px;display:inline-flex;align-items:center;gap:7px;margin-bottom:0;
     transition:background .18s var(--ease),transform .15s var(--ease)}
   .listen:hover{background:#E9EDF6;transform:translateY(-1px)}
+  .speed-row{display:flex;align-items:center;justify-content:center;gap:6px;margin:0 0 22px;flex-wrap:wrap}
+  .speed-label{font-size:12px;color:var(--muted);margin-inline-end:2px}
+  .speed-btn{background:var(--surface-2);color:var(--muted);font-size:12.5px;font-weight:500;
+    padding:5px 12px;border-radius:14px;border:1px solid transparent;transition:all .15s var(--ease)}
+  .speed-btn:hover{color:var(--ink)}
+  .speed-btn.active{background:var(--brand);color:#fff}
 
   /* ---------- Timed practice session ---------- */
   .session-setup{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);
@@ -977,6 +983,16 @@
           <button class="listen" id="phraseTrBtn" data-i18n="phrase.translate">🌐 Translate</button>
         </div>
 
+        <!-- Playback speed for native audio -- affects Listen above and both
+             native-audio buttons in Shadow Mode below. Just a rate on the
+             same SpeechSynthesisUtterance already used everywhere. -->
+        <div class="speed-row" id="speedRow">
+          <span class="speed-label" data-i18n="speed.label">Speed</span>
+          <button class="speed-btn" id="speedSlowBtn" data-i18n="speed.slow">🐢 Slow</button>
+          <button class="speed-btn active" id="speedNormalBtn" data-i18n="speed.normal">Normal</button>
+          <button class="speed-btn" id="speedFastBtn" data-i18n="speed.fast">🐇 Fast</button>
+        </div>
+
         <!-- Shadow Mode only: speak along with the audio in real time, then
              hear your own recording right next to the native one. -->
         <div class="shadow-tip hidden" id="shadowTip"></div>
@@ -1406,6 +1422,7 @@ const T = {
     "challenge.today": "Today's challenge",
     "phrase.sayOutLoud": "Say this out loud",
     "phrase.listen": "🔊 Listen", "phrase.translate": "🌐 Translate",
+    "speed.label": "Speed", "speed.slow": "🐢 Slow", "speed.normal": "Normal", "speed.fast": "🐇 Fast",
     "shadow.recordDefault": "🎙️ Shadow it (speak along)", "shadow.recordAgain": "🎙️ Shadow it again",
     "shadow.recording": "● Speak along now…",
     "shadow.hint": "🎧 Best with headphones — play and speak at the exact same time.",
@@ -1638,6 +1655,7 @@ const T = {
     "challenge.today": "تحدي اليوم",
     "phrase.sayOutLoud": "قل هذا بصوت عالٍ",
     "phrase.listen": "🔊 استماع", "phrase.translate": "🌐 ترجمة",
+    "speed.label": "السرعة", "speed.slow": "🐢 بطيء", "speed.normal": "عادي", "speed.fast": "🐇 سريع",
     "shadow.recordDefault": "🎙️ حاكِ (تحدث بالتزامن)", "shadow.recordAgain": "🎙️ حاكِ مرة أخرى",
     "shadow.recording": "● تحدث الآن…",
     "shadow.hint": "🎧 الأفضل باستخدام سماعات الرأس — شغّل وتحدث في نفس اللحظة تماماً.",
@@ -2636,6 +2654,26 @@ async function showCertificate(){
 // ---- PRACTICE ----
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 
+// Playback speed for native audio (Listen + both Shadow Mode audio buttons).
+// Just a rate on the SpeechSynthesisUtterance -- persisted locally since
+// it's a personal listening preference, not account data.
+let playbackRate = parseFloat(localStorage.getItem("speakup_rate")) || 0.9;
+function setPlaybackRate(rate, btnId){
+  playbackRate = rate;
+  localStorage.setItem("speakup_rate", String(rate));
+  ["speedSlowBtn","speedNormalBtn","speedFastBtn"].forEach(id => $(id).classList.remove("active"));
+  $(btnId).classList.add("active");
+}
+$("speedSlowBtn").onclick = () => setPlaybackRate(0.65, "speedSlowBtn");
+$("speedNormalBtn").onclick = () => setPlaybackRate(0.9, "speedNormalBtn");
+$("speedFastBtn").onclick = () => setPlaybackRate(1.15, "speedFastBtn");
+(function initSpeedButtons(){
+  const map = {0.65: "speedSlowBtn", 0.9: "speedNormalBtn", 1.15: "speedFastBtn"};
+  const id = map[playbackRate] || "speedNormalBtn";
+  ["speedSlowBtn","speedNormalBtn","speedFastBtn"].forEach(x => $(x).classList.remove("active"));
+  $(id).classList.add("active");
+})();
+
 // Two kinds of practice:
 //   "lesson"  — the short fixed warm-up lists (unchanged, quick, no setup).
 //   "session" — a timed, AI-generated, never-repeating drill. Used by Sprint
@@ -2862,7 +2900,7 @@ $("backBtn").onclick = () => {
 $("backBtn2").onclick = () => { resetShadowUI(); loadDashboard(); };
 $("listenBtn").onclick = () => {
   const u = new SpeechSynthesisUtterance(currentPhraseText());
-  u.lang = "en-US"; u.rate = 0.9;
+  u.lang = "en-US"; u.rate = playbackRate;
   speechSynthesis.cancel(); speechSynthesis.speak(u);
 };
 $("phraseTrBtn").onclick = async () => {
@@ -3025,7 +3063,7 @@ $("shadowRecordBtn").onclick = async () => {
     }
 
     const u = new SpeechSynthesisUtterance(currentPhraseText());
-    u.lang = "en-US"; u.rate = 0.95;
+    u.lang = "en-US"; u.rate = playbackRate;
     u.onend = () => {
       if (shadowRecorder && shadowRecorder.state === "recording") shadowRecorder.stop();
       // Give speech recognition a beat to catch any trailing words before
@@ -3044,7 +3082,7 @@ $("shadowRecordBtn").onclick = async () => {
 };
 $("playNativeBtn").onclick = () => {
   const u = new SpeechSynthesisUtterance(currentPhraseText());
-  u.lang = "en-US"; u.rate = 0.95;
+  u.lang = "en-US"; u.rate = playbackRate;
   speechSynthesis.cancel(); speechSynthesis.speak(u);
 };
 $("playMineBtn").onclick = () => {
