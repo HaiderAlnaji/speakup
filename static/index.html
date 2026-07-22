@@ -314,6 +314,8 @@
     margin-bottom:10px}
   .phrase{font-family:'Sora';font-size:26px;font-weight:600;line-height:1.35;color:var(--ink);
     margin-bottom:6px}
+  .phrase.dictation-hidden{color:var(--muted);font-style:italic;font-size:19px}
+  .listen.active{background:var(--brand);color:#fff}
   .phrase-tr{font-size:15px;color:var(--brand);margin-bottom:14px;direction:rtl;text-align:center;
     animation:riseIn .3s var(--ease) both}
   .phrase-actions{display:flex;gap:10px;justify-content:center;margin-bottom:26px}
@@ -1029,6 +1031,7 @@
         <div class="phrase-actions">
           <button class="listen" id="listenBtn" data-i18n="phrase.listen">🔊 Listen</button>
           <button class="listen" id="phraseTrBtn" data-i18n="phrase.translate">🌐 Translate</button>
+          <button class="listen hidden" id="dictationToggleBtn" data-i18n="dictation.toggleOff">🎧 Dictation: Off</button>
         </div>
 
         <!-- Playback speed for native audio -- affects Listen above and both
@@ -1479,6 +1482,8 @@ const T = {
     "phrase.sayOutLoud": "Say this out loud",
     "phrase.listen": "🔊 Listen", "phrase.translate": "🌐 Translate",
     "speed.label": "Speed", "speed.slow": "🐢 Slow", "speed.normal": "Normal", "speed.fast": "🐇 Fast",
+    "dictation.toggleOff": "🎧 Dictation: Off", "dictation.toggleOn": "🎧 Dictation: On",
+    "dictation.placeholder": "🎧 Listen first, then say what you heard",
     "shadow.recordDefault": "🎙️ Shadow it (speak along)", "shadow.recordAgain": "🎙️ Shadow it again",
     "shadow.recording": "● Speak along now…",
     "shadow.hint": "🎧 Best with headphones — play and speak at the exact same time.",
@@ -1720,6 +1725,8 @@ const T = {
     "phrase.sayOutLoud": "قل هذا بصوت عالٍ",
     "phrase.listen": "🔊 استماع", "phrase.translate": "🌐 ترجمة",
     "speed.label": "السرعة", "speed.slow": "🐢 بطيء", "speed.normal": "عادي", "speed.fast": "🐇 سريع",
+    "dictation.toggleOff": "🎧 الإملاء: متوقف", "dictation.toggleOn": "🎧 الإملاء: مفعّل",
+    "dictation.placeholder": "🎧 استمع أولاً، ثم قل ما سمعته",
     "shadow.recordDefault": "🎙️ حاكِ (تحدث بالتزامن)", "shadow.recordAgain": "🎙️ حاكِ مرة أخرى",
     "shadow.recording": "● تحدث الآن…",
     "shadow.hint": "🎧 الأفضل باستخدام سماعات الرأس — شغّل وتحدث في نفس اللحظة تماماً.",
@@ -2748,6 +2755,23 @@ $("speedFastBtn").onclick = () => setPlaybackRate(1.15, "speedFastBtn");
   $(id).classList.add("active");
 })();
 
+// Dictation mode: hides the printed phrase until you've had a go at it from
+// listening alone, then reveals it the moment you're graded. Available for
+// Lessons and Review (the two modes where the text is normally shown right
+// away) -- Shadow Mode already has its own listen-then-speak mechanic, and
+// timed Sessions run on a strict clock, so both are left out of v1.
+let dictationMode = localStorage.getItem("speakup_dictation") === "1";
+function dictationEligible(){
+  return current && (current.mode === "lesson" || current.mode === "review");
+}
+$("dictationToggleBtn").onclick = () => {
+  dictationMode = !dictationMode;
+  localStorage.setItem("speakup_dictation", dictationMode ? "1" : "0");
+  $("dictationToggleBtn").classList.toggle("active", dictationMode);
+  $("dictationToggleBtn").textContent = t(dictationMode ? "dictation.toggleOn" : "dictation.toggleOff");
+  if (current) renderPhrase();
+};
+
 // Two kinds of practice:
 //   "lesson"  — the short fixed warm-up lists (unchanged, quick, no setup).
 //   "session" — a timed, AI-generated, never-repeating drill. Used by Sprint
@@ -2915,13 +2939,16 @@ function renderPhrase(){
   const phrases = isSessionMode() ? current.queue : current.phrases;
   const index = current.index;
   const phraseEl = $("phraseText");
-  phraseEl.textContent = phrases[index] || "…";
+  const dictationActive = dictationMode && dictationEligible();
+  phraseEl.textContent = dictationActive ? t("dictation.placeholder") : (phrases[index] || "…");
+  phraseEl.classList.toggle("dictation-hidden", dictationActive);
   phraseEl.style.animation = "none";
   void phraseEl.offsetWidth;
   phraseEl.style.animation = "riseIn .45s var(--ease) both";
   $("result").classList.remove("show");
   $("phraseTr").classList.add("hidden");
   $("micHint").textContent = t("mic.hintDefault");
+  $("dictationToggleBtn").classList.toggle("hidden", !dictationEligible());
   resetShadowUI();
 
   if (current.mode === "shadow"){
@@ -3183,6 +3210,14 @@ async function grade(alternatives){
   // pick the alternative that scores highest (most forgiving)
   let best = 0, bestText = alternatives[0] || "";
   alternatives.forEach(alt => { const sc = similarity(target, alt); if (sc > best){ best = sc; bestText = alt; } });
+
+  // Dictation mode: reveal the printed phrase the moment they're graded, so
+  // they can compare what they said against the real sentence.
+  const phraseEl = $("phraseText");
+  if (phraseEl.classList.contains("dictation-hidden")){
+    phraseEl.textContent = target;
+    phraseEl.classList.remove("dictation-hidden");
+  }
 
   // Remember the best score for this phrase (used to average a sprint day).
   const prev = current.scores[current.index];
