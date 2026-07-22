@@ -243,6 +243,16 @@
     padding:20px 22px;margin-bottom:26px}
   .pc-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
   .pc-head h3{font-size:16px}
+  .arabic-tips-card .pc-head{margin-bottom:0}
+  .arabic-tips-card .pc-head h3{font-size:15px}
+  .atc-toggle{background:var(--surface-2);color:var(--brand);font-size:12.5px;font-weight:600;
+    padding:6px 14px;border-radius:14px;white-space:nowrap}
+  .atc-toggle:hover{background:#E9EDF6}
+  .atc-list{display:flex;flex-direction:column;gap:12px;margin-top:16px}
+  .atc-item{display:flex;flex-direction:column;gap:3px;padding-top:12px;border-top:1px solid var(--line)}
+  .atc-item:first-child{padding-top:0;border-top:none}
+  .atc-sound{font-family:'Sora';font-size:13.5px;font-weight:700;color:var(--brand)}
+  .atc-desc{font-size:13.5px;color:var(--muted);line-height:1.5}
   .pc-trend{font-size:12px;font-weight:600;padding:4px 10px;border-radius:20px}
   .pc-trend.improving{background:#E7F7EE;color:#1B6B42}
   .pc-trend.declining{background:#FDECEC;color:#B4292E}
@@ -912,6 +922,44 @@
         <h2 data-i18n="shadow.title">Shadow Mode</h2>
         <p data-i18n="shadow.sub">Speak along WITH the recording, not after it — the fastest way to pick up native rhythm, linking, and reductions.</p>
       </div>
+
+      <!-- Static reference card -- sounds that are specifically hard for
+           Arabic-L1 speakers (not just generic ESL tips). No backend, no
+           per-user state: just content, toggled open/closed like the
+           phrase-translate box already does elsewhere on this page. -->
+      <div class="progress-card arabic-tips-card anim-in-3" id="arabicTipsCard">
+        <div class="pc-head">
+          <h3 data-i18n="arabicTips.title">🇮🇶 Sounds Arabic Speakers Often Mix Up</h3>
+          <button class="atc-toggle" id="arabicTipsToggle" data-i18n="arabicTips.show">Show tips</button>
+        </div>
+        <div class="atc-list hidden" id="arabicTipsList">
+          <div class="atc-item">
+            <span class="atc-sound" dir="ltr">P / B</span>
+            <span class="atc-desc" data-i18n="arabicTips.pb">Arabic has no "p" sound, so it often comes out as "b" — "pen" sounds like "Ben". Keep your lips closed a beat longer and let a puff of air out for P.</span>
+          </div>
+          <div class="atc-item">
+            <span class="atc-sound" dir="ltr">V / W</span>
+            <span class="atc-desc" data-i18n="arabicTips.vw">"Vine" and "wine" can blend together. For V, your top teeth touch your bottom lip; for W, round your lips like blowing out a candle.</span>
+          </div>
+          <div class="atc-item">
+            <span class="atc-sound" dir="ltr">TH (θ/ð)</span>
+            <span class="atc-desc" data-i18n="arabicTips.th">Often swapped for S/Z/T/D — "think" becomes "sink" or "tink". Put your tongue tip between your teeth and blow air out gently.</span>
+          </div>
+          <div class="atc-item">
+            <span class="atc-sound" dir="ltr">Consonant clusters</span>
+            <span class="atc-desc" data-i18n="arabicTips.clusters">Arabic tends to add a short vowel before clusters — "street" becomes "istreet". Practice starting right on the "s", with no vowel before it.</span>
+          </div>
+          <div class="atc-item">
+            <span class="atc-sound" dir="ltr">Short vs. long vowels</span>
+            <span class="atc-desc" data-i18n="arabicTips.vowels">"Ship" and "sheep" can sound the same. Exaggerate the difference at first — short and sharp for one, longer and tenser for the other.</span>
+          </div>
+          <div class="atc-item">
+            <span class="atc-sound" dir="ltr">Stress &amp; rhythm</span>
+            <span class="atc-desc" data-i18n="arabicTips.stress">Arabic gives syllables fairly even weight; English leans hard on stressed ones and swallows the rest. That's exactly what "Stress &amp; Rhythm" below trains.</span>
+          </div>
+        </div>
+      </div>
+
       <div class="grid anim-in-3" id="shadowGrid"></div>
     </div>
 
@@ -1405,6 +1453,14 @@ const T = {
     "newPhrases.cta": "Take a look",
     "shadow.title": "Shadow Mode",
     "shadow.sub": "Speak along WITH the recording, not after it — the fastest way to pick up native rhythm, linking, and reductions.",
+    "arabicTips.title": "🇮🇶 Sounds Arabic Speakers Often Mix Up",
+    "arabicTips.show": "Show tips", "arabicTips.hide": "Hide tips",
+    "arabicTips.pb": "Arabic has no \"p\" sound, so it often comes out as \"b\" — \"pen\" sounds like \"Ben\". Keep your lips closed a beat longer and let a puff of air out for P.",
+    "arabicTips.vw": "\"Vine\" and \"wine\" can blend together. For V, your top teeth touch your bottom lip; for W, round your lips like blowing out a candle.",
+    "arabicTips.th": "Often swapped for S/Z/T/D — \"think\" becomes \"sink\" or \"tink\". Put your tongue tip between your teeth and blow air out gently.",
+    "arabicTips.clusters": "Arabic tends to add a short vowel before clusters — \"street\" becomes \"istreet\". Practice starting right on the \"s\", with no vowel before it.",
+    "arabicTips.vowels": "\"Ship\" and \"sheep\" can sound the same. Exaggerate the difference at first — short and sharp for one, longer and tenser for the other.",
+    "arabicTips.stress": "Arabic gives syllables fairly even weight; English leans hard on stressed ones and swallows the rest. That's exactly what \"Stress & Rhythm\" below trains.",
     "card.premiumLesson": "Premium lesson", "card.premiumCategory": "Premium category",
     "card.premiumConversation": "Premium conversation",
     "card.phrasesCount": "{n} phrases", "card.lockPro": "🔒 Pro",
@@ -1638,6 +1694,14 @@ const T = {
     "newPhrases.cta": "ألقِ نظرة",
     "shadow.title": "وضع المحاكاة (Shadow Mode)",
     "shadow.sub": "تحدث بالتزامن مع التسجيل، لا بعده — أسرع طريقة لاكتساب الإيقاع الطبيعي والربط والاختصارات الصوتية.",
+    "arabicTips.title": "🇮🇶 أصوات يخلط بها المتحدثون بالعربية غالباً",
+    "arabicTips.show": "إظهار النصائح", "arabicTips.hide": "إخفاء النصائح",
+    "arabicTips.pb": "العربية ليس فيها صوت \"p\"، لذلك غالباً ما يتحول إلى \"b\" — كلمة \"pen\" تُنطق كأنها \"Ben\". أغلق شفتيك لحظة أطول ثم أطلق نفساً خفيفاً لحرف P.",
+    "arabicTips.vw": "يمكن أن تتشابه \"vine\" و\"wine\". لحرف V تلامس أسنانك العلوية شفتك السفلى؛ ولحرف W دوّر شفتيك كأنك تُطفئ شمعة.",
+    "arabicTips.th": "غالباً ما يُستبدل بـ S/Z/T/D — تصبح \"think\" مثل \"sink\" أو \"tink\". ضع طرف لسانك بين أسنانك وانفخ الهواء برفق.",
+    "arabicTips.clusters": "تميل العربية لإضافة حركة قصيرة قبل التقاء الحروف الساكنة — تصبح \"street\" مثل \"istreet\". تدرّب على البدء مباشرة بحرف \"s\" دون أي حركة قبله.",
+    "arabicTips.vowels": "يمكن أن تتشابه \"ship\" و\"sheep\". بالغ في الفرق بينهما في البداية — قصيرة وحادة لكلمة، وأطول وأكثر شداً للأخرى.",
+    "arabicTips.stress": "تعطي العربية المقاطع وزناً متقارباً غالباً، بينما تُثقل الإنجليزية على المقاطع المشددة وتبتلع الباقي. هذا بالضبط ما يدرّبك عليه قسم \"الإيقاع والنبر\" أدناه.",
     "card.premiumLesson": "درس مميز", "card.premiumCategory": "فئة مميزة",
     "card.premiumConversation": "محادثة مميزة",
     "card.phrasesCount": "{n} عبارة", "card.lockPro": "🔒 Pro",
@@ -2406,6 +2470,16 @@ function renderShadowGrid(best){
     grid.appendChild(card);
   });
 }
+
+// Arabic-speaker tips card on the Shadow Mode screen -- same show/hide
+// pattern as the phrase-translate box, just a static reference, free for
+// everyone (not Pro-gated).
+$("arabicTipsToggle").onclick = () => {
+  const list = $("arabicTipsList");
+  const hiding = !list.classList.contains("hidden");
+  list.classList.toggle("hidden");
+  $("arabicTipsToggle").textContent = hiding ? t("arabicTips.show") : t("arabicTips.hide");
+};
 
 // ---- ACCOUNT SETTINGS ----
 $("settingsBtn").onclick = openSettings;
