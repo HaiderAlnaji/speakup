@@ -1182,6 +1182,80 @@ def delete_account(data: DeleteAccountIn, request: Request,
     return {"deleted": True}
 
 
+def _week_start() -> dt.datetime:
+    """Monday 00:00 UTC of the current week — the leaderboard's reset point."""
+    now = dt.datetime.utcnow()
+    monday = now - dt.timedelta(days=now.weekday())
+    return monday.replace(hour=0, minute=0, second=0, microsecond=0)
+
+
+def _mask_email(email: str) -> str:
+    """Privacy-friendly fallback for anyone who hasn't set a display name —
+    enough of a hint to recognize someone you know, not enough to fully
+    expose a stranger's address on a leaderboard other users can see."""
+    local, _, domain = email.partition("@")
+    return f"{local[:2]}***@{domain}" if domain else f"{local[:2]}***"
+
+
+@app.get("/api/leaderboard")
+def leaderboard(user: User = Depends(get_current_user), session: Session = Depends(get_session)):
+    """
+    Weekly XP leaderboard, resets every Monday — a Pro perk, and a reason to
+    keep practicing (and keep paying) even after finishing every lesson,
+    Shadow category, and Sprint day. Uses the exact same XP formula as
+    /api/progress (10/attempt + 5 bonus for 85%+, 100/completed Sprint day),
+    just scoped to this week's rows instead of all-time.
+
+    Admins are excluded from the rankings (they're not a real subscriber to
+    compete against) but still see the real board if they check it.
+    """
+    if not user.is_premium:
+        raise HTTPException(403, "The leaderboard is a Pro feature.")
+
+    week_start = _week_start()
+    ranked_users = session.exec(
+        select(User).where(User.is_premium == True, User.is_admin == False)  # noqa: E712
+    ).all()
+    attempts = session.exec(select(Attempt).where(Attempt.created_at >= week_start)).all()
+    days_done = session.exec(select(DayCompletion).where(DayCompletion.completed_at >= week_start)).all()
+
+    xp_by_user: dict[int, int] = defaultdict(int)
+    for a in attempts:
+        xp_by_user[a.user_id] += 10 + (5 if a.score >= 85 else 0)
+    for d in days_done:
+        xp_by_user[d.user_id] += 100
+
+    standings = sorted(
+        ({"user_id": u.id, "name": u.name, "email": u.email, "xp": xp_by_user.get(u.id, 0)}
+         for u in ranked_users),
+        key=lambda r: r["xp"], reverse=True,
+    )
+
+    rows = []
+    my_rank = None
+    rank = 0
+    for r in standings:
+        if r["xp"] <= 0:
+            continue   # no activity this week yet — leave them off the board entirely
+        rank += 1
+        if r["user_id"] == user.id:
+            my_rank = rank
+        if rank <= 20:
+            rows.append({
+                "rank": rank,
+                "display": r["name"] or _mask_email(r["email"]),
+                "xp": r["xp"],
+                "is_me": r["user_id"] == user.id,
+            })
+
+    return {
+        "week_start": week_start.isoformat(),
+        "rows": rows,
+        "my_rank": my_rank,
+        "my_xp": xp_by_user.get(user.id, 0),
+    }
+
+
 @app.get("/api/lessons")
 def list_lessons(user: User = Depends(get_current_user)):
     """Free lessons are always unlocked. Premium lessons need is_premium."""

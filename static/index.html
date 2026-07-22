@@ -233,6 +233,15 @@
   .progress-teaser b{font-size:15px}
   .progress-teaser p{font-size:13px;color:var(--muted);margin-top:3px}
 
+  /* ---------- Weekly leaderboard ---------- */
+  .lb-row{display:flex;align-items:center;gap:12px;padding:9px 6px;border-bottom:1px solid var(--line);font-size:14px}
+  .lb-row:last-child{border-bottom:none}
+  .lb-rank{width:24px;font-weight:700;color:var(--muted);text-align:center;flex-shrink:0}
+  .lb-name{flex:1;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .lb-xp{font-weight:700;color:var(--brand);flex-shrink:0}
+  .lb-row.me{background:var(--surface-2);border-radius:10px}
+  .lb-empty{color:var(--muted);font-size:13.5px;padding:8px 6px}
+
   .stat{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);
     padding:16px 18px;flex:1;min-width:150px}
   .stat .num{font-family:'Sora';font-size:26px;font-weight:700;color:var(--ink)}
@@ -777,6 +786,22 @@
         <button class="btn-sm solid" id="progressUpgradeBtn" data-i18n="progress.upgradeBtn">Upgrade to Pro</button>
       </div>
 
+      <!-- Weekly leaderboard — Pro feature, shows a teaser to free users -->
+      <div class="progress-card anim-in-2 hidden" id="leaderboardCard">
+        <div class="pc-head">
+          <h3 data-i18n="lb.title">Weekly leaderboard</h3>
+          <span class="pc-trend steady" id="lbMyRank"></span>
+        </div>
+        <div id="lbList"></div>
+      </div>
+      <div class="progress-teaser anim-in-2 hidden" id="leaderboardTeaser">
+        <div>
+          <b data-i18n="lb.teaserTitle">See how you rank this week</b>
+          <p data-i18n="lb.teaserSub">Pro members compete on a weekly XP leaderboard that resets every Monday.</p>
+        </div>
+        <button class="btn-sm solid" id="lbUpgradeBtn" data-i18n="progress.upgradeBtn">Upgrade to Pro</button>
+      </div>
+
       <div class="grid anim-in-3" id="lessonGrid"></div>
 
       <div class="page-head anim-in-3" style="margin-top:36px">
@@ -1234,6 +1259,11 @@ const T = {
     "progress.seeImprovement": "See your improvement over time",
     "progress.teaserSub": "Pro members get a score graph across their last 14 active days.",
     "progress.upgradeBtn": "Upgrade to Pro",
+    "lb.title": "Weekly leaderboard",
+    "lb.teaserTitle": "See how you rank this week",
+    "lb.teaserSub": "Pro members compete on a weekly XP leaderboard that resets every Monday.",
+    "lb.yourRank": "You're #{n} this week", "lb.notRankedYet": "Practice today to join this week's board",
+    "lb.empty": "No one's practiced yet this week — be the first!",
     "shadow.title": "Shadow Mode",
     "shadow.sub": "Speak along WITH the recording, not after it — the fastest way to pick up native rhythm, linking, and reductions.",
     "card.premiumLesson": "Premium lesson", "card.premiumCategory": "Premium category",
@@ -1437,6 +1467,11 @@ const T = {
     "progress.seeImprovement": "شاهد تطورك بمرور الوقت",
     "progress.teaserSub": "أعضاء Pro يحصلون على رسم بياني للنتائج خلال آخر 14 يوم نشط.",
     "progress.upgradeBtn": "الترقية إلى Pro",
+    "lb.title": "لوحة المتصدرين الأسبوعية",
+    "lb.teaserTitle": "شاهد ترتيبك هذا الأسبوع",
+    "lb.teaserSub": "يتنافس أعضاء Pro على لوحة متصدرين أسبوعية لنقاط الخبرة تُصفَّر كل يوم اثنين.",
+    "lb.yourRank": "أنت #{n} هذا الأسبوع", "lb.notRankedYet": "تدرّب اليوم لتنضم إلى لوحة هذا الأسبوع",
+    "lb.empty": "لم يتدرّب أحد بعد هذا الأسبوع — كن الأول!",
     "shadow.title": "وضع المحاكاة (Shadow Mode)",
     "shadow.sub": "تحدث بالتزامن مع التسجيل، لا بعده — أسرع طريقة لاكتساب الإيقاع الطبيعي والربط والاختصارات الصوتية.",
     "card.premiumLesson": "درس مميز", "card.premiumCategory": "فئة مميزة",
@@ -1907,6 +1942,7 @@ function renderStats(prog){
   xpBadge.classList.remove("hidden");
   renderStreak(prog);
   loadProgressGraph();
+  loadLeaderboard();
 }
 
 async function loadProgressGraph(){
@@ -1919,6 +1955,43 @@ async function loadProgressGraph(){
     renderProgressGraph(h);
   } catch(e){ $("progressCard").classList.add("hidden"); }
 }
+
+async function loadLeaderboard(){
+  const isPro = currentUser && currentUser.is_premium;
+  $("leaderboardCard").classList.toggle("hidden", !isPro);
+  $("leaderboardTeaser").classList.toggle("hidden", !!isPro);
+  if (!isPro) return;
+  try {
+    const lb = await api("/api/leaderboard");
+    renderLeaderboard(lb);
+  } catch(e){ $("leaderboardCard").classList.add("hidden"); }
+}
+
+// Built with createElement + textContent (never innerHTML) on purpose --
+// "display" can be another user's own chosen display name, so it must be
+// rendered as plain text, never interpreted as markup.
+function renderLeaderboard(lb){
+  $("lbMyRank").textContent = lb.my_rank ? t("lb.yourRank", {n: lb.my_rank}) : t("lb.notRankedYet");
+  const list = $("lbList");
+  list.innerHTML = "";
+  if (!lb.rows.length){
+    const empty = document.createElement("div");
+    empty.className = "lb-empty";
+    empty.textContent = t("lb.empty");
+    list.appendChild(empty);
+    return;
+  }
+  lb.rows.forEach(r => {
+    const row = document.createElement("div");
+    row.className = "lb-row" + (r.is_me ? " me" : "");
+    const rank = document.createElement("span"); rank.className = "lb-rank"; rank.textContent = r.rank;
+    const name = document.createElement("span"); name.className = "lb-name"; name.textContent = r.display;
+    const xp = document.createElement("span"); xp.className = "lb-xp"; xp.textContent = r.xp.toLocaleString() + " XP";
+    row.appendChild(rank); row.appendChild(name); row.appendChild(xp);
+    list.appendChild(row);
+  });
+}
+$("lbUpgradeBtn").onclick = () => show("paywallView");
 
 function renderProgressGraph(h){
   const trendEl = $("pcTrend");
