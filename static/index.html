@@ -741,6 +741,18 @@
         <div class="drag-hint" data-i18n="sprint.dragHint">↔ drag through the words</div>
       </div>
 
+      <!-- Second Sprint: Business English -- a reason for power users who've
+           finished the Core Sprint (and everything else) to keep their Pro
+           subscription active. Shown to every Pro user, but disabled/locked
+           until the Core Sprint is actually finished. -->
+      <div class="progress-teaser anim-in-2 hidden" id="bizSprintCard">
+        <div>
+          <b data-i18n="bizSprint.title">💼 Business English Sprint</b>
+          <p id="bizSprintDesc" data-i18n="bizSprint.desc">14 more days: meetings, emails, negotiations, and workplace small talk.</p>
+        </div>
+        <button class="btn-sm solid" id="bizSprintCta" data-i18n="bizSprint.cta">Start the Business Sprint</button>
+      </div>
+
       <div class="page-head anim-in-1">
         <h2 data-i18n="talk.title">Talk to someone</h2>
         <p data-i18n="talk.sub">Real conversations with a goal. Speak or type — get your meaning across.</p>
@@ -943,7 +955,7 @@
       <!-- Not enrolled yet: the pitch -->
       <div id="sprintIntro" class="hidden">
         <div class="paywall">
-          <h2 data-i18n="sprint.title14">The 14-Day Speaking Sprint</h2>
+          <h2 id="sprintIntroTitle" data-i18n="sprint.title14">The 14-Day Speaking Sprint</h2>
           <p id="introPromise"></p>
           <ul class="perks">
             <li data-i18n="sprint.perk1">One new day unlocks every 24 hours</li>
@@ -953,6 +965,7 @@
             <li data-i18n="sprint.perk5">Certificate when you finish all 14</li>
           </ul>
           <button class="btn-gold" id="startSprintBtn" data-i18n="sprint.startDay1">Start Day 1 now</button>
+          <div class="note hidden" id="sprintGatedNote" data-i18n="bizSprint.lockedSub">Finish the Core Sprint first to unlock this one.</div>
           <div class="note" data-i18n="sprint.note">Once you start, the clock runs. That's the point.</div>
         </div>
       </div>
@@ -960,7 +973,7 @@
       <!-- Enrolled: the tracker -->
       <div id="sprintMain" class="hidden">
         <div class="page-head">
-          <h2 data-i18n="sprint.title14">The 14-Day Speaking Sprint</h2>
+          <h2 id="sprintMainTitle" data-i18n="sprint.title14">The 14-Day Speaking Sprint</h2>
           <p id="sprintSub"></p>
         </div>
         <div class="stat-row">
@@ -1239,6 +1252,12 @@ const T = {
     "sprint.startBtn": "Start the Sprint", "sprint.seeCert": "See your certificate",
     "sprint.daysLbl": "days", "sprint.streakLbl": "streak",
     "sprint.dragHint": "↔ drag through the words",
+    "bizSprint.title": "💼 Business English Sprint",
+    "bizSprint.desc": "14 more days: meetings, emails, negotiations, and workplace small talk.",
+    "bizSprint.cta": "Start the Business Sprint",
+    "bizSprint.lockedSub": "Finish the Core Sprint first to unlock this one.",
+    "bizSprint.lockedCta": "Locked for now",
+    "bizSprint.continueBtn": "Continue ({pct}% done)",
     "talk.title": "Talk to someone",
     "talk.sub": "Real conversations with a goal. Speak or type — get your meaning across.",
     "aiOff.b": "AI conversations are switched off.",
@@ -1450,6 +1469,12 @@ const T = {
     "sprint.startBtn": "ابدأ السبرنت", "sprint.seeCert": "شاهد شهادتك",
     "sprint.daysLbl": "أيام", "sprint.streakLbl": "سلسلة",
     "sprint.dragHint": "↔ اسحب عبر الكلمات",
+    "bizSprint.title": "💼 سبرنت إنجليزية الأعمال",
+    "bizSprint.desc": "14 يوماً إضافياً: اجتماعات، رسائل بريد إلكتروني، تفاوض، وحديث زملاء العمل.",
+    "bizSprint.cta": "ابدأ سبرنت الأعمال",
+    "bizSprint.lockedSub": "أكمل السبرنت الأساسي أولاً لفتح هذا السبرنت.",
+    "bizSprint.lockedCta": "مقفل حالياً",
+    "bizSprint.continueBtn": "تابع ({pct}% مكتمل)",
     "talk.title": "تحدث مع شخص",
     "talk.sub": "محادثات حقيقية بهدف محدد. تحدث أو اكتب — أوصل معناك.",
     "aiOff.b": "محادثات الذكاء الاصطناعي متوقفة.",
@@ -1843,7 +1868,7 @@ function enterApp(user){
 async function loadDashboard(){
   show("dashboard");
   const [me_, ls, prog, sp, sc, sh, bd] = await Promise.all([
-    api("/api/me"), api("/api/lessons"), api("/api/progress"), api("/api/sprint"), api("/api/scenarios"),
+    api("/api/me"), api("/api/lessons"), api("/api/progress"), api("/api/sprint?sprint_id=sprint14"), api("/api/scenarios"),
     api("/api/shadow"), api("/api/badges")
   ]);
   // Refreshed on every dashboard load (not just at login) so a Pro pass
@@ -1961,6 +1986,7 @@ function renderStats(prog){
   loadProgressGraph();
   loadLeaderboard();
   loadReviewBanner();
+  loadBizSprintCard();
 }
 
 async function loadProgressGraph(){
@@ -2027,6 +2053,34 @@ async function loadReviewBanner(){
   } catch(e){ $("reviewBanner").classList.add("hidden"); }
 }
 $("reviewStartBtn").onclick = () => startReview();
+
+// The second Sprint. Shown to every Pro user (so there's something visibly
+// "coming up" even on day one), but disabled/locked until the Core Sprint
+// is actually finished -- server-decided via biz.gated, not guessed here.
+async function loadBizSprintCard(){
+  const card = $("bizSprintCard");
+  if (!currentUser || !currentUser.is_premium){ card.classList.add("hidden"); return; }
+  try {
+    const biz = await api("/api/sprint?sprint_id=biz14");
+    renderBizSprintCard(biz);
+  } catch(e){ card.classList.add("hidden"); }
+}
+function renderBizSprintCard(biz){
+  $("bizSprintCard").classList.remove("hidden");
+  const btn = $("bizSprintCta");
+  if (biz.gated){
+    $("bizSprintDesc").textContent = t("bizSprint.lockedSub");
+    btn.textContent = t("bizSprint.lockedCta");
+    btn.disabled = true;
+  } else {
+    $("bizSprintDesc").textContent = t("bizSprint.desc");
+    btn.disabled = false;
+    if (biz.state.finished) btn.textContent = t("sprint.seeCert");
+    else if (biz.state.enrolled) btn.textContent = t("bizSprint.continueBtn", {pct: biz.state.percent});
+    else btn.textContent = t("bizSprint.cta");
+  }
+}
+$("bizSprintCta").onclick = () => { if (!$("bizSprintCta").disabled) openSprint("biz14"); };
 
 function renderProgressGraph(h){
   const trendEl = $("pcTrend");
@@ -2275,19 +2329,27 @@ $("resetSprintBtn").onclick = async () => {
 };
 
 // ---- SPRINT ----
-$("sprintCta").onclick = openSprint;
+// `sprint` always holds whichever Sprint program was most recently opened
+// (Core or Business) -- sprint.id is the source of truth for every call
+// site below that needs to know which one it's currently working with.
+$("sprintCta").onclick = () => openSprint("sprint14");   // the hero is always the Core Sprint
 $("backBtn3").onclick = loadDashboard;
-$("backBtn4").onclick = openSprint;
+$("backBtn4").onclick = () => openSprint(sprint && sprint.id);
 
-async function openSprint(){
-  sprint = await api("/api/sprint");
+async function openSprint(sprintId){
+  sprintId = sprintId || (sprint && sprint.id) || "sprint14";
+  sprint = await api("/api/sprint?sprint_id=" + encodeURIComponent(sprintId));
   // Not a Pro user? The Sprint is the paid product, so show the paywall.
   if (!sprint.is_premium_user){ show("paywallView"); return; }
   show("sprintView");
   const st = sprint.state;
+  $("sprintIntroTitle").textContent = sprint.title;
+  $("sprintMainTitle").textContent = sprint.title;
   $("sprintIntro").classList.toggle("hidden", st.enrolled);
   $("sprintMain").classList.toggle("hidden", !st.enrolled);
   $("introPromise").textContent = sprint.promise;
+  $("startSprintBtn").classList.toggle("hidden", sprint.gated);
+  $("sprintGatedNote").classList.toggle("hidden", !sprint.gated);
   if (st.enrolled) renderSprintMain();
 }
 
@@ -2326,15 +2388,15 @@ function renderSprintMain(){
 
 function resumeSprintConv(d){
   openConv({
-    id: `sprintday${d.day}`, emoji: "💬", title: d.theme,
+    id: `sprintday-${sprint.id}-${d.day}`, emoji: "💬", title: d.theme,
     setting: d.conv.setting, task: d.conv.task,
     goals: d.conv.goals, useful: d.conv.useful,
-  }, d.day);
+  }, d.day, sprint.id);
 }
 
 $("startSprintBtn").onclick = async () => {
   $("startSprintBtn").disabled = true;
-  try { await api("/api/sprint/enroll","POST"); await openSprint(); }
+  try { await api("/api/sprint/enroll","POST",{sprint_id: sprint.id}); await openSprint(sprint.id); }
   catch(e){ alert(e.message); }
   $("startSprintBtn").disabled = false;
 };
@@ -2424,7 +2486,7 @@ function startSprintDay(d){
   $("setupTitle").textContent = d.theme;
   $("setupSub").textContent = d.challenge + " " + t("setup.subDefault");
   pendingSetup = { mode: "sprint-session", day: d.day, theme: d.theme,
-                  challenge: d.challenge, topic: d.theme };
+                  challenge: d.challenge, topic: d.theme, sprintId: sprint.id };
 }
 
 // ---- Drill any topic: also goes through the same setup screen ----
@@ -2457,7 +2519,7 @@ async function beginTimedSession(ctx){
     { topic: ctx.topic, level: ctx.level, count: 20, avoid: [] });
   current = {
     mode: ctx.mode, day: ctx.day, theme: ctx.theme, challenge: ctx.challenge,
-    topic: ctx.topic, level: ctx.level, minutes: ctx.minutes,
+    topic: ctx.topic, level: ctx.level, minutes: ctx.minutes, sprintId: ctx.sprintId,
     startedAt: Date.now(), queue: first.sentences, seen: first.sentences.slice(),
     index: 0, scores: [], fetchingMore: false,
   };
@@ -2574,7 +2636,7 @@ function currentPhraseText(){
 $("backBtn").onclick = () => {
   if (sessionTimer){ clearInterval(sessionTimer); sessionTimer = null; }
   resetShadowUI();
-  if (current && current.mode === "sprint-session") openSprint();
+  if (current && current.mode === "sprint-session") openSprint(current.sprintId);
   else loadDashboard();
 };
 $("backBtn2").onclick = () => { resetShadowUI(); loadDashboard(); };
@@ -2616,16 +2678,17 @@ async function finishSession(){
     $("practiceCard").classList.add("hidden");
     $("dayDone").classList.remove("hidden");
     try {
-      const st = await api("/api/sprint/day/complete","POST",{day: current.day, avg_score: avg});
+      const st = await api("/api/sprint/day/complete","POST",
+        {day: current.day, avg_score: avg, sprint_id: current.sprintId});
       sprint.state = st;
       const dayObj = sprint.days.find(x => x.day === current.day);
       if (dayObj && dayObj.conv){
         $("dayDone").classList.add("hidden");
         openConv({
-          id: `sprintday${current.day}`, emoji: "💬", title: current.theme,
+          id: `sprintday-${current.sprintId}-${current.day}`, emoji: "💬", title: current.theme,
           setting: dayObj.conv.setting, task: dayObj.conv.task,
           goals: dayObj.conv.goals, useful: dayObj.conv.useful,
-        }, current.day);
+        }, current.day, current.sprintId);
       } else {
         $("ddIcon").className = "dd-icon"; $("ddIcon").textContent = "✓";
         $("ddTitle").textContent = t("dd.drillPassed", {n: avg});
@@ -2972,7 +3035,7 @@ async function onBecamePro(){
   const pill = $("drillProPill");
   if (pill) pill.classList.add("hidden");
   await loadDashboard();
-  await openSprint();      // Pro just unlocked — take them straight to the Sprint.
+  await openSprint("sprint14");   // Pro just unlocked — take them straight to the Sprint.
 }
 
 let paddleInitialized = false;
@@ -3241,10 +3304,10 @@ function renderScenarios(){
   });
 }
 
-// conv state: {id, nodes:{id->node}, sprintDay}
+// conv state: {id, nodes:{id->node}, sprintDay, sprintId}
 let conv = null;
 
-async function openConvById(convId, emoji, title, sprintDayNum){
+async function openConvById(convId, emoji, title, sprintDayNum, sprintId){
   show("convView");
   $("chatBox").innerHTML = "";
   $("replyChoices").innerHTML = "";
@@ -3254,7 +3317,7 @@ async function openConvById(convId, emoji, title, sprintDayNum){
     const data = await api("/api/conversation/" + encodeURIComponent(convId));
     const nodeMap = {};
     data.nodes.forEach(n => nodeMap[n.id] = n);
-    conv = { id: convId, nodes: nodeMap, sprintDay: sprintDayNum || null };
+    conv = { id: convId, nodes: nodeMap, sprintDay: sprintDayNum || null, sprintId: sprintId || null };
     $("convEmoji").textContent = emoji || "💬";
     $("convTitle").textContent = title || data.title || "";
     $("convSetting").textContent = data.setting || "";
@@ -3266,8 +3329,8 @@ async function openConvById(convId, emoji, title, sprintDayNum){
 }
 
 // Backwards-compatible entry used by the Sprint flow.
-function openConv(scenarioLike, sprintDayNum){
-  openConvById(scenarioLike.id, scenarioLike.emoji, scenarioLike.title, sprintDayNum);
+function openConv(scenarioLike, sprintDayNum, sprintId){
+  openConvById(scenarioLike.id, scenarioLike.emoji, scenarioLike.title, sprintDayNum, sprintId);
 }
 
 function addBubble(who, text){
@@ -3393,16 +3456,16 @@ function bestScore(target, alternatives){
   return best;
 }
 
-$("backConv").onclick = () => conv && conv.sprintDay ? openSprint() : loadDashboard();
-$("restartConv").onclick = () => openConvById(conv.id, $("convEmoji").textContent, $("convTitle").textContent, conv.sprintDay);
+$("backConv").onclick = () => conv && conv.sprintDay ? openSprint(conv.sprintId) : loadDashboard();
+$("restartConv").onclick = () => openConvById(conv.id, $("convEmoji").textContent, $("convTitle").textContent, conv.sprintDay, conv.sprintId);
 
 $("convDoneBtn").onclick = async () => {
   if (conv.sprintDay){
     try {
-      const st = await api("/api/sprint/day/conv-complete", "POST", { day: conv.sprintDay });
+      const st = await api("/api/sprint/day/conv-complete", "POST", { day: conv.sprintDay, sprint_id: conv.sprintId });
       sprint.state = st;
     } catch(e){ /* ignore */ }
-    openSprint();
+    openSprint(conv.sprintId);
   } else {
     loadDashboard();
   }

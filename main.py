@@ -210,7 +210,7 @@ QICARD_CONFIGURED = bool(QICARD_TERMINAL_ID and QICARD_USERNAME and QICARD_PASSW
 # conversations are all pre-written and translated, so the app works the
 # same for one user or a million.
 from content import (SENTENCE_BANK, CONVERSATIONS, CONVERSATION_BY_ID,
-                     SPRINT_CONVS, SHADOW_CATEGORIES)
+                     SPRINT_CONVS, SPRINT_CONVS_BIZ, SHADOW_CATEGORIES)
 
 # The learner's first language, for showing translations. Arabic is default.
 # Translations are baked into content.py per sentence/line.
@@ -712,8 +712,198 @@ SPRINT = {
     ],
 }
 
-SPRINT_TOTAL_DAYS = len(SPRINT["days"])
-SPRINT_DAY_BY_NUM = {d["day"]: d for d in SPRINT["days"]}
+# The second Sprint -- a retention feature for anyone who's already finished
+# the Core Sprint and cleared out every Lesson/Shadow category. Same shape
+# as SPRINT above (a day only needs "conv" here for the pre-chat briefing;
+# the actual branching dialogue lives in SPRINT_CONVS_BIZ, content.py --
+# same split as the Core Sprint uses). Gated behind "unlock_after" so it
+# isn't just handed to a brand-new user on day one.
+SPRINT_BIZ = {
+    "id": "biz14",
+    "title": "The 14-Day Business English Sprint",
+    "promise": "Speak the English of meetings, emails, and negotiations — out loud, every day for two weeks.",
+    "emoji": "💼",
+    "unlock_after": "sprint14",
+    "days": [
+        {"day": 1, "theme": "Introducing Yourself at Work",
+         "challenge": "Introduce yourself to a new colleague and describe your role in one breath.",
+         "phrases": ["Hi, I'm Ali — I just joined the Marketing team.",
+                     "I'll be working closely with Sales on the new campaign.",
+                     "What does your role usually involve?",
+                     "I'm really looking forward to working with everyone here.",
+                     "Let me know if there's anything you need from my side."],
+         "conv": {"ai_role": "Layla, a colleague from the Design team",
+                  "setting": "Your first day at a new company. Layla stops by your desk to say hello.",
+                  "task": "Introduce yourself, say your role, and ask about hers.",
+                  "goals": ["Introduce yourself and your role", "Ask what she does", "End the conversation politely"],
+                  "useful": ["I just joined the…", "What does your role involve?", "Great meeting you."]}},
+        {"day": 2, "theme": "Talking About Your Job",
+         "challenge": "Describe your day-to-day responsibilities to someone outside your company.",
+         "phrases": ["I work as a project coordinator at a logistics company.",
+                     "Most of my day is spent scheduling shipments and talking to clients.",
+                     "The most challenging part is keeping everyone updated in real time.",
+                     "I've been in this role for about a year and a half.",
+                     "What I enjoy most is solving problems under pressure."],
+         "conv": {"ai_role": "Yusuf, someone you meet at a family friend's dinner",
+                  "setting": "A dinner party. Yusuf, who works in a different field, asks about your job.",
+                  "task": "Explain what you do and what you find challenging or interesting about it.",
+                  "goals": ["Say your job title", "Describe a typical task", "Say what you enjoy or find hard"],
+                  "useful": ["I work as a…", "A typical day involves…", "What I find challenging is…"]}},
+        {"day": 3, "theme": "Office Small Talk",
+         "challenge": "Catch up with a coworker about a project for twenty seconds.",
+         "phrases": ["Hey, how's the Hamid account coming along?",
+                     "We're a bit behind, but it should be wrapped up by Friday.",
+                     "Let me know if you need an extra pair of hands.",
+                     "Actually, that would really help — thank you.",
+                     "No problem, just send it my way whenever you're ready."],
+         "conv": {"ai_role": "Noor, a coworker on the same floor",
+                  "setting": "Monday morning by the coffee machine. Noor asks about a project you're both aware of.",
+                  "task": "Give a quick honest update and offer or accept help naturally.",
+                  "goals": ["Give a status update", "Mention a small problem", "Offer or accept help"],
+                  "useful": ["It's coming along, but…", "We're a bit behind on…", "Let me know if you need a hand."]}},
+        {"day": 4, "theme": "Scheduling a Meeting",
+         "challenge": "Ask a colleague for their availability and agree on a time.",
+         "phrases": ["Do you have some time this week to go over the report?",
+                     "I'm free Tuesday afternoon or Wednesday morning.",
+                     "Tuesday at 2 works well for me.",
+                     "Should we book the small meeting room or just call?",
+                     "Let's do a quick call — I'll send the invite now."],
+         "conv": {"ai_role": "Karim, a colleague you need to meet with",
+                  "setting": "An office chat thread. You need to schedule time to review a report together.",
+                  "task": "Propose a meeting, agree on a time, and confirm how you'll meet.",
+                  "goals": ["Ask for their availability", "Agree on a specific time", "Confirm the meeting format"],
+                  "useful": ["Do you have time to…?", "I'm free on…", "Let's do a quick call/meeting."]}},
+        {"day": 5, "theme": "Speaking Up in a Meeting",
+         "challenge": "Give your opinion on an idea, politely, even if you partly disagree.",
+         "phrases": ["Can I add something here?",
+                     "I see the value in that, but I have one concern.",
+                     "What if we tried a smaller version first?",
+                     "That's a fair point — I hadn't thought of it that way.",
+                     "I think we're aligned, then."],
+         "conv": {"ai_role": "Dana, your team lead, presenting a plan in a meeting",
+                  "setting": "A team meeting. Dana just proposed a plan you have one concern about.",
+                  "task": "Politely raise your concern and suggest an alternative.",
+                  "goals": ["Ask to add a point", "Raise your concern politely", "Suggest an alternative"],
+                  "useful": ["Can I add something?", "I have one concern about…", "What if we…?"]}},
+        {"day": 6, "theme": "Pitching an Idea",
+         "challenge": "Explain a new idea to your team in three sentences.",
+         "phrases": ["I'd like to propose something for next quarter.",
+                     "The idea is to automate our weekly reporting.",
+                     "It would save the team a few hours every week.",
+                     "The main cost would be a short setup period.",
+                     "I'd love to hear your thoughts."],
+         "conv": {"ai_role": "the team, represented by Sami",
+                  "setting": "A short team meeting. You have two minutes to pitch a new idea.",
+                  "task": "Present the idea, mention its benefit, and invite feedback.",
+                  "goals": ["State the idea clearly", "Mention one clear benefit", "Invite questions or feedback"],
+                  "useful": ["I'd like to propose…", "This would save/help…", "I'd love to hear your thoughts."]}},
+        {"day": 7, "theme": "A Client Check-in Call",
+         "challenge": "Call a client to check on their satisfaction and next steps.",
+         "phrases": ["Hi, this is Ali calling from Atlas Logistics — is now a good time?",
+                     "I wanted to check in on how the shipment went.",
+                     "Is there anything we could have done better?",
+                     "Great to hear. What can we help with next?",
+                     "I'll follow up by email with the details."],
+         "conv": {"ai_role": "Mrs. Hana, a client",
+                  "setting": "A phone call. You're checking in with a client after a recent order.",
+                  "task": "Check on their experience and confirm the next step.",
+                  "goals": ["Confirm it's a good time to talk", "Ask how the order/service went", "Confirm a next step"],
+                  "useful": ["Is now a good time?", "I wanted to check in on…", "I'll follow up with…"]}},
+        {"day": 8, "theme": "Clarifying an Email",
+         "challenge": "Ask a colleague to clarify something confusing they wrote.",
+         "phrases": ["I read your email, but I wasn't totally sure about one part.",
+                     "When you say 'by the end of the week,' do you mean Friday?",
+                     "Should I send this to the client directly, or through you?",
+                     "Got it, that makes sense now.",
+                     "Thanks for clearing that up."],
+         "conv": {"ai_role": "Rania, a colleague who sent you a slightly unclear email",
+                  "setting": "You just read an email from Rania and one part is unclear.",
+                  "task": "Ask a clarifying question and confirm you understood the answer.",
+                  "goals": ["Reference the email", "Ask a specific clarifying question", "Confirm you understood"],
+                  "useful": ["I wasn't totally sure about…", "When you say…, do you mean…?", "Got it, that makes sense."]}},
+        {"day": 9, "theme": "Handling Pushback",
+         "challenge": "Respond calmly when a colleague disagrees with your idea.",
+         "phrases": ["I understand your concern, but let me explain my thinking.",
+                     "That's true, though I think the benefit outweighs the risk.",
+                     "Would it help if we tested it on a small scale first?",
+                     "I hear you — let's find a middle ground.",
+                     "I appreciate you being upfront about this."],
+         "conv": {"ai_role": "Omar, a colleague who disagrees with your proposal",
+                  "setting": "A meeting. Omar just pushed back on an idea you proposed.",
+                  "task": "Stay calm, explain your reasoning, and look for a compromise.",
+                  "goals": ["Acknowledge their concern", "Explain your reasoning", "Suggest a compromise"],
+                  "useful": ["I understand your concern, but…", "Would it help if…?", "Let's find a middle ground."]}},
+        {"day": 10, "theme": "Negotiating a Deadline",
+         "challenge": "Ask for more time on a project, professionally.",
+         "phrases": ["I wanted to talk to you about the deadline for the report.",
+                     "We've hit a small delay because of missing data.",
+                     "Would it be possible to move it to next Wednesday?",
+                     "I can send a partial draft by Friday in the meantime.",
+                     "Thank you for understanding."],
+         "conv": {"ai_role": "your manager, Farah",
+                  "setting": "Your manager's office. A project deadline is at risk.",
+                  "task": "Explain the delay and negotiate a new deadline.",
+                  "goals": ["Explain the reason for the delay", "Propose a new deadline", "Offer something in the meantime"],
+                  "useful": ["We've hit a delay because…", "Would it be possible to…?", "In the meantime, I can…"]}},
+        {"day": 11, "theme": "Giving Feedback",
+         "challenge": "Give a teammate one piece of constructive feedback.",
+         "phrases": ["Do you have a minute for some quick feedback?",
+                     "The report was really thorough — nice work.",
+                     "One thing that could help is shortening the summary.",
+                     "Would that be useful for next time?",
+                     "Thanks for being open to it."],
+         "conv": {"ai_role": "Salim, a teammate whose report you reviewed",
+                  "setting": "After a team meeting. You want to give Salim quick, useful feedback.",
+                  "task": "Give one positive comment and one improvement, kindly.",
+                  "goals": ["Ask if it's a good time", "Give one specific positive point", "Give one specific improvement"],
+                  "useful": ["Do you have a minute for feedback?", "One thing that could help is…", "Nice work on…"]}},
+        {"day": 12, "theme": "Networking at an Event",
+         "challenge": "Introduce yourself to a stranger at a conference and exchange contacts.",
+         "phrases": ["Hi, I don't think we've met — I'm Ali, from Atlas Logistics.",
+                     "What brings you to this conference?",
+                     "That sounds fascinating — how did you get into that field?",
+                     "Would you mind if we kept in touch?",
+                     "Here's my card — feel free to reach out anytime."],
+         "conv": {"ai_role": "Grace, another attendee at a conference",
+                  "setting": "A conference networking break. You strike up a conversation with a stranger.",
+                  "task": "Introduce yourself, learn about her work, and exchange contact details.",
+                  "goals": ["Introduce yourself", "Ask what she does / why she's there", "Suggest staying in touch"],
+                  "useful": ["I don't think we've met.", "What brings you here?", "Would you mind if we kept in touch?"]}},
+        {"day": 13, "theme": "Job Interview Practice",
+         "challenge": "Answer 'Tell me about yourself' in under thirty seconds.",
+         "phrases": ["Sure — I've worked in logistics for about four years now.",
+                     "My biggest strength is staying calm under pressure.",
+                     "One thing I'm working on is delegating more.",
+                     "I'm excited about this role because it combines planning and people.",
+                     "Do you have any concerns about my background?"],
+         "conv": {"ai_role": "Mr. Adel, an interviewer",
+                  "setting": "A job interview. Mr. Adel asks you to introduce yourself.",
+                  "task": "Give a short professional summary and answer a simple follow-up question.",
+                  "goals": ["Give a brief professional summary", "Mention a strength", "Ask a question back at the end"],
+                  "useful": ["I've worked in… for…", "My biggest strength is…", "Do you have any questions for me?"]}},
+        {"day": 14, "theme": "Final Challenge — Present a Project Summary",
+         "challenge": "Speak for one full minute summarizing a project, as if presenting to your team.",
+         "phrases": ["Two weeks ago, talking business English out loud felt intimidating.",
+                     "Now I can walk into a meeting and speak up with confidence.",
+                     "The project wrapped up on time and under budget.",
+                     "The biggest lesson was communicating early instead of waiting.",
+                     "Going forward, I want to keep practicing this every week."],
+         "conv": {"ai_role": "Layla, the colleague who welcomed you on Day 1",
+                  "setting": "A wrap-up meeting. Layla asks how the project — and these two weeks — went.",
+                  "task": "Summarize how the project went and what you'll do differently next time.",
+                  "goals": ["Summarize the outcome", "Mention one lesson learned", "Say what's next"],
+                  "useful": ["Overall, it went…", "The biggest lesson was…", "Going forward, I'm going to…"]}},
+    ],
+}
+
+# Every Sprint program the app offers, keyed by id. Adding a third Sprint
+# later is just: write its "days" list + its SPRINT_CONVS_* dict in
+# content.py, then add one line here -- every endpoint below already reads
+# through this registry instead of a hardcoded single SPRINT.
+SPRINTS = {SPRINT["id"]: SPRINT, SPRINT_BIZ["id"]: SPRINT_BIZ}
+SPRINT_CONVS_BY_SPRINT = {SPRINT["id"]: SPRINT_CONVS, SPRINT_BIZ["id"]: SPRINT_CONVS_BIZ}
+SPRINT_DAY_BY_NUM_BY_SPRINT = {sid: {d["day"]: d for d in sdef["days"]} for sid, sdef in SPRINTS.items()}
+DEFAULT_SPRINT_ID = SPRINT["id"]   # what every endpoint falls back to if sprint_id is omitted
 
 
 
@@ -2050,24 +2240,45 @@ def qicard_sync(user: User = Depends(get_current_user),
 # ----------------------------------------------------------------------
 # 7b. SPRINT ROUTES — the intensive course
 # ----------------------------------------------------------------------
-def _sprint_state(user: User, session: Session) -> dict:
-    """Works out where the user is in the sprint right now."""
+def _get_sprint_or_404(sprint_id: str) -> dict:
+    sprint_def = SPRINTS.get(sprint_id)
+    if not sprint_def:
+        raise HTTPException(404, "That Sprint doesn't exist.")
+    return sprint_def
+
+
+def _sprint_gated(user: User, sprint_def: dict, session: Session) -> bool:
+    """True if this Sprint has a prerequisite (unlock_after) that isn't
+    finished yet -- e.g. the Business Sprint stays gated until the Core
+    Sprint is done, so there's something new to unlock after "finishing
+    everything," instead of dumping all content on day one."""
+    unlock_after = sprint_def.get("unlock_after")
+    if not unlock_after:
+        return False
+    return not _sprint_state(user, unlock_after, session).get("finished")
+
+
+def _sprint_state(user: User, sprint_id: str, session: Session) -> dict:
+    """Works out where the user is in the given Sprint right now."""
+    sprint_def = SPRINTS[sprint_id]
+    total_days = len(sprint_def["days"])
+
     enr = session.exec(
         select(Enrollment).where(Enrollment.user_id == user.id,
-                                 Enrollment.sprint_id == SPRINT["id"])
+                                 Enrollment.sprint_id == sprint_id)
     ).first()
     if not enr:
-        return {"enrolled": False}
+        return {"enrolled": False, "total_days": total_days}
 
     drill_rows = session.exec(
         select(DayCompletion).where(DayCompletion.user_id == user.id,
-                                    DayCompletion.sprint_id == SPRINT["id"])
+                                    DayCompletion.sprint_id == sprint_id)
     ).all()
     drill_done = {r.day_number: r.avg_score for r in drill_rows}
 
     conv_rows = session.exec(
         select(DayConvDone).where(DayConvDone.user_id == user.id,
-                                  DayConvDone.sprint_id == SPRINT["id"])
+                                  DayConvDone.sprint_id == sprint_id)
     ).all()
     conv_done = {r.day_number for r in conv_rows}
 
@@ -2077,7 +2288,7 @@ def _sprint_state(user: User, session: Session) -> dict:
 
     # How many days have passed since enrolling. Day 1 unlocks immediately.
     elapsed = (dt.datetime.utcnow() - enr.started_at).days
-    unlocked_through = min(elapsed + 1, SPRINT_TOTAL_DAYS)
+    unlocked_through = min(elapsed + 1, total_days)
 
     # Streak = consecutive completed days counting back from the newest one.
     streak = 0
@@ -2098,29 +2309,31 @@ def _sprint_state(user: User, session: Session) -> dict:
         "conv_done_days": sorted(conv_done),
         "scores_by_day": {str(k): v for k, v in done.items()},
         "streak": streak,
-        "total_days": SPRINT_TOTAL_DAYS,
-        "percent": round(len(done) / SPRINT_TOTAL_DAYS * 100),
+        "total_days": total_days,
+        "percent": round(len(done) / total_days * 100),
         "avg_score": round(sum(scores) / len(scores)) if scores else 0,
-        "finished": len(done) == SPRINT_TOTAL_DAYS,
+        "finished": len(done) == total_days,
         "pass_score": PASS_SCORE,
     }
 
 
 @app.get("/api/sprint")
-def get_sprint(user: User = Depends(get_current_user),
+def get_sprint(sprint_id: str = DEFAULT_SPRINT_ID, user: User = Depends(get_current_user),
                session: Session = Depends(get_session)):
     """Sprint overview. Day content is only sent for days that are unlocked."""
-    state = _sprint_state(user, session)
+    sprint_def = _get_sprint_or_404(sprint_id)
+    state = _sprint_state(user, sprint_id, session)
     unlocked_through = state.get("unlocked_through", 0) if state["enrolled"] else 0
     drill_set = set(state.get("drill_done_days", []))
     conv_set = set(state.get("conv_done_days", []))
+    convs = SPRINT_CONVS_BY_SPRINT[sprint_id]
 
     days = []
-    for d in SPRINT["days"]:
+    for d in sprint_def["days"]:
         # A day is open if: enrolled, premium, and its turn has arrived.
         open_now = (state["enrolled"] and user.is_premium
                     and d["day"] <= unlocked_through)
-        day_conv = SPRINT_CONVS.get(d["day"])
+        day_conv = convs.get(d["day"])
         days.append({
             "day": d["day"],
             "theme": d["theme"],
@@ -2129,7 +2342,7 @@ def get_sprint(user: User = Depends(get_current_user),
             "challenge": d["challenge"] if open_now else "",
             "phrases": d["phrases"] if open_now else [],
             # Just enough for the day card; the full dialogue comes from
-            # /api/conversation/sprintday{n} when the learner opens it.
+            # /api/conversation/sprintday-{sprint_id}-{n} when opened.
             "conv": ({"setting": day_conv["setting"], "goal": day_conv["goal"]}
                      if open_now and day_conv else None),
             "drill_done": d["day"] in drill_set,
@@ -2137,34 +2350,43 @@ def get_sprint(user: User = Depends(get_current_user),
         })
 
     return {
-        "id": SPRINT["id"],
-        "title": SPRINT["title"],
-        "promise": SPRINT["promise"],
+        "id": sprint_def["id"],
+        "title": sprint_def["title"],
+        "promise": sprint_def["promise"],
         "is_premium_user": user.is_premium,
+        "gated": _sprint_gated(user, sprint_def, session),
         "days": days,
         "state": state,
     }
 
 
+class EnrollIn(BaseModel):
+    sprint_id: str = DEFAULT_SPRINT_ID
+
+
 @app.post("/api/sprint/enroll")
-def enroll(user: User = Depends(get_current_user),
+def enroll(data: EnrollIn = EnrollIn(), user: User = Depends(get_current_user),
            session: Session = Depends(get_session)):
     if not user.is_premium:
         raise HTTPException(403, "The Sprint is a Pro program.")
+    sprint_def = _get_sprint_or_404(data.sprint_id)
+    if _sprint_gated(user, sprint_def, session):
+        raise HTTPException(403, "Finish the Core Sprint first to unlock this one.")
     existing = session.exec(
         select(Enrollment).where(Enrollment.user_id == user.id,
-                                 Enrollment.sprint_id == SPRINT["id"])
+                                 Enrollment.sprint_id == data.sprint_id)
     ).first()
     if existing:
-        raise HTTPException(400, "You're already enrolled in the Sprint.")
-    session.add(Enrollment(user_id=user.id, sprint_id=SPRINT["id"]))
+        raise HTTPException(400, "You're already enrolled in this Sprint.")
+    session.add(Enrollment(user_id=user.id, sprint_id=data.sprint_id))
     session.commit()
-    return _sprint_state(user, session)
+    return _sprint_state(user, data.sprint_id, session)
 
 
 class DayDoneIn(BaseModel):
     day: int
     avg_score: int
+    sprint_id: str = DEFAULT_SPRINT_ID
 
 
 @app.post("/api/sprint/day/complete")
@@ -2178,10 +2400,11 @@ def complete_day(data: DayDoneIn, user: User = Depends(get_current_user),
     """
     if not user.is_premium:
         raise HTTPException(403, "The Sprint is a Pro program.")
-    state = _sprint_state(user, session)
+    _get_sprint_or_404(data.sprint_id)
+    state = _sprint_state(user, data.sprint_id, session)
     if not state["enrolled"]:
         raise HTTPException(400, "Start the Sprint first.")
-    if data.day not in SPRINT_DAY_BY_NUM:
+    if data.day not in SPRINT_DAY_BY_NUM_BY_SPRINT[data.sprint_id]:
         raise HTTPException(404, "That day doesn't exist.")
     # The core rule: you cannot jump ahead of the calendar.
     if data.day > state["unlocked_through"]:
@@ -2193,7 +2416,7 @@ def complete_day(data: DayDoneIn, user: User = Depends(get_current_user),
 
     existing = session.exec(
         select(DayCompletion).where(DayCompletion.user_id == user.id,
-                                    DayCompletion.sprint_id == SPRINT["id"],
+                                    DayCompletion.sprint_id == data.sprint_id,
                                     DayCompletion.day_number == data.day)
     ).first()
     if existing:
@@ -2201,14 +2424,15 @@ def complete_day(data: DayDoneIn, user: User = Depends(get_current_user),
         existing.avg_score = max(existing.avg_score, score)
         session.add(existing)
     else:
-        session.add(DayCompletion(user_id=user.id, sprint_id=SPRINT["id"],
+        session.add(DayCompletion(user_id=user.id, sprint_id=data.sprint_id,
                                   day_number=data.day, avg_score=score))
     session.commit()
-    return _sprint_state(user, session)
+    return _sprint_state(user, data.sprint_id, session)
 
 
 class DayNumIn(BaseModel):
     day: int
+    sprint_id: str = DEFAULT_SPRINT_ID
 
 
 @app.post("/api/sprint/day/conv-complete")
@@ -2221,34 +2445,36 @@ def complete_day_conv(data: DayNumIn, user: User = Depends(get_current_user),
     """
     if not user.is_premium:
         raise HTTPException(403, "The Sprint is a Pro program.")
-    state = _sprint_state(user, session)
+    _get_sprint_or_404(data.sprint_id)
+    state = _sprint_state(user, data.sprint_id, session)
     if not state["enrolled"]:
         raise HTTPException(400, "Start the Sprint first.")
-    if data.day not in SPRINT_DAY_BY_NUM:
+    if data.day not in SPRINT_DAY_BY_NUM_BY_SPRINT[data.sprint_id]:
         raise HTTPException(404, "That day doesn't exist.")
     if data.day not in state.get("drill_done_days", []):
         raise HTTPException(400, "Finish today's phrase drill first.")
 
     existing = session.exec(
         select(DayConvDone).where(DayConvDone.user_id == user.id,
-                                  DayConvDone.sprint_id == SPRINT["id"],
+                                  DayConvDone.sprint_id == data.sprint_id,
                                   DayConvDone.day_number == data.day)
     ).first()
     if not existing:
-        session.add(DayConvDone(user_id=user.id, sprint_id=SPRINT["id"], day_number=data.day))
+        session.add(DayConvDone(user_id=user.id, sprint_id=data.sprint_id, day_number=data.day))
         session.commit()
-    return _sprint_state(user, session)
+    return _sprint_state(user, data.sprint_id, session)
 
 
 @app.get("/api/sprint/certificate")
-def certificate(user: User = Depends(get_current_user),
+def certificate(sprint_id: str = DEFAULT_SPRINT_ID, user: User = Depends(get_current_user),
                 session: Session = Depends(get_session)):
-    state = _sprint_state(user, session)
+    sprint_def = _get_sprint_or_404(sprint_id)
+    state = _sprint_state(user, sprint_id, session)
     if not state.get("finished"):
-        raise HTTPException(403, "Finish all 14 days to earn your certificate.")
+        raise HTTPException(403, "Finish all the days to earn your certificate.")
     return {
         "name": user.email.split("@")[0],
-        "title": SPRINT["title"],
+        "title": sprint_def["title"],
         "avg_score": state["avg_score"],
         "issued_on": dt.date.today().isoformat(),
     }
@@ -2357,11 +2583,12 @@ for _c in CONVERSATIONS:
         _TRANSLATION_LOOKUP[_node["npc"]["en"]] = _node["npc"]["ar"]
         for _r in _node.get("replies", []):
             _TRANSLATION_LOOKUP[_r["en"]] = _r["ar"]
-for _day in SPRINT_CONVS.values():
-    for _node in _day["nodes"]:
-        _TRANSLATION_LOOKUP[_node["npc"]["en"]] = _node["npc"]["ar"]
-        for _r in _node.get("replies", []):
-            _TRANSLATION_LOOKUP[_r["en"]] = _r["ar"]
+for _convs in SPRINT_CONVS_BY_SPRINT.values():
+    for _day in _convs.values():
+        for _node in _day["nodes"]:
+            _TRANSLATION_LOOKUP[_node["npc"]["en"]] = _node["npc"]["ar"]
+            for _r in _node.get("replies", []):
+                _TRANSLATION_LOOKUP[_r["en"]] = _r["ar"]
 
 
 @app.post("/api/translate")
@@ -2400,16 +2627,26 @@ def get_conversation(conv_id: str, user: User = Depends(get_current_user),
     Handles both standalone scenarios and Sprint-day conversations.
     """
     if conv_id.startswith("sprintday"):
+        # New format: "sprintday-{sprint_id}-{day}", e.g. "sprintday-biz14-3".
+        # The old bare "sprintday{day}" (no sprint_id) still works as an
+        # alias for the Core Sprint, in case any client has it cached.
+        rest = conv_id[len("sprintday"):]
+        if rest.startswith("-"):
+            sprint_id, _, day_str = rest[1:].rpartition("-")
+        else:
+            sprint_id, day_str = DEFAULT_SPRINT_ID, rest
         try:
-            day_num = int(conv_id[len("sprintday"):])
+            day_num = int(day_str)
         except ValueError:
             raise HTTPException(404, "Conversation not found.")
-        conv = SPRINT_CONVS.get(day_num)
+        if sprint_id not in SPRINTS:
+            raise HTTPException(404, "Conversation not found.")
+        conv = SPRINT_CONVS_BY_SPRINT[sprint_id].get(day_num)
         if not conv:
             raise HTTPException(404, "Conversation not found.")
         if not user.is_premium:
             raise HTTPException(403, "The Sprint is a Pro program.")
-        state = _sprint_state(user, session)
+        state = _sprint_state(user, sprint_id, session)
         if not state["enrolled"]:
             raise HTTPException(400, "Start the Sprint first.")
         if day_num > state["unlocked_through"]:
@@ -2491,37 +2728,38 @@ def admin_delete_user(user_id: int, admin: User = Depends(require_admin),
 def admin_unlock_all(admin: User = Depends(require_admin),
                      session: Session = Depends(get_session)):
     """
-    TESTING ONLY. Enrolls the admin in the Sprint if needed, then backdates
-    the start date so every one of the 14 days is unlocked right now. This
-    lets you click through and test all 14 days without waiting 14 days.
-    It does not mark any day as *completed* — you still practice each one.
+    TESTING ONLY. Enrolls the admin in EVERY Sprint (unlocking whichever one
+    would normally be gated too) and backdates each start date so every day
+    of every Sprint is unlocked right now. Lets you click through and test
+    all of them without waiting, or being blocked by "finish the last one
+    first." Doesn't mark any day as *completed* — you still practice each one.
     """
-    enr = session.exec(
-        select(Enrollment).where(Enrollment.user_id == admin.id,
-                                 Enrollment.sprint_id == SPRINT["id"])
-    ).first()
-    backdate = dt.datetime.utcnow() - dt.timedelta(days=SPRINT_TOTAL_DAYS)
-    if enr:
-        enr.started_at = backdate
-        session.add(enr)
-    else:
-        session.add(Enrollment(user_id=admin.id, sprint_id=SPRINT["id"], started_at=backdate))
+    for sprint_id, sprint_def in SPRINTS.items():
+        total_days = len(sprint_def["days"])
+        enr = session.exec(
+            select(Enrollment).where(Enrollment.user_id == admin.id,
+                                     Enrollment.sprint_id == sprint_id)
+        ).first()
+        backdate = dt.datetime.utcnow() - dt.timedelta(days=total_days)
+        if enr:
+            enr.started_at = backdate
+            session.add(enr)
+        else:
+            session.add(Enrollment(user_id=admin.id, sprint_id=sprint_id, started_at=backdate))
     session.commit()
-    return _sprint_state(admin, session)
+    return {sid: _sprint_state(admin, sid, session) for sid in SPRINTS}
 
 
 @app.post("/api/admin/sprint/reset")
 def admin_reset_sprint(admin: User = Depends(require_admin),
                        session: Session = Depends(get_session)):
-    """TESTING ONLY. Wipes the admin's own Sprint progress to start over."""
-    for row in session.exec(
-        select(Enrollment).where(Enrollment.user_id == admin.id, Enrollment.sprint_id == SPRINT["id"])
-    ).all():
-        session.delete(row)
-    for row in session.exec(
-        select(DayCompletion).where(DayCompletion.user_id == admin.id, DayCompletion.sprint_id == SPRINT["id"])
-    ).all():
-        session.delete(row)
+    """TESTING ONLY. Wipes the admin's own progress in EVERY Sprint to start over."""
+    for sprint_id in SPRINTS:
+        for model in (Enrollment, DayCompletion, DayConvDone):
+            for row in session.exec(
+                select(model).where(model.user_id == admin.id, model.sprint_id == sprint_id)
+            ).all():
+                session.delete(row)
     session.commit()
     return {"reset": True}
 
@@ -2667,11 +2905,13 @@ def _startup_banner():
     else:
         print("  ADMIN_EMAIL          : NOT SET  <-- add ADMIN_EMAIL=you@email.com to .env")
     print(f"  Frontend admin button: {'YES' if fe_ok else 'NO  <-- static/index.html is OUT OF DATE'}")
-    print(f"  Sprint days          : {SPRINT_TOTAL_DAYS}   Pass score: {PASS_SCORE}%")
+    sprint_summary = ", ".join(f"{sdef['title']} ({len(sdef['days'])}d)" for sdef in SPRINTS.values())
+    print(f"  Sprints              : {sprint_summary}   Pass score: {PASS_SCORE}%")
     print(f"  Content              : OFFLINE (no API, no keys, no limits)")
     print(f"    practice sentences : {sum(len(v) for v in SENTENCE_BANK.values())} across "
           f"{len(SENTENCE_BANK)} levels")
-    print(f"    conversations      : {len(CONVERSATIONS)} scenarios + {len(SPRINT_CONVS)} sprint days")
+    total_sprint_convs = sum(len(c) for c in SPRINT_CONVS_BY_SPRINT.values())
+    print(f"    conversations      : {len(CONVERSATIONS)} scenarios + {total_sprint_convs} sprint days")
     print("=" * 58)
     print("  Open http://localhost:8000 in Google Chrome")
     print("=" * 58 + "\n")
