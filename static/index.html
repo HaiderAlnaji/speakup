@@ -707,6 +707,19 @@
         <button class="btn-gold" id="reviewStartBtn" style="width:auto;padding:12px 24px" data-i18n="review.startBtn">Start review</button>
       </div>
 
+      <!-- Daily phrase rotation -- Lessons/Shadow Mode now draw from a big
+           (~100-phrase) pool per category, with a fresh slice featured
+           every 24h. Purely a notification: nothing is ever hidden, this
+           just points the user at what's new today. Shows once per day. -->
+      <div class="cert-ready hidden anim-in" id="newPhrasesBanner">
+        <div class="cr-icon">🆕</div>
+        <div class="cr-body">
+          <div class="cr-title" id="newPhrasesBannerTitle"></div>
+          <div class="cr-sub" data-i18n="newPhrases.bannerSub">Fresh phrases rotate into Lessons and Shadow Mode every day.</div>
+        </div>
+        <button class="btn-gold" id="newPhrasesBtn" style="width:auto;padding:12px 24px" data-i18n="newPhrases.cta">Take a look</button>
+      </div>
+
       <!-- Daily streak — the habit driver. Shows once they've practiced. -->
       <div class="streak-banner hidden anim-in" id="streakBanner">
         <div class="sb-flame" id="sbFlame">🔥</div>
@@ -1297,6 +1310,9 @@ const T = {
     "review.bannerTitle": "{n} phrases ready for review",
     "review.bannerSub": "A quick spaced-repetition review keeps old phrases from fading.",
     "review.startBtn": "Start review",
+    "newPhrases.bannerTitle": "{n} new phrases today",
+    "newPhrases.bannerSub": "Fresh phrases rotate into Lessons and Shadow Mode every day.",
+    "newPhrases.cta": "Take a look",
     "shadow.title": "Shadow Mode",
     "shadow.sub": "Speak along WITH the recording, not after it — the fastest way to pick up native rhythm, linking, and reductions.",
     "card.premiumLesson": "Premium lesson", "card.premiumCategory": "Premium category",
@@ -1514,6 +1530,9 @@ const T = {
     "review.bannerTitle": "{n} عبارة جاهزة للمراجعة",
     "review.bannerSub": "مراجعة سريعة بالتكرار المتباعد تمنع نسيان العبارات القديمة.",
     "review.startBtn": "ابدأ المراجعة",
+    "newPhrases.bannerTitle": "{n} عبارة جديدة اليوم",
+    "newPhrases.bannerSub": "تتجدد عبارات الدروس ووضع المحاكاة كل يوم.",
+    "newPhrases.cta": "ألقِ نظرة",
     "shadow.title": "وضع المحاكاة (Shadow Mode)",
     "shadow.sub": "تحدث بالتزامن مع التسجيل، لا بعده — أسرع طريقة لاكتساب الإيقاع الطبيعي والربط والاختصارات الصوتية.",
     "card.premiumLesson": "درس مميز", "card.premiumCategory": "فئة مميزة",
@@ -1986,6 +2005,7 @@ function renderStats(prog){
   loadProgressGraph();
   loadLeaderboard();
   loadReviewBanner();
+  loadNewPhrasesBanner();
   loadBizSprintCard();
 }
 
@@ -2053,6 +2073,27 @@ async function loadReviewBanner(){
   } catch(e){ $("reviewBanner").classList.add("hidden"); }
 }
 $("reviewStartBtn").onclick = () => startReview();
+
+// Lessons/Shadow Mode now draw from a big rotating pool -- this just tells
+// the user a fresh batch is featured today. Shows once per day per user
+// (has_new flips to false the moment they dismiss it via the button below).
+async function loadNewPhrasesBanner(){
+  try {
+    const r = await api("/api/phrases/whats-new");
+    if (r.has_new){
+      $("newPhrasesBannerTitle").textContent = t("newPhrases.bannerTitle", {n: r.total_new});
+      $("newPhrasesBanner").classList.remove("hidden");
+    } else {
+      $("newPhrasesBanner").classList.add("hidden");
+    }
+  } catch(e){ $("newPhrasesBanner").classList.add("hidden"); }
+}
+$("newPhrasesBtn").onclick = async () => {
+  $("newPhrasesBanner").classList.add("hidden");
+  try { await api("/api/phrases/whats-new/seen", "POST"); } catch(e){}
+  const grid = $("lessonGrid");
+  if (grid) grid.scrollIntoView({behavior: "smooth", block: "start"});
+};
 
 // The second Sprint. Shown to every Pro user (so there's something visibly
 // "coming up" even on day one), but disabled/locked until the Core Sprint
