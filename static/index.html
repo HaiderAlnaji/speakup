@@ -130,6 +130,31 @@
   .auth-divider{display:flex;align-items:center;color:var(--muted);font-size:12.5px;gap:10px}
   .auth-divider::before,.auth-divider::after{content:"";flex:1;height:1px;background:var(--line)}
 
+  /* ---------- Account settings ---------- */
+  .settings-card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);
+    padding:22px;margin-bottom:18px}
+  .settings-card h3{font-size:16px;margin-bottom:14px}
+  .settings-card .btn-primary,.settings-card .btn-gold{width:auto;padding:11px 22px}
+  .settings-static{padding:12px 14px;font-size:15px;color:var(--muted)}
+  .settings-note{font-size:13.5px;color:var(--muted);background:var(--surface-2);padding:10px 12px;
+    border-radius:10px;margin-bottom:14px;line-height:1.5}
+  .settings-danger{border-color:#F0C6C6}
+  .settings-danger h3{color:#B4292E}
+  .settings-danger>p{color:var(--muted);font-size:13.5px;margin-bottom:14px;line-height:1.5}
+  #deleteConfirmWrap{display:flex;flex-direction:column;gap:10px;align-items:flex-start;margin-top:8px}
+  .btn-danger-outline{background:none;border:1.5px solid #B4292E;color:#B4292E;font-weight:600;
+    font-size:14px;padding:10px 18px;border-radius:12px;transition:background .15s var(--ease)}
+  .btn-danger-outline:hover{background:#FDECEC}
+  .btn-danger{width:auto;padding:11px 20px;border-radius:12px;background:#D0342C;color:#fff;
+    font-weight:600;font-size:14px;transition:filter .15s var(--ease)}
+  .btn-danger:hover{filter:brightness(1.08)}
+  .btn-danger:disabled{opacity:.5;cursor:default;filter:none}
+  .plan-row{display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:14px;
+    font-size:14px;color:var(--muted)}
+  .plan-pill{font-weight:700;font-size:12.5px;padding:5px 12px;border-radius:20px;letter-spacing:.02em}
+  .plan-pill.free{background:var(--surface-2);color:var(--muted)}
+  .plan-pill.pro{background:var(--gold);color:#3a2600}
+
   /* ---------- App shell ---------- */
   .topbar{background:var(--surface);border-bottom:1px solid var(--line);
     padding:14px 22px;display:flex;align-items:center;justify-content:space-between;
@@ -633,6 +658,7 @@
       <span id="proBadge" class="badge-pro hidden">PRO</span>
       <button class="btn-ghost" id="langToggle">العربية</button>
       <button class="btn-ghost hidden" id="adminBtn" data-i18n="nav.admin">Admin</button>
+      <button class="btn-ghost" id="settingsBtn" data-i18n="nav.settings">Settings</button>
       <button class="btn-ghost" id="logoutBtn" data-i18n="nav.logout">Log out</button>
     </div>
   </div>
@@ -960,6 +986,69 @@
       </div>
     </div>
 
+    <!-- Account settings -->
+    <div id="settingsView" class="hidden">
+      <button class="back" id="backBtnSettings" data-i18n="back.home">← Home</button>
+      <div class="page-head">
+        <h2 data-i18n="settings.title">Account settings</h2>
+        <p data-i18n="settings.sub">Manage your profile, password, and plan.</p>
+      </div>
+
+      <div id="settingsMsg" class="msg"></div>
+
+      <div class="settings-card">
+        <h3 data-i18n="settings.profileTitle">Profile</h3>
+        <div class="field">
+          <label data-i18n="settings.displayName">Display name</label>
+          <input id="settingsName" placeholder="e.g. Haider" data-i18n-ph="settings.displayNamePh">
+        </div>
+        <div class="field">
+          <label data-i18n="auth.emailLabel">Email</label>
+          <input id="settingsEmail" disabled>
+        </div>
+        <div class="field">
+          <label data-i18n="settings.memberSince">Member since</label>
+          <div class="settings-static" id="settingsMemberSince"></div>
+        </div>
+        <button class="btn-primary" id="saveProfileBtn" data-i18n="settings.saveProfile">Save profile</button>
+      </div>
+
+      <div class="settings-card">
+        <h3 data-i18n="settings.planTitle">Plan</h3>
+        <div id="settingsPlanBody"></div>
+        <button class="btn-gold hidden" id="settingsUpgradeBtn" data-i18n="paywall.upgradeBtn">Upgrade to Pro</button>
+      </div>
+
+      <div class="settings-card">
+        <h3 id="settingsPasswordTitle" data-i18n="settings.changePasswordTitle">Change password</h3>
+        <p class="settings-note hidden" id="settingsPasswordSub" data-i18n="settings.setPasswordNote">This account signed in with Google and has no password yet. Set one so you can also log in with email + password.</p>
+        <div class="field" id="currentPasswordField">
+          <label data-i18n="settings.currentPassword">Current password</label>
+          <input id="settingsCurrentPassword" type="password" autocomplete="current-password">
+        </div>
+        <div class="field">
+          <label data-i18n="settings.newPassword">New password</label>
+          <input id="settingsNewPassword" type="password" placeholder="At least 8 characters" data-i18n-ph="auth.passwordPh" autocomplete="new-password">
+        </div>
+        <button class="btn-primary" id="savePasswordBtn" data-i18n="settings.savePassword">Save password</button>
+      </div>
+
+      <div class="settings-card settings-danger">
+        <h3 data-i18n="settings.dangerTitle">Danger zone</h3>
+        <p data-i18n="settings.dangerSub">Permanently delete your account and all your progress. This can't be undone.</p>
+        <div id="deleteConfirmWrap" class="hidden">
+          <div class="field">
+            <label data-i18n="settings.deleteConfirmLabel">Type your email to confirm</label>
+            <input id="deleteConfirmInput" placeholder="you@email.com">
+          </div>
+          <p class="msg err hidden" id="paddleWarning" data-i18n="settings.paddleWarning">You have an active Paddle subscription. Deleting your account here does NOT cancel it — cancel your subscription first, then come back and delete.</p>
+          <button class="btn-danger" id="confirmDeleteBtn" disabled data-i18n="settings.confirmDeleteBtn">Permanently delete my account</button>
+          <button class="btn-ghost" id="cancelDeleteBtn" data-i18n="settings.cancelDelete">Cancel</button>
+        </div>
+        <button class="btn-danger-outline" id="startDeleteBtn" data-i18n="settings.deleteAccount">Delete my account</button>
+      </div>
+    </div>
+
     <!-- Conversation (CLT role-play) -->
     <div id="convView" class="hidden">
       <button class="back" id="backConv" data-i18n="back.home">← Home</button>
@@ -1065,6 +1154,28 @@ const T = {
     "auth.invalidResetLink": "That reset link looks invalid. Please request a new one.",
     "auth.orDivider": "or",
     "nav.admin": "Admin", "nav.logout": "Log out", "nav.langToggle": "العربية",
+    "nav.settings": "Settings",
+    "settings.title": "Account settings", "settings.sub": "Manage your profile, password, and plan.",
+    "settings.profileTitle": "Profile",
+    "settings.displayName": "Display name", "settings.displayNamePh": "e.g. Haider",
+    "settings.memberSince": "Member since", "settings.saveProfile": "Save profile",
+    "settings.profileSaved": "Profile saved.",
+    "settings.planTitle": "Plan", "settings.free": "Free", "settings.pro": "Pro",
+    "settings.proAdmin": "Admin — full access", "settings.proPaddle": "Renews automatically via Paddle",
+    "settings.proExpires": "Active until {date}",
+    "settings.changePasswordTitle": "Change password", "settings.setPasswordTitle": "Set a password",
+    "settings.setPasswordNote": "This account signed in with Google and has no password yet. Set one so you can also log in with email + password.",
+    "settings.currentPassword": "Current password", "settings.newPassword": "New password",
+    "settings.savePassword": "Save password", "settings.setPasswordBtn": "Set password",
+    "settings.passwordSaved": "Password updated.",
+    "settings.dangerTitle": "Danger zone",
+    "settings.dangerSub": "Permanently delete your account and all your progress. This can't be undone.",
+    "settings.deleteAccount": "Delete my account",
+    "settings.deleteConfirmLabel": "Type your email to confirm",
+    "settings.paddleWarning": "You have an active Paddle subscription. Deleting your account here does NOT cancel it — cancel your subscription first, then come back and delete.",
+    "settings.confirmDeleteBtn": "Permanently delete my account", "settings.cancelDelete": "Cancel",
+    "settings.typeEmailToConfirm": "Please type your email to confirm.",
+    "settings.accountDeleted": "Your account has been deleted.",
     "dash.certReadyTitle": "Your certificate is ready!",
     "dash.certReadySub": "You completed all 14 days of the Sprint. Come see it.",
     "dash.viewCert": "View certificate",
@@ -1241,6 +1352,28 @@ const T = {
     "auth.invalidResetLink": "رابط إعادة التعيين هذا غير صالح. يرجى طلب رابط جديد.",
     "auth.orDivider": "أو",
     "nav.admin": "الإدارة", "nav.logout": "تسجيل الخروج", "nav.langToggle": "English",
+    "nav.settings": "الإعدادات",
+    "settings.title": "إعدادات الحساب", "settings.sub": "إدارة ملفك الشخصي وكلمة المرور والخطة.",
+    "settings.profileTitle": "الملف الشخصي",
+    "settings.displayName": "الاسم المعروض", "settings.displayNamePh": "مثال: حيدر",
+    "settings.memberSince": "عضو منذ", "settings.saveProfile": "حفظ الملف الشخصي",
+    "settings.profileSaved": "تم حفظ الملف الشخصي.",
+    "settings.planTitle": "الخطة", "settings.free": "مجاني", "settings.pro": "برو",
+    "settings.proAdmin": "إداري — وصول كامل", "settings.proPaddle": "يتجدد تلقائياً عبر Paddle",
+    "settings.proExpires": "نشط حتى {date}",
+    "settings.changePasswordTitle": "تغيير كلمة المرور", "settings.setPasswordTitle": "تعيين كلمة مرور",
+    "settings.setPasswordNote": "سجّل هذا الحساب الدخول عبر Google ولا توجد له كلمة مرور بعد. عيّن واحدة لتتمكن أيضاً من تسجيل الدخول بالبريد الإلكتروني وكلمة المرور.",
+    "settings.currentPassword": "كلمة المرور الحالية", "settings.newPassword": "كلمة المرور الجديدة",
+    "settings.savePassword": "حفظ كلمة المرور", "settings.setPasswordBtn": "تعيين كلمة المرور",
+    "settings.passwordSaved": "تم تحديث كلمة المرور.",
+    "settings.dangerTitle": "منطقة الخطر",
+    "settings.dangerSub": "حذف حسابك وكل تقدمك نهائياً. لا يمكن التراجع عن هذا.",
+    "settings.deleteAccount": "حذف حسابي",
+    "settings.deleteConfirmLabel": "اكتب بريدك الإلكتروني للتأكيد",
+    "settings.paddleWarning": "لديك اشتراك نشط عبر Paddle. حذف حسابك هنا لن يُلغي الاشتراك — ألغِ اشتراكك أولاً ثم عد واحذف حسابك.",
+    "settings.confirmDeleteBtn": "حذف حسابي نهائياً", "settings.cancelDelete": "إلغاء",
+    "settings.typeEmailToConfirm": "يرجى كتابة بريدك الإلكتروني للتأكيد.",
+    "settings.accountDeleted": "تم حذف حسابك.",
     "dash.certReadyTitle": "شهادتك جاهزة!",
     "dash.certReadySub": "أكملت الأيام الـ14 من السبرنت. تعال شاهدها.",
     "dash.viewCert": "عرض الشهادة",
@@ -1455,7 +1588,7 @@ async function api(path, method = "GET", body = null){
   return data;
 }
 function show(view){
-  ["dashboard","practiceView","paywallView","sprintView","certView","adminView","convView"]
+  ["dashboard","practiceView","paywallView","sprintView","certView","adminView","convView","settingsView"]
     .forEach(v => $(v).classList.add("hidden"));
   const el = $(view);
   el.classList.remove("hidden");
@@ -1622,7 +1755,7 @@ function enterApp(user){
   currentUser = user;
   $("auth").classList.add("hidden");
   $("app").classList.remove("hidden");
-  $("userEmail").textContent = user.email;
+  $("userEmail").textContent = user.name || user.email;
   $("proBadge").classList.toggle("hidden", !user.is_premium);
   $("adminBtn").classList.toggle("hidden", !user.is_admin);
   // Pro pill on "Drill any topic" shows only to free users.
@@ -1829,6 +1962,115 @@ function renderShadowGrid(best){
     grid.appendChild(card);
   });
 }
+
+// ---- ACCOUNT SETTINGS ----
+$("settingsBtn").onclick = openSettings;
+$("backBtnSettings").onclick = loadDashboard;
+
+async function openSettings(){
+  show("settingsView");
+  $("settingsMsg").className = "msg";
+  $("deleteConfirmWrap").classList.add("hidden");
+  $("startDeleteBtn").classList.remove("hidden");
+  $("deleteConfirmInput").value = "";
+  $("confirmDeleteBtn").disabled = true;
+  try {
+    const user = await api("/api/me");
+    currentUser = user;
+    $("settingsName").value = user.name || "";
+    $("settingsEmail").value = user.email;
+    $("settingsMemberSince").textContent = new Date(user.member_since).toLocaleDateString();
+    renderPlanSection(user);
+    renderPasswordSection(user);
+  } catch(e){
+    $("settingsMsg").className = "msg err";
+    $("settingsMsg").textContent = e.message;
+  }
+}
+
+function renderPlanSection(user){
+  const body = $("settingsPlanBody");
+  if (!user.is_premium){
+    body.innerHTML = `<div class="plan-row"><span class="plan-pill free">${t("settings.free")}</span></div>`;
+    $("settingsUpgradeBtn").classList.remove("hidden");
+    return;
+  }
+  $("settingsUpgradeBtn").classList.add("hidden");
+  let detail = "";
+  if (user.pro_provider === "admin") detail = t("settings.proAdmin");
+  else if (user.pro_provider === "paddle") detail = t("settings.proPaddle");
+  else if (user.pro_expires_at) detail = t("settings.proExpires", {date: new Date(user.pro_expires_at).toLocaleDateString()});
+  body.innerHTML = `<div class="plan-row"><span class="plan-pill pro">${t("settings.pro")}</span><span>${detail}</span></div>`;
+}
+$("settingsUpgradeBtn").onclick = () => show("paywallView");
+
+function renderPasswordSection(user){
+  const hasPw = user.has_password;
+  $("settingsPasswordTitle").textContent = hasPw ? t("settings.changePasswordTitle") : t("settings.setPasswordTitle");
+  $("settingsPasswordSub").classList.toggle("hidden", hasPw);
+  $("currentPasswordField").classList.toggle("hidden", !hasPw);
+  $("savePasswordBtn").textContent = hasPw ? t("settings.savePassword") : t("settings.setPasswordBtn");
+  $("settingsCurrentPassword").value = "";
+  $("settingsNewPassword").value = "";
+  $("paddleWarning").classList.toggle("hidden", user.pro_provider !== "paddle");
+}
+
+$("saveProfileBtn").onclick = async () => {
+  const msg = $("settingsMsg");
+  msg.className = "msg";
+  try {
+    const user = await api("/api/account/profile", "POST", {name: $("settingsName").value});
+    currentUser = user;
+    $("userEmail").textContent = user.name || user.email;
+    msg.className = "msg ok";
+    msg.textContent = t("settings.profileSaved");
+  } catch(e){ msg.className = "msg err"; msg.textContent = e.message; }
+};
+
+$("savePasswordBtn").onclick = async () => {
+  const msg = $("settingsMsg");
+  msg.className = "msg";
+  try {
+    await api("/api/account/password", "POST", {
+      current_password: $("settingsCurrentPassword").value,
+      new_password: $("settingsNewPassword").value,
+    });
+    msg.className = "msg ok";
+    msg.textContent = t("settings.passwordSaved");
+    currentUser.has_password = true;
+    renderPasswordSection(currentUser);
+  } catch(e){ msg.className = "msg err"; msg.textContent = e.message; }
+};
+
+$("startDeleteBtn").onclick = () => {
+  $("deleteConfirmWrap").classList.remove("hidden");
+  $("startDeleteBtn").classList.add("hidden");
+};
+$("cancelDeleteBtn").onclick = () => {
+  $("deleteConfirmWrap").classList.add("hidden");
+  $("startDeleteBtn").classList.remove("hidden");
+  $("deleteConfirmInput").value = "";
+  $("confirmDeleteBtn").disabled = true;
+};
+$("deleteConfirmInput").addEventListener("input", () => {
+  const match = $("deleteConfirmInput").value.trim().toLowerCase() === (currentUser && currentUser.email);
+  $("confirmDeleteBtn").disabled = !match;
+});
+$("confirmDeleteBtn").onclick = async () => {
+  const msg = $("settingsMsg");
+  msg.className = "msg";
+  try {
+    await api("/api/account/delete", "POST", {confirm_email: $("deleteConfirmInput").value});
+    token = null;
+    localStorage.removeItem("speakup_token");
+    $("app").classList.add("hidden");
+    $("auth").classList.remove("hidden");
+    mode = "login";
+    renderAuthMode();
+    $("authMsg").className = "msg ok";
+    $("authMsg").textContent = t("settings.accountDeleted");
+  } catch(e){ msg.className = "msg err"; msg.textContent = e.message; }
+};
 
 // ---- ADMIN ----
 $("adminBtn").onclick = openAdmin;

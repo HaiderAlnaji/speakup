@@ -225,6 +225,16 @@ class User(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     email: str = Field(index=True, unique=True)
     hashed_password: str
+    # Optional display name, set from Account Settings (or auto-filled from
+    # Google's "name" claim on first Google sign-in). Falls back to email
+    # everywhere in the UI when unset.
+    name: str | None = None
+    # True for every normal registered/reset account. False ONLY for a
+    # Google-only account that has never set a real password — its
+    # hashed_password is an unusable random value, so this flag is the one
+    # source of truth for "Change password" vs. "Set a password" in the UI,
+    # and for whether email+password login should even be attempted.
+    has_password: bool = True
     is_premium: bool = False
     is_admin: bool = False
     created_at: dt.datetime = Field(default_factory=dt.datetime.utcnow)
@@ -826,6 +836,19 @@ class GoogleAuthIn(BaseModel):
     credential: str  # the ID token Google's "Sign in with Google" button hands back
 
 
+class ProfileIn(BaseModel):
+    name: str = ""
+
+
+class ChangePasswordIn(BaseModel):
+    current_password: str = ""   # ignored when the account has no password yet
+    new_password: str
+
+
+class DeleteAccountIn(BaseModel):
+    confirm_email: str
+
+
 class PracticeIn(BaseModel):
     lesson_id: str
     phrase_index: int
@@ -849,8 +872,27 @@ def is_admin_user(user: User) -> bool:
 
 
 def public_user(user: User) -> dict:
-    return {"email": user.email, "is_premium": user.is_premium,
-            "is_admin": is_admin_user(user)}
+    if user.is_admin:
+        pro_provider = "admin"
+    elif user.paddle_subscription_id:
+        pro_provider = "paddle"
+    elif user.zaincash_transaction_id:
+        pro_provider = "zaincash"
+    elif user.qicard_payment_id:
+        pro_provider = "qicard"
+    else:
+        pro_provider = "none"
+    return {
+        "email": user.email,
+        "name": user.name,
+        "is_premium": user.is_premium,
+        "is_admin": is_admin_user(user),
+        "has_password": user.has_password,
+        "member_since": user.created_at.isoformat(),
+        "subscription_status": user.subscription_status,
+        "pro_expires_at": user.pro_expires_at.isoformat() if user.pro_expires_at else None,
+        "pro_provider": pro_provider,
+    }
 
 
 def _sync_admin(user: User, session: Session):
@@ -973,6 +1015,8 @@ def reset_password(data: ResetPasswordIn, request: Request,
         raise HTTPException(400, "This reset link is invalid or has expired. Please request a new one.")
 
     user.hashed_password = hash_password(data.new_password)
+    user.has_password = True   # works even for a Google-only account — this
+                                # is how they'd pick up email+password login too
     reset.used = True
     session.add(user)
     session.add(reset)
@@ -1043,11 +1087,14 @@ def auth_google(data: GoogleAuthIn, request: Request, session: Session = Depends
     user = session.exec(select(User).where(User.email == email)).first()
     if not user:
         # New account. This random password is never shown to anyone and
-        # never used to sign in with — this account can only be reached via
-        # "Sign in with Google" (or a password reset later, if ever needed).
+        # never used to sign in with — has_password=False is what actually
+        # marks this account as Google-only; Account Settings shows "Set a
+        # password" instead of "Change password" until they set a real one
+        # (including via "Forgot password", which works for any account).
         is_admin = email in ADMIN_EMAILS
         user = User(email=email, hashed_password=hash_password(secrets.token_urlsafe(32)),
-                    is_admin=is_admin, is_premium=is_admin)
+                    is_admin=is_admin, is_premium=is_admin, has_password=False,
+                    name=(payload.get("name") or None))
         session.add(user)
         session.commit()
         session.refresh(user)
@@ -1066,6 +1113,73 @@ def require_admin(user: User = Depends(get_current_user)) -> User:
 @app.get("/api/me")
 def me(user: User = Depends(get_current_user)):
     return public_user(user)
+
+
+# ---- ACCOUNT SETTINGS ----
+@app.post("/api/account/profile")
+def update_profile(data: ProfileIn, request: Request,
+                    user: User = Depends(get_current_user), session: Session = Depends(get_session)):
+    rate_limit(request, "account-profile", limit=20, window=300)
+    name = data.name.strip()
+    if len(name) > 60:
+        raise HTTPException(400, "Name is too long (60 characters max).")
+    user.name = name or None
+    session.add(user)
+    session.commit()
+    session.refresh(user)
+    return public_user(user)
+
+
+@app.post("/api/account/password")
+def change_password(data: ChangePasswordIn, request: Request,
+                     user: User = Depends(get_current_user), session: Session = Depends(get_session)):
+    """
+    Doubles as both "Change password" and "Set a password", depending on
+    has_password. A Google-only account has no real current password to
+    check, so that step is simply skipped — this is also how such an
+    account picks up email+password login for the first time.
+    """
+    rate_limit(request, "account-password", limit=10, window=300)
+    if len(data.new_password) < 8:
+        raise HTTPException(400, "Password must be at least 8 characters.")
+    if user.has_password and not verify_password(data.current_password, user.hashed_password):
+        raise HTTPException(401, "Current password is incorrect.")
+    user.hashed_password = hash_password(data.new_password)
+    user.has_password = True
+    session.add(user)
+    session.commit()
+    return {"ok": True}
+
+
+@app.post("/api/account/delete")
+def delete_account(data: DeleteAccountIn, request: Request,
+                    user: User = Depends(get_current_user), session: Session = Depends(get_session)):
+    """
+    Permanent, self-service account deletion. Confirmed by re-typing the
+    account's own email rather than a password -- that works identically
+    whether the account signs in with a password or with Google, and the
+    point is only to stop an accidental click since reaching this endpoint
+    already requires being signed in as this exact account.
+
+    Note for the one payment rail this doesn't fully close out: an active
+    Paddle subscription keeps renewing on Paddle's side until it's canceled
+    there directly (or via Paddle's webhook) -- deleting the local account
+    does not call Paddle's API. The frontend warns about this specific case
+    before letting the delete go through. ZainCash/QiCard need no such
+    warning since those are one-time purchases with a fixed expiry, not a
+    recurring charge.
+    """
+    rate_limit(request, "account-delete", limit=5, window=300)
+    if data.confirm_email.strip().lower() != user.email:
+        raise HTTPException(400, "That email doesn't match this account.")
+
+    uid = user.id
+    for model in (Attempt, Enrollment, DayCompletion, DayConvDone, PasswordReset):
+        for row in session.exec(select(model).where(model.user_id == uid)).all():
+            session.delete(row)
+    session.delete(user)
+    session.commit()
+    return {"deleted": True}
 
 
 @app.get("/api/lessons")
