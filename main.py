@@ -966,6 +966,26 @@ def progress(user: User = Depends(get_current_user),
     }
 
 
+@app.get("/api/badges")
+def badges_data(user: User = Depends(get_current_user),
+                session: Session = Depends(get_session)):
+    """
+    Extra numbers (beyond /api/progress) needed to unlock achievement
+    badges. Badge titles/descriptions/icons live in the frontend — this
+    just supplies the raw counts, so thresholds stay easy to tune in one
+    place without touching the backend.
+    """
+    attempts = session.exec(select(Attempt).where(Attempt.user_id == user.id)).all()
+    shadow_attempts = sum(1 for a in attempts if a.lesson_id in SHADOW_BY_ID)
+    perfect_scores = sum(1 for a in attempts if a.score == 100)
+    sprint_state = _sprint_state(user, session)
+    return {
+        "shadow_attempts": shadow_attempts,
+        "perfect_scores": perfect_scores,
+        "sprint_finished": bool(sprint_state.get("finished")),
+    }
+
+
 @app.post("/api/upgrade")
 def upgrade(user: User = Depends(get_current_user),
             session: Session = Depends(get_session)):

@@ -125,6 +125,16 @@
     padding:3px 9px;border-radius:20px;letter-spacing:.02em}
   .badge-xp{background:#EAF6FF;color:#0B5C82;font-weight:600;font-size:11.5px;
     padding:3px 10px;border-radius:20px;letter-spacing:.01em;white-space:nowrap}
+
+  /* ---------- Achievements ---------- */
+  .badge-grid{display:flex;flex-wrap:wrap;gap:12px;margin-bottom:26px}
+  .achievement{width:96px;text-align:center;padding:14px 8px 12px;border-radius:14px;
+    border:1px solid var(--line);background:var(--surface);transition:transform .15s var(--ease)}
+  .achievement:hover{transform:translateY(-2px)}
+  .achievement .ach-icon{font-size:28px;line-height:1;margin-bottom:6px}
+  .achievement .ach-title{font-size:11px;font-weight:600;color:var(--ink);line-height:1.25}
+  .achievement.locked{opacity:.4;filter:grayscale(1)}
+  .achievement.unlocked{border-color:var(--gold);background:#FFFBF0;box-shadow:0 4px 14px rgba(231,166,58,.15)}
   .btn-ghost{background:var(--surface-2);color:var(--ink);font-weight:500;font-size:13px;
     padding:7px 13px;border-radius:9px;transition:background .18s var(--ease),transform .15s var(--ease)}
   .btn-ghost:hover{background:#E9EDF6;transform:translateY(-1px)}
@@ -682,6 +692,11 @@
         <div class="stat"><div class="num" id="statXp">0</div><div class="lbl" data-i18n="stat.xpEarned">XP earned</div></div>
       </div>
 
+      <div class="page-head anim-in-2" style="margin-top:8px">
+        <h2 data-i18n="badges.title">Achievements</h2>
+      </div>
+      <div class="badge-grid anim-in-2" id="badgeGrid"></div>
+
       <!-- Progress graph — Pro feature, shows a teaser to free users -->
       <div class="progress-card anim-in-2 hidden" id="progressCard">
         <div class="pc-head">
@@ -1040,6 +1055,17 @@ const T = {
     "stat.totalAttempts": "Total attempts", "stat.lessonsStarted": "Lessons started",
     "stat.bestScore": "Best score", "stat.xpEarned": "XP earned",
     "xp.badge": "⭐ {n} XP",
+    "badges.title": "Achievements",
+    "badge.firstSteps.title": "First Steps", "badge.firstSteps.desc": "Complete your first practice attempt",
+    "badge.dedicated.title": "Dedicated", "badge.dedicated.desc": "Complete 50 practice attempts",
+    "badge.century.title": "Century", "badge.century.desc": "Complete 100 practice attempts",
+    "badge.weekStreak.title": "Week Warrior", "badge.weekStreak.desc": "Reach a 7-day practice streak",
+    "badge.twoWeekStreak.title": "Two-Week Legend", "badge.twoWeekStreak.desc": "Reach a 14-day practice streak",
+    "badge.sharpShooter.title": "Sharp Shooter", "badge.sharpShooter.desc": "Score 90% or higher on any phrase",
+    "badge.perfectionist.title": "Perfectionist", "badge.perfectionist.desc": "Score a perfect 100% on any phrase",
+    "badge.sprintFinisher.title": "Sprint Finisher", "badge.sprintFinisher.desc": "Complete all 14 days of the Speaking Sprint",
+    "badge.shadowMaster.title": "Shadow Master", "badge.shadowMaster.desc": "Complete 20 Shadow Mode attempts",
+    "badge.proMember.title": "Pro Member", "badge.proMember.desc": "Upgrade to SpeakUp Pro",
     "progress.yourProgress": "Your progress",
     "progress.improving": "📈 Improving", "progress.declining": "📉 Slipping — practice more",
     "progress.steady": "→ Steady",
@@ -1194,6 +1220,17 @@ const T = {
     "stat.totalAttempts": "مجموع المحاولات", "stat.lessonsStarted": "الدروس التي بدأتها",
     "stat.bestScore": "أفضل نتيجة", "stat.xpEarned": "نقاط الخبرة",
     "xp.badge": "⭐ {n} XP",
+    "badges.title": "الإنجازات",
+    "badge.firstSteps.title": "أول خطوة", "badge.firstSteps.desc": "أكمل أول محاولة تدريب لك",
+    "badge.dedicated.title": "مثابر", "badge.dedicated.desc": "أكمل 50 محاولة تدريب",
+    "badge.century.title": "المئة", "badge.century.desc": "أكمل 100 محاولة تدريب",
+    "badge.weekStreak.title": "محارب الأسبوع", "badge.weekStreak.desc": "حقق سلسلة تدريب لمدة 7 أيام",
+    "badge.twoWeekStreak.title": "أسطورة الأسبوعين", "badge.twoWeekStreak.desc": "حقق سلسلة تدريب لمدة 14 يوماً",
+    "badge.sharpShooter.title": "قناص", "badge.sharpShooter.desc": "احصل على 90% أو أعلى في أي عبارة",
+    "badge.perfectionist.title": "الكمال", "badge.perfectionist.desc": "احصل على 100% كاملة في أي عبارة",
+    "badge.sprintFinisher.title": "منهي السبرنت", "badge.sprintFinisher.desc": "أكمل الأيام الـ14 من سبرنت التحدث",
+    "badge.shadowMaster.title": "أستاذ المحاكاة", "badge.shadowMaster.desc": "أكمل 20 محاولة في وضع المحاكاة",
+    "badge.proMember.title": "عضو Pro", "badge.proMember.desc": "قم بالترقية إلى SpeakUp Pro",
     "progress.yourProgress": "تقدّمك",
     "progress.improving": "📈 في تحسّن", "progress.declining": "📉 تراجع — تدرّب أكثر",
     "progress.steady": "→ ثابت",
@@ -1430,8 +1467,9 @@ function enterApp(user){
 }
 async function loadDashboard(){
   show("dashboard");
-  const [ls, prog, sp, sc, sh] = await Promise.all([
-    api("/api/lessons"), api("/api/progress"), api("/api/sprint"), api("/api/scenarios"), api("/api/shadow")
+  const [ls, prog, sp, sc, sh, bd] = await Promise.all([
+    api("/api/lessons"), api("/api/progress"), api("/api/sprint"), api("/api/scenarios"),
+    api("/api/shadow"), api("/api/badges")
   ]);
   lessons = ls; sprint = sp; scenarios = sc.scenarios; shadowCats = sh;
   $("aiOff").classList.toggle("hidden", sc.ai_ready);
@@ -1440,7 +1478,55 @@ async function loadDashboard(){
   renderShadowGrid(prog.best_by_lesson || {});
   renderScenarios();
   renderHero();
+  renderBadges({
+    attempts: prog.total_attempts || 0,
+    longestStreak: prog.longest_streak || 0,
+    bestScore: prog.best_score || 0,
+    perfectScores: bd.perfect_scores || 0,
+    sprintFinished: !!bd.sprint_finished,
+    shadowAttempts: bd.shadow_attempts || 0,
+    isPremium: !!(currentUser && currentUser.is_premium),
+  });
   $("certReadyBanner").classList.toggle("hidden", !(sprint.state && sprint.state.finished));
+}
+
+// ---- ACHIEVEMENTS: computed client-side from stats the server already
+// gives us — thresholds live in one place (here) and are easy to tune
+// without touching the backend. Locked badges still show (grayed out) so
+// there's something to aim for, Duolingo-style.
+const BADGES = [
+  {id: "first_steps", icon: "🎯", titleKey: "badge.firstSteps.title", descKey: "badge.firstSteps.desc",
+   check: s => s.attempts >= 1},
+  {id: "dedicated", icon: "💪", titleKey: "badge.dedicated.title", descKey: "badge.dedicated.desc",
+   check: s => s.attempts >= 50},
+  {id: "century", icon: "💯", titleKey: "badge.century.title", descKey: "badge.century.desc",
+   check: s => s.attempts >= 100},
+  {id: "week_streak", icon: "🔥", titleKey: "badge.weekStreak.title", descKey: "badge.weekStreak.desc",
+   check: s => s.longestStreak >= 7},
+  {id: "two_week_streak", icon: "🔥", titleKey: "badge.twoWeekStreak.title", descKey: "badge.twoWeekStreak.desc",
+   check: s => s.longestStreak >= 14},
+  {id: "sharp_shooter", icon: "⭐", titleKey: "badge.sharpShooter.title", descKey: "badge.sharpShooter.desc",
+   check: s => s.bestScore >= 90},
+  {id: "perfectionist", icon: "🏆", titleKey: "badge.perfectionist.title", descKey: "badge.perfectionist.desc",
+   check: s => s.perfectScores >= 1},
+  {id: "sprint_finisher", icon: "🎓", titleKey: "badge.sprintFinisher.title", descKey: "badge.sprintFinisher.desc",
+   check: s => s.sprintFinished},
+  {id: "shadow_master", icon: "🗣️", titleKey: "badge.shadowMaster.title", descKey: "badge.shadowMaster.desc",
+   check: s => s.shadowAttempts >= 20},
+  {id: "pro_member", icon: "👑", titleKey: "badge.proMember.title", descKey: "badge.proMember.desc",
+   check: s => s.isPremium},
+];
+
+function renderBadges(stats){
+  const grid = $("badgeGrid"); grid.innerHTML = "";
+  BADGES.forEach(b => {
+    const unlocked = b.check(stats);
+    const el = document.createElement("div");
+    el.className = "achievement " + (unlocked ? "unlocked" : "locked");
+    el.title = t(b.descKey);
+    el.innerHTML = `<div class="ach-icon">${b.icon}</div><div class="ach-title">${t(b.titleKey)}</div>`;
+    grid.appendChild(el);
+  });
 }
 $("certReadyBtn").onclick = showCertificate;
 
