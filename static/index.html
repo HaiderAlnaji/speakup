@@ -1255,11 +1255,15 @@
         </div>
       </div>
 
+      <div class="grid scroll-row reveal" id="shadowGrid"></div>
+
       <!-- Static reference card -- sounds that are specifically hard for
            Arabic-L1 speakers (not just generic ESL tips). No backend, no
            per-user state: just content, toggled open/closed like the
-           phrase-translate box already does elsewhere on this page. -->
-      <div class="progress-card arabic-tips-card reveal" id="arabicTipsCard">
+           phrase-translate box already does elsewhere on this page.
+           Lives after the practice cards now so it doesn't wedge itself
+           between the Shadow Mode intro and the cards it introduces. -->
+      <div class="progress-card arabic-tips-card reveal" id="arabicTipsCard" style="margin-top:26px">
         <div class="pc-head">
           <h3 data-i18n="arabicTips.title">🇮🇶 Sounds Arabic Speakers Often Mix Up</h3>
           <button class="atc-toggle" id="arabicTipsToggle" data-i18n="arabicTips.show">Show tips</button>
@@ -1291,8 +1295,6 @@
           </div>
         </div>
       </div>
-
-      <div class="grid scroll-row reveal" id="shadowGrid"></div>
     </div>
 
     <!-- Practice -->
