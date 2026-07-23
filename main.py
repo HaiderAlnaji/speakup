@@ -137,6 +137,12 @@ PADDLE_API_KEY = os.getenv("PADDLE_API_KEY", "").strip()            # server-sid
 PADDLE_WEBHOOK_SECRET = os.getenv("PADDLE_WEBHOOK_SECRET", "").strip()  # secret, verifies webhooks
 PADDLE_CLIENT_TOKEN = os.getenv("PADDLE_CLIENT_TOKEN", "").strip()  # public, safe for the browser
 PADDLE_PRICE_ID = os.getenv("PADDLE_PRICE_ID", "").strip()          # the $4.99/mo Pro price
+# Optional: a SECOND Paddle Price for annual billing (create it yourself in
+# the Paddle dashboard -- Paddle handles the recurring yearly charge exactly
+# like the monthly one, just on a different billing interval). Annual
+# checkout is only offered to Paddle customers once this is set; until
+# then they still get the monthly price, same as before this existed.
+PADDLE_PRICE_ID_ANNUAL = os.getenv("PADDLE_PRICE_ID_ANNUAL", "").strip()
 PADDLE_ENV = os.getenv("PADDLE_ENV", "sandbox").strip()             # "sandbox" or "production"
 
 # All four must be set for real payments to be live. Until then, SpeakUp
@@ -175,6 +181,24 @@ ZAINCASH_SERVICE_TYPE = os.getenv("ZAINCASH_SERVICE_TYPE", "JAWS").strip()
 # if the exchange rate moves a lot.
 PRO_PRICE_USD = os.getenv("PRO_PRICE_USD", "4.99").strip()
 PRO_PRICE_IQD = os.getenv("PRO_PRICE_IQD", "6500").strip()
+
+# Annual pass — a second, longer one-time option alongside the 30-day pass
+# above (same ZainCash/QiCard checkout flow, just a different amount/
+# duration). Defaults to 10x the monthly price ("2 months free" — a common
+# annual-prepay discount), rounded to a clean number; override either env
+# var directly if you want a different discount.
+def _default_annual(monthly_str: str) -> str:
+    try:
+        return f"{round(float(monthly_str) * 10, 2):.2f}"
+    except ValueError:
+        return monthly_str
+
+PRO_PRICE_USD_ANNUAL = os.getenv("PRO_PRICE_USD_ANNUAL", "").strip() or _default_annual(PRO_PRICE_USD)
+PRO_PRICE_IQD_ANNUAL = os.getenv("PRO_PRICE_IQD_ANNUAL", "").strip() or _default_annual(PRO_PRICE_IQD)
+
+# How many days of Pro each plan grants once payment is confirmed --
+# shared by ZainCash and QiCard (both one-time, non-recurring rails).
+PRO_PLAN_DAYS = {"monthly": 30, "annual": 365}
 
 # ----------------------------------------------------------------------
 # 1f. PAYMENTS — QiCard / "Pay with SuperQi" (a second, separate Iraqi
@@ -262,6 +286,12 @@ class User(SQLModel, table=True):
     # is ever hidden based on it, matching this app's "no artificial limits"
     # design. None means no preference / show everything unranked.
     goal: str | None = None
+    # Which one-time pass ("monthly" | "annual") the customer picked at
+    # ZainCash/QiCard checkout -- set right before redirecting them to pay,
+    # read back at grant time (whether that's the redirect callback, the
+    # webhook, or the /sync fallback) so all three grant the right number
+    # of days. Irrelevant for Paddle, which tracks its own billing interval.
+    checkout_plan: str = "monthly"
 
 
 class Attempt(SQLModel, table=True):
@@ -2979,9 +3009,18 @@ def billing_config(user: User = Depends(get_current_user)):
         "local_providers": local_providers,
         "client_token": PADDLE_CLIENT_TOKEN if PADDLE_CONFIGURED else "",
         "price_id": PADDLE_PRICE_ID if PADDLE_CONFIGURED else "",
+        # Empty string means "not offered yet" -- the frontend only shows an
+        # annual option to Paddle customers once you've created a second
+        # Price in your Paddle dashboard and set PADDLE_PRICE_ID_ANNUAL.
+        "price_id_annual": PADDLE_PRICE_ID_ANNUAL if PADDLE_CONFIGURED else "",
         "environment": PADDLE_ENV,
         "price_usd": PRO_PRICE_USD,
         "price_iqd": PRO_PRICE_IQD,
+        # Always available for the local (ZainCash/QiCard) rails -- both are
+        # one-time passes, so "annual" is just a longer one-time pass, no
+        # extra setup needed the way Paddle's recurring billing requires.
+        "price_usd_annual": PRO_PRICE_USD_ANNUAL,
+        "price_iqd_annual": PRO_PRICE_IQD_ANNUAL,
         "customer_email": user.email,
         "user_id": user.id,
     }
@@ -3130,8 +3169,12 @@ def zaincash_inquiry(transaction_id: str) -> str | None:
         return None
 
 
+class CheckoutPlanIn(BaseModel):
+    plan: str = "monthly"
+
+
 @app.post("/api/billing/zaincash/checkout")
-def zaincash_checkout(request: Request,
+def zaincash_checkout(data: CheckoutPlanIn, request: Request,
                        user: User = Depends(get_current_user),
                        session: Session = Depends(get_session)):
     """
@@ -3143,6 +3186,14 @@ def zaincash_checkout(request: Request,
     """
     if not ZAINCASH_CONFIGURED:
         raise HTTPException(503, "ZainCash is not configured on this server.")
+    plan = data.plan if data.plan in PRO_PLAN_DAYS else "monthly"
+    amount_iqd = PRO_PRICE_IQD_ANNUAL if plan == "annual" else PRO_PRICE_IQD
+    # Remembered now, read back whenever this transaction is confirmed
+    # (callback, or the /sync fallback) so the right number of days gets
+    # granted -- see PRO_PLAN_DAYS.
+    user.checkout_plan = plan
+    session.add(user)
+    session.commit()
 
     # order_id is OUR tracking id (embeds the user id, see _confirm_and_grant_zaincash).
     # externalReferenceId is a SEPARATE field ZainCash requires to be a UUID —
@@ -3159,7 +3210,7 @@ def zaincash_checkout(request: Request,
             "externalReferenceId": str(uuid.uuid4()),
             "orderId": order_id,
             "serviceType": ZAINCASH_SERVICE_TYPE,
-            "amount": {"value": PRO_PRICE_IQD, "currency": "IQD"},
+            "amount": {"value": amount_iqd, "currency": "IQD"},
             "redirectUrls": {
                 "successUrl": f"{base}/api/billing/zaincash/callback?order_id={order_id}",
                 "failureUrl": f"{base}/?upgrade=failed",
@@ -3216,7 +3267,7 @@ def _confirm_and_grant_zaincash(order_id: str, session: Session) -> bool:
         return False
     user.is_premium = True
     user.subscription_status = "active"
-    user.pro_expires_at = dt.datetime.utcnow() + dt.timedelta(days=30)
+    user.pro_expires_at = dt.datetime.utcnow() + dt.timedelta(days=PRO_PLAN_DAYS.get(user.checkout_plan, 30))
     session.add(user)
     session.commit()
     return True
@@ -3246,7 +3297,7 @@ def zaincash_sync(user: User = Depends(get_current_user),
         if zaincash_inquiry(user.zaincash_transaction_id) == "SUCCESS":
             user.is_premium = True
             user.subscription_status = "active"
-            user.pro_expires_at = dt.datetime.utcnow() + dt.timedelta(days=30)
+            user.pro_expires_at = dt.datetime.utcnow() + dt.timedelta(days=PRO_PLAN_DAYS.get(user.checkout_plan, 30))
             session.add(user)
             session.commit()
     return {"is_premium": user.is_premium}
@@ -3288,7 +3339,7 @@ def qicard_get_status(payment_id: str) -> str | None:
 
 
 @app.post("/api/billing/qicard/checkout")
-def qicard_checkout(request: Request,
+def qicard_checkout(data: CheckoutPlanIn, request: Request,
                      user: User = Depends(get_current_user),
                      session: Session = Depends(get_session)):
     """
@@ -3300,6 +3351,11 @@ def qicard_checkout(request: Request,
     """
     if not QICARD_CONFIGURED:
         raise HTTPException(503, "QiCard is not configured on this server.")
+    plan = data.plan if data.plan in PRO_PLAN_DAYS else "monthly"
+    amount_iqd = PRO_PRICE_IQD_ANNUAL if plan == "annual" else PRO_PRICE_IQD
+    user.checkout_plan = plan
+    session.add(user)
+    session.commit()
 
     base = str(request.base_url).rstrip("/")
     resp = requests.post(
@@ -3308,7 +3364,7 @@ def qicard_checkout(request: Request,
         auth=(QICARD_USERNAME, QICARD_PASSWORD),
         json={
             "requestId": str(uuid.uuid4()),
-            "amount": float(PRO_PRICE_IQD),
+            "amount": float(amount_iqd),
             "currency": "IQD",
             "locale": "en_US",
             # Embedding the user id directly here (rather than parsing it back
@@ -3344,7 +3400,7 @@ def _confirm_and_grant_qicard(user_id: int, session: Session) -> bool:
         return False
     user.is_premium = True
     user.subscription_status = "active"
-    user.pro_expires_at = dt.datetime.utcnow() + dt.timedelta(days=30)
+    user.pro_expires_at = dt.datetime.utcnow() + dt.timedelta(days=PRO_PLAN_DAYS.get(user.checkout_plan, 30))
     session.add(user)
     session.commit()
     return True
@@ -3388,7 +3444,7 @@ async def qicard_webhook(request: Request, session: Session = Depends(get_sessio
     if not user.is_premium and qicard_get_status(payment_id) == "SUCCESS":
         user.is_premium = True
         user.subscription_status = "active"
-        user.pro_expires_at = dt.datetime.utcnow() + dt.timedelta(days=30)
+        user.pro_expires_at = dt.datetime.utcnow() + dt.timedelta(days=PRO_PLAN_DAYS.get(user.checkout_plan, 30))
         session.add(user)
         session.commit()
     return {"received": True}
@@ -3406,7 +3462,7 @@ def qicard_sync(user: User = Depends(get_current_user),
         if qicard_get_status(user.qicard_payment_id) == "SUCCESS":
             user.is_premium = True
             user.subscription_status = "active"
-            user.pro_expires_at = dt.datetime.utcnow() + dt.timedelta(days=30)
+            user.pro_expires_at = dt.datetime.utcnow() + dt.timedelta(days=PRO_PLAN_DAYS.get(user.checkout_plan, 30))
             session.add(user)
             session.commit()
     return {"is_premium": user.is_premium}

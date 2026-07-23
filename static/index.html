@@ -374,6 +374,7 @@
     padding:8px 14px;border-radius:16px;border:1.5px solid transparent;transition:all .15s var(--ease)}
   .goal-btn:hover{border-color:var(--brand)}
   .goal-btn.active{background:var(--brand);color:#fff}
+  .plan-toggle{display:flex;justify-content:center;gap:8px;margin-bottom:14px}
   .ww-badge,.rec-badge{display:inline-block;background:var(--brand);color:#fff;font-size:10.5px;
     font-weight:700;padding:2px 8px;border-radius:10px;margin-inline-start:6px;vertical-align:middle}
 
@@ -1446,6 +1447,10 @@
       <div class="paywall">
         <h2 data-i18n="paywall.title">Unlock SpeakUp Pro</h2>
         <p data-i18n="paywall.sub">Get the 14-Day Speaking Sprint — plus every lesson and level.</p>
+        <div class="plan-toggle hidden" id="planToggle">
+          <button class="goal-btn active" id="planMonthlyBtn" data-i18n="paywall.monthly">Monthly</button>
+          <button class="goal-btn" id="planAnnualBtn" data-i18n="paywall.annualSave">Annual — save 2 months</button>
+        </div>
         <div class="price" id="proPrice">$4.99<small> / month</small></div>
         <div class="note" id="proPriceIqd"></div>
         <ul class="perks">
@@ -1744,6 +1749,9 @@ const T = {
     "paywall.title": "Unlock SpeakUp Pro",
     "paywall.sub": "Get the 14-Day Speaking Sprint — plus every lesson and level.",
     "paywall.perMonth": " / month",
+    "paywall.perYear": " / year",
+    "paywall.monthly": "Monthly",
+    "paywall.annualSave": "Annual — save 2 months",
     "paywall.perk1": "Two 14-Day Sprints — Speaking & Business English",
     "paywall.perk2": "A daily challenge, a real streak, and a Streak Shield that covers one missed day",
     "paywall.perk3": "Certificate when you finish all 14 days",
@@ -1755,6 +1763,7 @@ const T = {
     "paywall.upgradeBtn": "Upgrade to Pro", "paywall.loading": "Loading…",
     "paywall.demoMode": "Demo mode: this unlocks instantly.",
     "billing.oneTimeNote": "This is a one-time 30-day pass, not a subscription — it won't auto-renew or charge you again. Come back and pay once more anytime you want to keep going.",
+    "billing.oneTimeNoteAnnual": "This is a one-time 365-day pass, not a subscription — it won't auto-renew or charge you again. Come back and pay once more anytime you want to keep going.",
     "dash.proExpirySub": "Renew to keep your Pro access without any interruption.",
     "dash.renewNow": "Renew now",
     "dash.proExpiresToday": "Your Pro access expires today",
@@ -2016,6 +2025,9 @@ const T = {
     "paywall.title": "افتح SpeakUp Pro",
     "paywall.sub": "احصل على سبرنت التحدث لمدة 14 يوماً — وكل الدروس والمستويات.",
     "paywall.perMonth": " / شهرياً",
+    "paywall.perYear": " / سنوياً",
+    "paywall.monthly": "شهري",
+    "paywall.annualSave": "سنوي — وفّر شهرين",
     "paywall.perk1": "سبرنتان لمدة 14 يوماً — التحدث والإنجليزية للأعمال",
     "paywall.perk2": "تحدٍّ يومي، سلسلة حقيقية، ودرع للسلسلة يحمي يوماً فائتاً واحداً",
     "paywall.perk3": "شهادة عند إتمام الأيام الـ14",
@@ -2027,6 +2039,7 @@ const T = {
     "paywall.upgradeBtn": "الترقية إلى Pro", "paywall.loading": "جارٍ التحميل…",
     "paywall.demoMode": "وضع تجريبي: يتم الفتح فوراً.",
     "billing.oneTimeNote": "هذه بطاقة دخول لمرة واحدة لمدة 30 يوماً، وليست اشتراكاً — لن تتجدد تلقائياً ولن تُخصم منك مرة أخرى. عد وادفع مرة أخرى في أي وقت تريد المتابعة فيه.",
+    "billing.oneTimeNoteAnnual": "هذه بطاقة دخول لمرة واحدة لمدة 365 يوماً، وليست اشتراكاً — لن تتجدد تلقائياً ولن تُخصم منك مرة أخرى. عد وادفع مرة أخرى في أي وقت تريد المتابعة فيه.",
     "dash.proExpirySub": "جدّد اشتراكك لتحافظ على وصولك إلى Pro دون انقطاع.",
     "dash.renewNow": "جدّد الآن",
     "dash.proExpiresToday": "وصولك إلى Pro ينتهي اليوم",
@@ -3793,6 +3806,7 @@ function renderJournalReward(streak, alreadyDone){
 
 // ---- UPGRADE ----
 let billingCfg = null;
+let selectedBillingPlan = "monthly";   // "monthly" | "annual" — which price the paywall is showing
 
 async function getBillingCfg(){
   if (!billingCfg) billingCfg = await api("/api/billing/config");
@@ -3804,10 +3818,23 @@ async function getBillingCfg(){
 async function refreshPriceDisplay(){
   try {
     const cfg = await getBillingCfg();
-    $("proPrice").innerHTML = `$${cfg.price_usd}<small>${t("paywall.perMonth")}</small>`;
     const localProviders = cfg.local_providers || [];
     const opts = $("upgradeOptions");
     opts.innerHTML = "";
+
+    // Annual is only offered where there's a real annual price behind it:
+    // any local provider (we compute that price ourselves) or Paddle once a
+    // second Price object has been set up in the Paddle dashboard.
+    const annualAvailable = localProviders.length > 0 || (cfg.provider === "paddle" && !!cfg.price_id_annual);
+    if (!annualAvailable) selectedBillingPlan = "monthly";
+    $("planToggle").classList.toggle("hidden", !annualAvailable);
+    $("planMonthlyBtn").classList.toggle("active", selectedBillingPlan === "monthly");
+    $("planAnnualBtn").classList.toggle("active", selectedBillingPlan === "annual");
+
+    const isAnnual = selectedBillingPlan === "annual";
+    const usd = isAnnual ? cfg.price_usd_annual : cfg.price_usd;
+    const iqd = isAnnual ? cfg.price_iqd_annual : cfg.price_iqd;
+    $("proPrice").innerHTML = `$${usd}<small>${isAnnual ? t("paywall.perYear") : t("paywall.perMonth")}</small>`;
 
     if (cfg.provider === "paddle"){
       $("proPriceIqd").textContent = "";
@@ -3819,7 +3846,7 @@ async function refreshPriceDisplay(){
       // More than one Iraqi payment rail is configured (e.g. ZainCash for
       // mobile-wallet users, QiCard for Rafidain/Rasheed Bank Qi Card
       // holders) — let the customer pick which one to pay with.
-      $("proPriceIqd").textContent = t("paywall.iqdApprox", {n: Number(cfg.price_iqd).toLocaleString()});
+      $("proPriceIqd").textContent = t("paywall.iqdApprox", {n: Number(iqd).toLocaleString()});
       $("proNote").textContent = t("paywall.choosePayment");
       $("upgradeBtn").classList.add("hidden");
       opts.classList.remove("hidden");
@@ -3830,15 +3857,15 @@ async function refreshPriceDisplay(){
         btn.onclick = () => startLocalCheckout(p.id, btn);
         opts.appendChild(btn);
       });
-      $("proRenewalNote").textContent = t("billing.oneTimeNote");
+      $("proRenewalNote").textContent = isAnnual ? t("billing.oneTimeNoteAnnual") : t("billing.oneTimeNote");
       $("proRenewalNote").classList.remove("hidden");
     } else if (localProviders.length === 1){
       const p = localProviders[0];
-      $("proPriceIqd").textContent = t("paywall.iqdApproxVia", {n: Number(cfg.price_iqd).toLocaleString(), p: p.label});
+      $("proPriceIqd").textContent = t("paywall.iqdApproxVia", {n: Number(iqd).toLocaleString(), p: p.label});
       $("proNote").textContent = t("paywall.payWithNoCard", {p: p.label});
       $("upgradeBtn").classList.remove("hidden");
       opts.classList.add("hidden");
-      $("proRenewalNote").textContent = t("billing.oneTimeNote");
+      $("proRenewalNote").textContent = isAnnual ? t("billing.oneTimeNoteAnnual") : t("billing.oneTimeNote");
       $("proRenewalNote").classList.remove("hidden");
     } else {
       $("proPriceIqd").textContent = "";
@@ -3849,6 +3876,9 @@ async function refreshPriceDisplay(){
     }
   } catch(e){ /* leave the static defaults showing */ }
 }
+
+$("planMonthlyBtn").onclick = () => { selectedBillingPlan = "monthly"; refreshPriceDisplay(); };
+$("planAnnualBtn").onclick = () => { selectedBillingPlan = "annual"; refreshPriceDisplay(); };
 
 $("upgradeBtn").onclick = async () => {
   $("upgradeBtn").disabled = true; $("upgradeBtn").textContent = t("paywall.loading");
@@ -3877,7 +3907,7 @@ async function startLocalCheckout(providerId, btn){
   const original = btn.textContent;
   btn.disabled = true; btn.textContent = t("paywall.openingCheckout");
   try {
-    const res = await api(`/api/billing/${providerId}/checkout`, "POST");
+    const res = await api(`/api/billing/${providerId}/checkout`, "POST", {plan: selectedBillingPlan});
     if (!res.redirect_url) throw new Error(t("paywall.couldNotStart"));
     window.location.href = res.redirect_url;
   } catch(e){
@@ -3909,9 +3939,11 @@ async function startPaddleCheckout(cfg){
     paddleInitialized = true;
   }
 
+  const priceId = (selectedBillingPlan === "annual" && cfg.price_id_annual) ? cfg.price_id_annual : cfg.price_id;
+
   $("upgradeBtn").textContent = t("paywall.openingCheckout");
   Paddle.Checkout.open({
-    items: [{ priceId: cfg.price_id, quantity: 1 }],
+    items: [{ priceId: priceId, quantity: 1 }],
     customer: { email: cfg.customer_email },
     // custom_data is echoed back on the webhook — this is how the server
     // maps "payment succeeded" back to the right account, without ever
