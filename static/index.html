@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SpeakUp — Practice speaking English</title>
 <link rel="manifest" href="/manifest.json">
-<meta name="theme-color" content="#12B8A6">
+<meta name="theme-color" content="#C75B39">
 <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
@@ -15,16 +15,16 @@
 <meta name="apple-mobile-web-app-title" content="SpeakUp">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
 <style>
   :root{
-    --ink:#0E1533; --ink-2:#1A2450;
-    --surface:#FFFFFF; --surface-2:#F4F6FB; --line:#E4E8F2;
-    --text:#0E1533; --muted:#6B7599;
-    --brand:#12B8A6; --brand-2:#0FB4D4;
-    --brand-grad:linear-gradient(135deg,#12B8A6,#0FB4D4);
-    --gold:#E7A63A; --good:#20B562; --danger:#E5484D;
-    --radius:16px; --shadow:0 12px 40px rgba(14,21,51,.10);
+    --ink:#1A1A1A; --ink-2:#2E2A24;
+    --surface:#FFFFFF; --surface-2:#F5F0E8; --line:#E8E4DC;
+    --text:#1A1A1A; --muted:#6B6B6B;
+    --brand:#C75B39; --brand-2:#E07A5F;
+    --brand-grad:linear-gradient(135deg,#C75B39,#E07A5F);
+    --gold:#D4A843; --good:#20B562; --danger:#E5484D;
+    --radius:20px; --shadow:0 12px 40px rgba(26,26,26,.08);
   }
   *{box-sizing:border-box;margin:0;padding:0}
 
@@ -42,9 +42,10 @@
   .anim-in-2{animation:riseIn .55s var(--ease) .12s both}
   .anim-in-3{animation:riseIn .55s var(--ease) .19s both}
   .anim-pop{animation:popIn .4s var(--ease-snap) both}
-  body{font-family:'Inter',system-ui,-apple-system,sans-serif;color:var(--text);
+  body{font-family:'Space Grotesk',system-ui,-apple-system,sans-serif;color:var(--text);
     background:var(--surface-2);line-height:1.5;-webkit-font-smoothing:antialiased}
-  h1,h2,h3,.brandmark{font-family:'Sora','Inter',sans-serif;letter-spacing:-.02em}
+  h1,h2,h3,.brandmark{font-family:'Instrument Serif','Space Grotesk',serif;letter-spacing:-.01em;font-weight:400}
+  .brandmark em{font-style:italic;color:var(--brand)}
   button{font-family:inherit;cursor:pointer;border:none}
   .hidden{display:none !important}
 
@@ -60,7 +61,7 @@
      English lesson/conversation content (phrases, chat bubbles, sentences
      you're meant to practice) is force-set to dir="ltr" in JS so English
      text never gets mirrored or misaligned, even while the UI is RTL. */
-  html[dir="rtl"] body{font-family:'Inter','Tahoma',system-ui,sans-serif}
+  html[dir="rtl"] body{font-family:'Space Grotesk','Tahoma',system-ui,sans-serif}
   html[dir="rtl"] .topbar{flex-direction:row-reverse}
   html[dir="rtl"] .topbar .brand{flex-direction:row-reverse}
   html[dir="rtl"] .topbar .user{flex-direction:row-reverse}
@@ -97,11 +98,11 @@
 
   /* ---------- Auth screen ---------- */
   .auth-wrap{min-height:100vh;display:grid;place-items:center;padding:24px;
-    background:radial-gradient(1000px 500px at 50% -5%,#20306a,#0E1533)}
+    background:radial-gradient(1000px 500px at 50% -5%,#2E2419,var(--ink))}
   .auth-card{width:100%;max-width:420px;background:var(--surface);border-radius:20px;
     padding:34px 30px;box-shadow:var(--shadow)}
   .auth-logo{display:flex;align-items:center;gap:10px;justify-content:center;margin-bottom:20px}
-  .auth-logo .brandmark{font-size:22px;font-weight:700;color:var(--ink)}
+  .auth-logo .brandmark{font-size:26px;font-weight:400;color:var(--ink)}
   .auth-card h1{font-size:24px;text-align:center;margin-bottom:6px}
   .auth-sub{text-align:center;color:var(--muted);font-size:14px;margin-bottom:22px}
   .field{margin-bottom:14px}
@@ -109,7 +110,7 @@
   .field input{width:100%;padding:12px 14px;border:1.5px solid var(--line);border-radius:12px;
     font-size:15px;transition:border-color .15s}
   .field input:focus{outline:none;border-color:var(--brand)}
-  .btn-primary{width:100%;padding:13px;border-radius:12px;background:var(--brand-grad);
+  .btn-primary{width:100%;padding:13px;border-radius:100px;background:var(--brand-grad);
     color:#fff;font-weight:600;font-size:15px;transition:filter .2s var(--ease),transform .15s var(--ease)}
   .btn-primary:hover{filter:brightness(1.05);transform:translateY(-1px)}
   .btn-primary:active{transform:translateY(0) scale(.98)}
@@ -160,7 +161,7 @@
     padding:14px 22px;display:flex;align-items:center;justify-content:space-between;
     position:sticky;top:0;z-index:10}
   .topbar .brand{display:flex;align-items:center;gap:9px}
-  .topbar .brandmark{font-size:18px;font-weight:700}
+  .topbar .brandmark{font-size:21px;font-weight:400}
   .topbar .user{display:flex;align-items:center;gap:12px;font-size:13.5px;color:var(--muted)}
   .badge-pro{background:var(--gold);color:#3a2600;font-weight:600;font-size:11px;
     padding:3px 9px;border-radius:20px;letter-spacing:.02em}
@@ -190,12 +191,12 @@
 
   /* ---------- Certificate ready banner ---------- */
   .cert-ready{display:flex;align-items:center;gap:16px;margin-bottom:16px;
-    background:linear-gradient(100deg,#0E1533,#1B2A5E);border:1px solid #2C3B72;
+    background:linear-gradient(100deg,var(--ink),#3D2B1F);border:1px solid #4A3528;
     border-radius:16px;padding:18px 22px;color:#fff}
   .cr-icon{font-size:38px;line-height:1}
   .cr-body{flex:1}
-  .cr-title{font-family:'Sora';font-size:18px;font-weight:700}
-  .cr-sub{font-size:13px;color:#B9C2E0;margin-top:2px}
+  .cr-title{font-family:'Instrument Serif';font-size:18px;font-weight:700}
+  .cr-sub{font-size:13px;color:#D9C7B8;margin-top:2px}
 
   /* ---------- Streak banner ---------- */
   .streak-banner{display:flex;align-items:center;gap:16px;margin-bottom:20px;
@@ -203,7 +204,7 @@
     border-radius:16px;padding:16px 20px}
   .sb-flame{font-size:36px;line-height:1;filter:drop-shadow(0 2px 6px rgba(230,140,20,.35))}
   .sb-body{flex:1}
-  .sb-count{font-family:'Sora';font-size:22px;font-weight:700;color:#7A4E0B}
+  .sb-count{font-family:'Instrument Serif';font-size:22px;font-weight:700;color:#7A4E0B}
   .sb-count span{font-size:26px}
   .sb-sub{font-size:13.5px;color:#9A6B12;margin-top:2px}
   .sb-best{font-size:12.5px;color:#9A6B12;background:#fff;border:1px solid #F0D89B;
@@ -211,15 +212,15 @@
   .shield-badge{font-size:16px;margin-left:8px;vertical-align:middle}
 
   /* ---------- Daily Spotlight Phrase (Pro) ---------- */
-  .spotlight-banner{margin-bottom:20px;background:linear-gradient(100deg,#0E1533,#1B2A5E);
+  .spotlight-banner{margin-bottom:20px;background:linear-gradient(100deg,var(--ink),#3D2B1F);
     border:1.5px solid var(--gold);border-radius:16px;padding:20px 24px;color:#fff;
     box-shadow:0 6px 20px rgba(231,166,58,.12)}
   .sp-eyebrow{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
     color:var(--gold);margin-bottom:10px}
-  .sp-phrase{font-family:'Sora';font-size:22px;font-weight:700;line-height:1.35;margin-bottom:6px}
-  .sp-tr{font-size:14px;color:#B9C2E0;margin-bottom:14px}
+  .sp-phrase{font-family:'Instrument Serif';font-size:22px;font-weight:700;line-height:1.35;margin-bottom:6px}
+  .sp-tr{font-size:14px;color:#D9C7B8;margin-bottom:14px}
   .sp-foot{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
-  .sp-unit{font-size:12.5px;color:#8D9AC4}
+  .sp-unit{font-size:12.5px;color:#B39A82}
 
   /* ---------- Speaking Leagues (Pro) ---------- */
   .league-tier-track{display:flex;gap:6px;margin-bottom:16px}
@@ -251,7 +252,7 @@
   .atc-list{display:flex;flex-direction:column;gap:12px;margin-top:16px}
   .atc-item{display:flex;flex-direction:column;gap:3px;padding-top:12px;border-top:1px solid var(--line)}
   .atc-item:first-child{padding-top:0;border-top:none}
-  .atc-sound{font-family:'Sora';font-size:13.5px;font-weight:700;color:var(--brand)}
+  .atc-sound{font-family:'Instrument Serif';font-size:13.5px;font-weight:700;color:var(--brand)}
   .atc-desc{font-size:13.5px;color:var(--muted);line-height:1.5}
 
   /* ---------- Voice Journal ---------- */
@@ -259,7 +260,7 @@
   .journal-prompt-preview{font-size:14px;color:var(--muted);margin:2px 0 14px;line-height:1.4}
   .journal-center{text-align:center}
   .journal-label{font-size:13px;color:var(--muted);margin:0 0 4px}
-  .journal-prompt-text{font-family:'Sora';font-size:19px;font-weight:600;line-height:1.4;margin:0 0 16px}
+  .journal-prompt-text{font-family:'Instrument Serif';font-size:19px;font-weight:600;line-height:1.4;margin:0 0 16px}
   .journal-hint{display:flex;gap:8px;align-items:center;background:var(--surface-2);border-radius:var(--radius);
     padding:9px 13px;margin-bottom:18px;font-size:13px;color:var(--brand)}
   .journal-start-btn{width:100%}
@@ -279,7 +280,7 @@
   .journal-tip.encouragement{background:#E7F6EC;color:#1e6b3a}
   .journal-reward-icon{width:56px;height:56px;border-radius:50%;background:var(--surface-2);
     display:flex;align-items:center;justify-content:center;margin:0 auto 12px;font-size:28px}
-  .journal-reward-title{font-family:'Sora';font-size:19px;font-weight:700;margin:0 0 4px}
+  .journal-reward-title{font-family:'Instrument Serif';font-size:19px;font-weight:700;margin:0 0 4px}
   .journal-reward-sub{font-size:14px;color:var(--muted);margin:0 0 16px}
   .journal-comeback{background:var(--surface-2);border-radius:var(--radius);padding:12px;
     font-size:13px;color:var(--muted);margin-bottom:16px}
@@ -287,7 +288,7 @@
   /* ---------- Words to Work On ---------- */
   .ww-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line)}
   .ww-row:last-child{border-bottom:none}
-  .ww-word{font-family:'Sora';font-weight:600;font-size:14px;min-width:74px}
+  .ww-word{font-family:'Instrument Serif';font-weight:600;font-size:14px;min-width:74px}
   .ww-bar{flex:1;height:6px;background:var(--surface-2);border-radius:3px;overflow:hidden}
   .ww-bar i{display:block;height:100%;background:var(--danger);border-radius:3px}
   .ww-count{font-size:12px;color:var(--muted);min-width:34px;text-align:right}
@@ -322,12 +323,12 @@
 
   .stat{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);
     padding:16px 18px;flex:1;min-width:150px}
-  .stat .num{font-family:'Sora';font-size:26px;font-weight:700;color:var(--ink)}
+  .stat .num{font-family:'Instrument Serif';font-size:26px;font-weight:700;color:var(--ink)}
   .stat .lbl{font-size:13px;color:var(--muted);margin-top:2px}
   .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px}
   .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);
     padding:20px;transition:transform .2s var(--ease),box-shadow .2s var(--ease);position:relative}
-  .card.clickable:hover{transform:translateY(-3px);box-shadow:var(--shadow)}
+  .card.clickable:hover{transform:translateY(-6px);box-shadow:var(--shadow);border-color:var(--brand)}
   .card.clickable:active{transform:translateY(-1px) scale(.99)}
   .card .lvl{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;
     color:var(--brand)}
@@ -351,7 +352,7 @@
   .progress-dots span.active{background:var(--brand)}
   .phrase-label{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);
     margin-bottom:10px}
-  .phrase{font-family:'Sora';font-size:26px;font-weight:600;line-height:1.35;color:var(--ink);
+  .phrase{font-family:'Instrument Serif';font-size:26px;font-weight:600;line-height:1.35;color:var(--ink);
     margin-bottom:6px}
   .phrase.dictation-hidden{color:var(--muted);font-style:italic;font-size:19px}
   .listen.active{background:var(--brand);color:#fff}
@@ -401,10 +402,10 @@
 
   .session-summary{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);
     padding:32px;text-align:center;max-width:520px;margin:0 auto}
-  .session-summary .big{font-family:'Sora';font-size:40px;font-weight:700;color:var(--brand)}
+  .session-summary .big{font-family:'Instrument Serif';font-size:40px;font-weight:700;color:var(--brand)}
   .session-summary .stats{display:flex;justify-content:center;gap:36px;margin:18px 0 26px}
   .session-summary .stats div{text-align:center}
-  .session-summary .stats b{display:block;font-size:20px;font-family:'Sora'}
+  .session-summary .stats b{display:block;font-size:20px;font-family:'Instrument Serif'}
   .session-summary .stats span{font-size:12px;color:var(--muted)}
 
   .listen:active{transform:translateY(0) scale(.97)}
@@ -419,7 +420,7 @@
 
   .mic-zone{display:flex;flex-direction:column;align-items:center;gap:14px;margin:8px 0 6px}
   .mic{width:88px;height:88px;border-radius:50%;background:var(--brand-grad);color:#fff;
-    display:grid;place-items:center;box-shadow:0 10px 30px rgba(15,180,166,.4);
+    display:grid;place-items:center;box-shadow:0 10px 30px rgba(199,91,57,.4);
     transition:transform .25s var(--ease-snap);position:relative}
   .mic:hover{transform:scale(1.06)}
   .mic:active{transform:scale(.96)}
@@ -434,7 +435,7 @@
 
   .result{margin-top:24px;padding:20px;border-radius:14px;background:var(--surface-2);display:none}
   .result.show{display:block;animation:popIn .35s var(--ease-snap) both}
-  .score-num{font-family:'Sora';font-size:44px;font-weight:700;line-height:1}
+  .score-num{font-family:'Instrument Serif';font-size:44px;font-weight:700;line-height:1}
   .score-msg{font-size:14.5px;margin-top:6px;font-weight:500}
   .heard{font-size:13px;color:var(--muted);margin-top:12px}
   .heard-label{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);
@@ -461,7 +462,7 @@
     font-size:13.5px;padding:12px 14px;border-radius:12px;margin-bottom:20px}
 
   /* ---------- Sprint hero ---------- */
-  .sprint-hero{background:linear-gradient(150deg,var(--ink) 0%,#1B2A5E 60%,#153F6B 100%);
+  .sprint-hero{background:linear-gradient(150deg,var(--ink) 0%,#3D2B1F 60%,#7A4430 100%);
     border-radius:20px;padding:34px;margin-bottom:34px;color:#fff;min-height:340px;
     display:flex;align-items:stretch;justify-content:space-between;gap:26px;
     box-shadow:var(--shadow);position:relative;overflow:hidden;
@@ -469,7 +470,7 @@
   .sh-left{align-self:center}
   .sh-right{align-self:flex-start}
   .sprint-hero::before{content:"";position:absolute;inset:0;pointer-events:none;
-    background:radial-gradient(400px 200px at 85% 20%,rgba(18,184,166,.28),transparent 70%)}
+    background:radial-gradient(400px 200px at 85% 20%,rgba(199,91,57,.28),transparent 70%)}
   /* the live letter curtain sits above the gradient, below the text */
   #curtain{position:absolute;inset:0;width:100%;height:100%;display:block;z-index:1}
   .drag-hint{position:absolute;left:50%;bottom:12px;transform:translateX(-50%);z-index:3;
@@ -480,7 +481,7 @@
   .sh-eyebrow{font-size:11px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;
     color:var(--gold);margin-bottom:9px}
   .sh-title{font-size:32px;line-height:1.12;margin-bottom:11px}
-  .sh-promise{color:#B9C2E0;font-size:14.5px;max-width:380px;margin-bottom:20px}
+  .sh-promise{color:#D9C7B8;font-size:14.5px;max-width:380px;margin-bottom:20px}
   .sh-cta{width:auto;padding:12px 26px}
   .ring{position:relative;width:140px;height:140px;flex-shrink:0}
   .ring svg{width:100%;height:100%;transform:rotate(-90deg)}
@@ -489,8 +490,8 @@
   .ring-fg{stroke:var(--brand);stroke-dasharray:327;stroke-dashoffset:327;
     transition:stroke-dashoffset .7s ease}
   .ring-mid{position:absolute;inset:0;display:grid;place-content:center;text-align:center}
-  .ring-num{font-family:'Sora';font-size:30px;font-weight:700;line-height:1}
-  .ring-lbl{font-size:11px;color:#9aa4c8;letter-spacing:.05em;margin-top:2px}
+  .ring-num{font-family:'Instrument Serif';font-size:30px;font-weight:700;line-height:1}
+  .ring-lbl{font-size:11px;color:#B8A38E;letter-spacing:.05em;margin-top:2px}
   @media (max-width:640px){
     .sprint-hero{flex-direction:column;align-items:flex-start}
     .sh-title{font-size:26px}
@@ -509,17 +510,17 @@
     color:var(--muted)}
   .day-cell.open .dc-num{color:var(--brand)}
   .day-cell.done .dc-num{color:var(--good)}
-  .dc-theme{font-family:'Sora';font-size:14px;font-weight:600;margin-top:6px;line-height:1.3}
+  .dc-theme{font-family:'Instrument Serif';font-size:14px;font-weight:600;margin-top:6px;line-height:1.3}
   .dc-tag{font-size:11.5px;color:var(--muted);margin-top:8px;display:flex;align-items:center;gap:4px}
   .dc-score{position:absolute;top:13px;right:13px;font-size:11px;font-weight:700;
     color:var(--good);background:#fff;border:1px solid #B9E8CD;padding:2px 7px;border-radius:20px}
-  .day-cell.today{box-shadow:0 0 0 3px rgba(18,184,166,.22)}
+  .day-cell.today{box-shadow:0 0 0 3px rgba(199,91,57,.22)}
 
   /* ---------- Challenge + day banner ---------- */
   .day-banner{display:flex;align-items:center;justify-content:center;gap:9px;margin-bottom:14px}
   .db-day{background:var(--ink);color:#fff;font-size:11.5px;font-weight:700;letter-spacing:.05em;
     padding:4px 10px;border-radius:20px}
-  .db-theme{font-family:'Sora';font-size:14px;font-weight:600;color:var(--muted)}
+  .db-theme{font-family:'Instrument Serif';font-size:14px;font-weight:600;color:var(--muted)}
   .challenge{background:#FCF3E2;border:1px dashed #E7C87A;border-radius:12px;padding:12px 14px;
     margin-bottom:20px;font-size:13.5px;color:#6b4e12;text-align:left}
   .ch-label{display:block;font-size:10.5px;font-weight:700;letter-spacing:.07em;
@@ -539,22 +540,22 @@
     border:1px solid #E7C87A;border-radius:14px;padding:18px 20px;
     display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
   .cb-sub{font-size:13px;color:#8a6316;margin-top:2px}
-  .cert{max-width:620px;margin:0 auto;background:linear-gradient(160deg,var(--ink),#1B2A5E);
+  .cert{max-width:620px;margin:0 auto;background:linear-gradient(160deg,var(--ink),#3D2B1F);
     padding:12px;border-radius:20px}
   .cert-inner{border:2px solid rgba(231,166,58,.5);border-radius:14px;padding:40px 30px;
     text-align:center;color:#fff}
   .cert-eyebrow{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--gold);
     margin-bottom:20px}
-  .cert-name{font-family:'Sora';font-size:32px;font-weight:700;text-transform:capitalize}
-  .cert-body{color:#9aa4c8;font-size:14px;margin:10px 0}
-  .cert-course{font-family:'Sora';font-size:19px;font-weight:600;color:var(--brand)}
+  .cert-name{font-family:'Instrument Serif';font-size:32px;font-weight:700;text-transform:capitalize}
+  .cert-body{color:#B8A38E;font-size:14px;margin:10px 0}
+  .cert-course{font-family:'Instrument Serif';font-size:19px;font-weight:600;color:var(--brand)}
   .cert-stats{display:flex;justify-content:center;gap:40px;margin:26px 0 20px}
-  .cert-stats b{font-family:'Sora';font-size:24px;display:block}
-  .cert-stats span{font-size:11.5px;color:#9aa4c8}
-  .cert-date{font-size:12.5px;color:#8089ad}
+  .cert-stats b{font-family:'Instrument Serif';font-size:24px;display:block}
+  .cert-stats span{font-size:11.5px;color:#B8A38E}
+  .cert-date{font-size:12.5px;color:#9C8770}
   .cert-sig{display:flex;align-items:center;justify-content:center;gap:8px;margin-top:22px;
     padding-top:18px;border-top:1px solid rgba(255,255,255,.12)}
-  .cert-sig .brandmark{font-size:15px;font-weight:700}
+  .cert-sig .brandmark{font-size:17px;font-weight:400}
 
   /* ---------- Admin ---------- */
   .admin-tools{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px}
@@ -692,19 +693,19 @@
   .paywall{background:linear-gradient(160deg,var(--ink),var(--ink-2));color:#fff;
     border-radius:20px;padding:34px 30px;max-width:520px;margin:10px auto;text-align:center}
   .paywall h2{font-size:24px;margin-bottom:8px}
-  .paywall p{color:#B9C2E0;font-size:14.5px;margin-bottom:22px}
-  .price{font-family:'Sora';font-size:40px;font-weight:700;margin-bottom:2px}
-  .price small{font-size:15px;color:#9aa4c8;font-weight:500}
+  .paywall p{color:#D9C7B8;font-size:14.5px;margin-bottom:22px}
+  .price{font-family:'Instrument Serif';font-size:40px;font-weight:700;margin-bottom:2px}
+  .price small{font-size:15px;color:#B8A38E;font-weight:500}
   .perks{list-style:none;text-align:left;max-width:300px;margin:20px auto 26px}
   .perks li{padding:8px 0;font-size:14.5px;display:flex;gap:10px;align-items:center}
   .perks li::before{content:"✓";color:var(--brand);font-weight:700}
   .btn-gold{background:var(--gold);color:#3a2600;font-weight:700;font-size:15px;
-    padding:14px 28px;border-radius:12px;width:100%;
+    padding:14px 28px;border-radius:100px;width:100%;
     transition:filter .18s var(--ease),transform .15s var(--ease)}
   .btn-gold:hover{filter:brightness(1.05);transform:translateY(-1px)}
   .btn-gold:active{transform:translateY(0) scale(.98)}
   .upgrade-options{display:flex;flex-direction:column;gap:10px;width:100%}
-  .paywall .note{font-size:12px;color:#8089ad;margin-top:14px}
+  .paywall .note{font-size:12px;color:#9C8770;margin-top:14px}
 </style>
 <!-- Paddle.js: does nothing until Paddle.Initialize() is called below, so
      it's safe to include even when running in demo mode with no Paddle
@@ -723,7 +724,7 @@
     <button id="langToggleAuth" class="lang-toggle" type="button">العربية</button>
     <div class="auth-logo">
       <span class="wave"><span></span><span></span><span></span><span></span><span></span></span>
-      <span class="brandmark">SpeakUp</span>
+      <span class="brandmark">Speak<em>Up</em></span>
     </div>
     <h1 id="authTitle" data-i18n="auth.welcomeBack">Welcome back</h1>
     <p class="auth-sub" id="authSub" data-i18n="auth.loginSub">Log in to keep practicing</p>
@@ -756,7 +757,7 @@
   <div class="topbar">
     <div class="brand">
       <span class="wave"><span></span><span></span><span></span><span></span><span></span></span>
-      <span class="brandmark">SpeakUp</span>
+      <span class="brandmark">Speak<em>Up</em></span>
     </div>
     <div class="user">
       <span id="userEmail"></span>
@@ -1296,7 +1297,7 @@
           <div class="cert-date" id="certDate"></div>
           <div class="cert-sig">
             <span class="wave"><span></span><span></span><span></span><span></span><span></span></span>
-            <span class="brandmark">SpeakUp</span>
+            <span class="brandmark">Speak<em>Up</em></span>
           </div>
         </div>
       </div>
@@ -4066,7 +4067,7 @@ async function pollForProConfirmation(){
     canvas.width = Math.round(W * dpr);
     canvas.height = Math.round(H * dpr);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    ctx.font = "600 13px 'Sora', system-ui, sans-serif";
+    ctx.font = "600 13px 'Instrument Serif', system-ui, sans-serif";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
 
@@ -4157,12 +4158,12 @@ async function pollForProConfirmation(){
       const row = (i / GRID.cols) | 0;
       // fade the letters out toward the bottom, like the reference
       const fade = 1 - row / GRID.rows;
-      // stretched links glow teal — you can see where you disturbed it
+      // stretched links glow terracotta — you can see where you disturbed it
       const stretch = Math.min(Math.abs(p.x - p.px) + Math.abs(p.y - p.py), 6) / 6;
       const alpha = (0.22 + fade * 0.55);
       ctx.fillStyle = stretch > 0.25
-        ? `rgba(18,184,166,${Math.min(alpha + stretch * 0.5, 0.95)})`
-        : `rgba(226,234,255,${alpha})`;
+        ? `rgba(199,91,57,${Math.min(alpha + stretch * 0.5, 0.95)})`
+        : `rgba(240,230,220,${alpha})`;
       ctx.fillText(chars[i], p.x, p.y);
     }
   }
