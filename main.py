@@ -188,9 +188,7 @@ PRO_PRICE_USD = os.getenv("PRO_PRICE_USD", "6.99").strip()
 PRO_PRICE_IQD = os.getenv("PRO_PRICE_IQD", "9100").strip()
 
 # Max plan price — everything Pro includes, PLUS AI Roleplay (free-form AI
-# conversation practice). NOTE: the AI engine itself isn't built yet; Max is
-# being introduced now as a purchasable tier ("coming soon" for that one
-# perk) so pricing/checkout/gating are ready ahead of it.
+# conversation practice, powered by Gemini -- see GEMINI_API_KEY below).
 MAX_PRICE_USD = os.getenv("MAX_PRICE_USD", "9.99").strip()
 MAX_PRICE_IQD = os.getenv("MAX_PRICE_IQD", "13000").strip()
 
@@ -213,6 +211,70 @@ MAX_PRICE_IQD_ANNUAL = os.getenv("MAX_PRICE_IQD_ANNUAL", "").strip() or _default
 # How many days of Pro each plan grants once payment is confirmed --
 # shared by ZainCash and QiCard (both one-time, non-recurring rails).
 PRO_PLAN_DAYS = {"monthly": 30, "annual": 365}
+
+# ----------------------------------------------------------------------
+# 1e-2. AI ROLEPLAY — Gemini-powered free-form spoken conversation (Max only)
+# ----------------------------------------------------------------------
+# Google's Gemini API. Get a free key at https://aistudio.google.com/apikey --
+# no credit card needed to start; the free tier is generous enough for
+# testing, and Flash-tier models are the cheapest capable option once you
+# outgrow it. Same demo-mode-until-configured pattern as every other
+# integration in this file: until GEMINI_API_KEY is set, the AI Roleplay
+# screen tells the learner it isn't turned on yet instead of erroring.
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "").strip()
+# Overridable in case Google renames/retires this model later -- check
+# https://ai.google.dev/gemini-api/docs/models for the current cheapest
+# "Flash" model name if this one ever stops working.
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash").strip()
+GEMINI_CONFIGURED = bool(GEMINI_API_KEY)
+
+
+def call_gemini(scenario: str, history: list, message: str) -> str:
+    """
+    Sends one conversation turn to Gemini and returns the AI partner's reply
+    text. Stateless on purpose -- the browser holds the transcript (like the
+    scripted conversations do) and resends it each turn, so there's no new
+    database table / migration for this feature.
+    """
+    system_prompt = (
+        "You are a friendly, patient conversation partner helping someone "
+        "practice SPOKEN English as a second language. "
+        + (f"Stay in character for this scenario: {scenario.strip()}. " if scenario.strip() else
+           "This is an open, free-form conversation -- follow the learner's lead. ")
+        + "Reply in English only, 1-3 short sentences, in a natural spoken "
+        "style (not a wall of text). Keep the conversation going with a "
+        "question or comment. If the learner makes a grammar mistake, don't "
+        "interrupt the flow to correct it unless they explicitly ask you to."
+    )
+    contents = []
+    for turn in history[-16:]:   # bound how much we resend, keeps cost + latency in check
+        role = "model" if turn.get("role") == "ai" else "user"
+        text = str(turn.get("text", "")).strip()
+        if text:
+            contents.append({"role": role, "parts": [{"text": text}]})
+    contents.append({"role": "user", "parts": [{"text": message}]})
+
+    resp = requests.post(
+        f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent",
+        params={"key": GEMINI_API_KEY},
+        json={
+            "system_instruction": {"parts": [{"text": system_prompt}]},
+            "contents": contents,
+            "generationConfig": {"maxOutputTokens": 200, "temperature": 0.8},
+        },
+        timeout=20,
+    )
+    if not resp.ok:
+        raise HTTPException(502, f"Gemini rejected the request ({resp.status_code}): {resp.text[:500]}")
+    body = resp.json()
+    try:
+        return body["candidates"][0]["content"]["parts"][0]["text"].strip()
+    except (KeyError, IndexError, TypeError):
+        # Most common cause: the reply was blocked by a safety filter, which
+        # omits "content" entirely and puts a finishReason there instead.
+        reason = (body.get("candidates") or [{}])[0].get("finishReason", "unknown")
+        raise HTTPException(502, f"Gemini didn't return a reply (reason: {reason}).")
+
 
 # ----------------------------------------------------------------------
 # 1f. PAYMENTS — QiCard / "Pay with SuperQi" (a second, separate Iraqi
@@ -1919,6 +1981,12 @@ def auth_google(data: GoogleAuthIn, request: Request, session: Session = Depends
 def require_admin(user: User = Depends(get_current_user)) -> User:
     if not is_admin_user(user):
         raise HTTPException(403, "Admin access only.")
+    return user
+
+
+def require_max(user: User = Depends(get_current_user)) -> User:
+    if not (user.is_premium and user.plan_tier == "max"):
+        raise HTTPException(403, "AI Roleplay is a Max-only feature.")
     return user
 
 
@@ -4445,9 +4513,35 @@ def get_conversation(conv_id: str, user: User = Depends(get_current_user),
 
 @app.get("/api/ai/status")
 def ai_status(user: User = Depends(get_current_user)):
-    # Kept for frontend compatibility. Everything is offline and unlimited.
-    return {"ready": True, "used": 0, "limit": 0, "offline": True,
-            "languages": SUPPORTED_L1}
+    # Reports whether the server owner has actually set GEMINI_API_KEY yet --
+    # used by the AI Roleplay screen to show "not turned on yet" instead of
+    # a raw error. Scripted conversations never call this; they're fully
+    # offline and don't need it.
+    return {"ready": GEMINI_CONFIGURED}
+
+
+class RoleplayTurnIn(BaseModel):
+    scenario: str = ""     # optional persona/topic, e.g. "Ordering coffee at a busy cafe"
+    history: list[dict] = []   # [{role: "user"|"ai", text: "..."}, ...] so far
+    message: str
+
+
+@app.post("/api/roleplay/reply")
+def roleplay_reply(data: RoleplayTurnIn, request: Request, user: User = Depends(require_max)):
+    """
+    One turn of the free-form AI Roleplay feature (Max only). Stateless --
+    the browser sends the whole transcript back each time; see call_gemini.
+    """
+    rate_limit(request, "roleplay-reply", limit=20, window=300)
+    if not GEMINI_CONFIGURED:
+        raise HTTPException(503, "AI Roleplay is not configured on this server yet (missing GEMINI_API_KEY).")
+    message = data.message.strip()
+    if not message:
+        raise HTTPException(400, "Say something first.")
+    if len(message) > 800:
+        raise HTTPException(400, "That message is too long.")
+    reply = call_gemini(data.scenario, data.history, message)
+    return {"reply": reply}
 
 
 
@@ -4687,6 +4781,7 @@ def _startup_banner():
     print(f"  Content              : OFFLINE (no API, no keys, no limits)")
     print(f"    practice sentences : {sum(len(v) for v in SENTENCE_BANK.values())} across "
           f"{len(SENTENCE_BANK)} levels")
+    print(f"  AI Roleplay (Max)    : {'configured, model=' + GEMINI_MODEL if GEMINI_CONFIGURED else 'NOT configured  <-- add GEMINI_API_KEY to .env to turn it on'}")
     total_sprint_convs = sum(len(c) for c in SPRINT_CONVS_BY_SPRINT.values())
     print(f"    conversations      : {len(CONVERSATIONS)} scenarios + {total_sprint_convs} sprint days")
     print("=" * 58)

@@ -1201,6 +1201,25 @@
         <button class="btn-sm solid" id="journalUpgradeBtn" data-i18n="progress.upgradeBtn">Upgrade to Pro</button>
       </div>
 
+      <!-- AI Roleplay — Max-exclusive free-form spoken conversation with
+           Gemini. Unlike scripted Conversations (below), there's no fixed
+           node tree -- the learner can say anything and the AI improvises
+           in character. Stateless on the server; see /api/roleplay/reply. -->
+      <div class="progress-card anim-in-2 hidden" id="roleplayCard">
+        <div class="pc-head">
+          <h3 data-i18n="roleplay.title">✨ AI Roleplay</h3>
+        </div>
+        <p class="journal-prompt-preview" data-i18n="roleplay.cardSub">Free-form spoken conversation with an AI partner — talk about anything.</p>
+        <button class="btn-sm solid" id="roleplayBtn" data-i18n="roleplay.start">Start a conversation</button>
+      </div>
+      <div class="progress-teaser anim-in-2 hidden" id="roleplayTeaser">
+        <div>
+          <b data-i18n="roleplay.teaserTitle">✨ AI Roleplay</b>
+          <p data-i18n="roleplay.teaserSub">Free-form spoken conversation with an AI partner — a Max-only perk.</p>
+        </div>
+        <button class="btn-sm solid" id="roleplayUpgradeBtn" data-i18n="roleplay.upgradeBtn">Upgrade to Max</button>
+      </div>
+
       <div class="grid scroll-row reveal" id="lessonGrid"></div>
 
       <!-- Go Pro — consolidated upsell gallery. Replaces the 5 scattered
@@ -1685,6 +1704,53 @@
       </div>
     </div>
 
+    <!-- AI Roleplay — free-form spoken conversation with Gemini (Max only).
+         Two sub-screens inside one view: pick/type a topic, then the chat
+         itself. Unlike #convView above, there's no fixed node tree — the
+         learner can say anything and the AI improvises in character.
+         Stateless server-side; see /api/roleplay/reply in main.py. -->
+    <div id="roleplayView" class="hidden">
+      <button class="back" id="backRoleplay" data-i18n="back.home">← Home</button>
+
+      <div id="roleplaySetup">
+        <div class="conv-head">
+          <div>
+            <div class="conv-emoji">✨</div>
+            <h2 data-i18n="roleplay.setupTitle">What do you want to talk about?</h2>
+            <p class="conv-setting" data-i18n="roleplay.setupSub">Pick a quick topic or type your own — the AI stays in character and replies out loud.</p>
+          </div>
+        </div>
+        <div class="useful" id="roleplayChips"></div>
+        <div class="topic-bar" style="margin-top:14px">
+          <input id="roleplayTopicInput" data-i18n-ph="roleplay.topicPh" maxlength="80">
+          <button class="btn-sm solid" id="roleplayStartBtn" data-i18n="roleplay.beginBtn">Start talking</button>
+        </div>
+        <div id="roleplayOff" class="unsupported hidden">
+          <b data-i18n="roleplay.off.b">AI Roleplay isn't turned on yet.</b>
+          <span data-i18n="roleplay.off.sub">The site owner needs to add a Gemini API key.</span>
+        </div>
+      </div>
+
+      <div id="roleplayChatWrap" class="hidden">
+        <div class="conv-head">
+          <div>
+            <div class="conv-emoji">✨</div>
+            <h2 id="roleplayTopicTitle" dir="ltr"></h2>
+          </div>
+          <div class="conv-actions">
+            <button class="btn-ghost" id="roleplayRestartBtn" data-i18n="roleplay.newTopic">New topic</button>
+          </div>
+        </div>
+        <div class="chat" id="roleplayChatBox" dir="ltr"></div>
+        <div class="chat-hint" id="roleplayHint" data-i18n="roleplay.hintDefault">Tap the mic and speak, or type below.</div>
+        <div class="chat-input" dir="ltr">
+          <button class="mic-sm" id="roleplayMicBtn" aria-label="Speak" title="Speak">🎤</button>
+          <input id="roleplayTextInput" data-i18n-ph="roleplay.typePh" placeholder="Type your reply…">
+          <button class="btn-sm solid" id="roleplaySendBtn" data-i18n="roleplay.send">Send</button>
+        </div>
+      </div>
+    </div>
+
     <!-- Paywall -->
     <div id="paywallView" class="hidden">
       <button class="back" id="backBtn2" data-i18n="back.allLessons">← All lessons</button>
@@ -1710,7 +1776,7 @@
           <li data-i18n="paywall.perk6">Weekly leaderboard + spaced-repetition review</li>
           <li data-i18n="paywall.perk7">A daily Spotlight phrase, hand-picked each day</li>
           <li data-i18n="paywall.perk8">Voice Journal — a daily 60-second speaking prompt with its own streak</li>
-          <li class="max-only hidden" id="perkAiRoleplay" data-i18n="paywall.perkAiRoleplay">✨ AI Roleplay — free-form spoken conversation with an AI partner (coming soon)</li>
+          <li class="max-only hidden" id="perkAiRoleplay" data-i18n="paywall.perkAiRoleplay">✨ AI Roleplay — free-form spoken conversation with an AI partner</li>
         </ul>
         <button class="btn-gold" id="upgradeBtn" data-i18n="paywall.upgradeBtn">Upgrade to Pro</button>
         <div class="upgrade-options hidden" id="upgradeOptions"></div>
@@ -2037,6 +2103,29 @@ const T = {
     "conv.didntCatch": "Didn't catch that — try again or tap the reply.",
     "conv.finish": "Finish", "conv.hearIt": "🔊 Hear it", "conv.translate": "🌐 Translate",
     "conv.sayItOutLoud": "Say it out loud", "conv.translateTitle": "Translate",
+    "roleplay.title": "✨ AI Roleplay",
+    "roleplay.cardSub": "Free-form spoken conversation with an AI partner — talk about anything.",
+    "roleplay.start": "Start a conversation",
+    "roleplay.teaserTitle": "✨ AI Roleplay",
+    "roleplay.teaserSub": "Free-form spoken conversation with an AI partner — a Max-only perk.",
+    "roleplay.upgradeBtn": "Upgrade to Max",
+    "roleplay.setupTitle": "What do you want to talk about?",
+    "roleplay.setupSub": "Pick a quick topic or type your own — the AI stays in character and replies out loud.",
+    "roleplay.topicPh": "Or type your own topic…",
+    "roleplay.typePh": "Type your reply…",
+    "roleplay.beginBtn": "Start talking",
+    "roleplay.newTopic": "New topic",
+    "roleplay.hintDefault": "Tap the mic and speak, or type below.",
+    "roleplay.send": "Send",
+    "roleplay.freeTopic": "Free conversation",
+    "roleplay.off.b": "AI Roleplay isn't turned on yet.",
+    "roleplay.off.sub": "The site owner needs to add a Gemini API key.",
+    "roleplay.topic.cafe": "☕ Coffee shop small talk",
+    "roleplay.topic.travel": "✈️ Planning a trip",
+    "roleplay.topic.work": "💼 Meeting a new coworker",
+    "roleplay.topic.movie": "🎬 Talking about a movie",
+    "roleplay.topic.debate": "🗣️ A friendly debate",
+    "roleplay.topic.anything": "🎲 Anything — you choose",
     "paywall.title": "Unlock SpeakPort Pro",
     "paywall.sub": "Get the 14-Day Speaking Sprint — plus every lesson and level.",
     "paywall.perMonth": " / month",
@@ -2053,7 +2142,7 @@ const T = {
     "paywall.perk6": "Weekly leaderboard + spaced-repetition review",
     "paywall.perk7": "A daily Spotlight phrase, hand-picked each day",
     "paywall.perk8": "Voice Journal — a daily 60-second speaking prompt with its own streak",
-    "paywall.perkAiRoleplay": "✨ AI Roleplay — free-form spoken conversation with an AI partner (coming soon)",
+    "paywall.perkAiRoleplay": "✨ AI Roleplay — free-form spoken conversation with an AI partner",
     "paywall.upgradeBtn": "Upgrade to Pro", "paywall.loading": "Loading…",
     "paywall.demoMode": "Demo mode: this unlocks instantly.",
     "billing.oneTimeNote": "This is a one-time 30-day pass, not a subscription — it won't auto-renew or charge you again. Come back and pay once more anytime you want to keep going.",
@@ -2327,6 +2416,29 @@ const T = {
     "conv.didntCatch": "لم أسمع ذلك بوضوح — حاول مرة أخرى أو اضغط على الرد.",
     "conv.finish": "إنهاء", "conv.hearIt": "🔊 استمع", "conv.translate": "🌐 ترجمة",
     "conv.sayItOutLoud": "قله بصوت عالٍ", "conv.translateTitle": "ترجمة",
+    "roleplay.title": "✨ محادثة حرة مع الذكاء الاصطناعي",
+    "roleplay.cardSub": "محادثة حرة ومنطوقة مع شريك ذكاء اصطناعي — تحدث عن أي شيء.",
+    "roleplay.start": "ابدأ محادثة",
+    "roleplay.teaserTitle": "✨ محادثة حرة مع الذكاء الاصطناعي",
+    "roleplay.teaserSub": "محادثة حرة مع شريك ذكاء اصطناعي — ميزة خاصة بخطة Max.",
+    "roleplay.upgradeBtn": "الترقية إلى Max",
+    "roleplay.setupTitle": "عن ماذا تريد أن تتحدث؟",
+    "roleplay.setupSub": "اختر موضوعًا سريعًا أو اكتب موضوعك الخاص — سيبقى الذكاء الاصطناعي في الشخصية ويرد بصوت مسموع.",
+    "roleplay.topicPh": "أو اكتب موضوعك الخاص…",
+    "roleplay.typePh": "اكتب ردّك…",
+    "roleplay.beginBtn": "ابدأ الحديث",
+    "roleplay.newTopic": "موضوع جديد",
+    "roleplay.hintDefault": "اضغط على الميكروفون وتحدث، أو اكتب أدناه.",
+    "roleplay.send": "إرسال",
+    "roleplay.freeTopic": "محادثة حرة",
+    "roleplay.off.b": "محادثة الذكاء الاصطناعي غير مفعّلة بعد.",
+    "roleplay.off.sub": "يحتاج مالك الموقع إلى إضافة مفتاح Gemini API.",
+    "roleplay.topic.cafe": "☕ دردشة في مقهى",
+    "roleplay.topic.travel": "✈️ التخطيط لرحلة",
+    "roleplay.topic.work": "💼 التعرف على زميل عمل جديد",
+    "roleplay.topic.movie": "🎬 الحديث عن فيلم",
+    "roleplay.topic.debate": "🗣️ نقاش ودّي",
+    "roleplay.topic.anything": "🎲 أي شيء — اخترت أنت",
     "paywall.title": "افتح SpeakPort Pro",
     "paywall.sub": "احصل على سبرنت التحدث لمدة 14 يوماً — وكل الدروس والمستويات.",
     "paywall.perMonth": " / شهرياً",
@@ -2343,7 +2455,7 @@ const T = {
     "paywall.perk6": "لوحة الصدارة الأسبوعية + مراجعة بالتكرار المتباعد",
     "paywall.perk7": "عبارة يومية مميزة، مختارة كل يوم",
     "paywall.perk8": "اليوميات الصوتية — تمرين تحدث يومي لمدة 60 ثانية بسلسلة أيام خاصة به",
-    "paywall.perkAiRoleplay": "✨ محادثة حرة مع الذكاء الاصطناعي — تدرّب بالتحدث بحرية مع شريك ذكاء اصطناعي (قريباً)",
+    "paywall.perkAiRoleplay": "✨ محادثة حرة مع الذكاء الاصطناعي — تدرّب بالتحدث بحرية مع شريك ذكاء اصطناعي",
     "paywall.upgradeBtn": "الترقية إلى Pro", "paywall.loading": "جارٍ التحميل…",
     "paywall.demoMode": "وضع تجريبي: يتم الفتح فوراً.",
     "billing.oneTimeNote": "هذه بطاقة دخول لمرة واحدة لمدة 30 يوماً، وليست اشتراكاً — لن تتجدد تلقائياً ولن تُخصم منك مرة أخرى. عد وادفع مرة أخرى في أي وقت تريد المتابعة فيه.",
@@ -2423,7 +2535,7 @@ async function api(path, method = "GET", body = null){
   return data;
 }
 function show(view){
-  ["dashboard","practiceView","paywallView","sprintView","certView","adminView","convView","settingsView","journalView"]
+  ["dashboard","practiceView","paywallView","sprintView","certView","adminView","convView","settingsView","journalView","roleplayView"]
     .forEach(v => $(v).classList.add("hidden"));
   // #sprintHero lives outside #dashboard now (so it can go full-bleed), so
   // its visibility is tied to the dashboard view explicitly here.
@@ -2795,6 +2907,7 @@ function renderStats(prog){
   loadNewPhrasesBanner();
   loadSpotlight();
   loadJournalCard();
+  loadRoleplayCard();
   loadBizSprintCard();
   updateGoProSection();
 }
@@ -4821,6 +4934,175 @@ $("convDoneBtn").onclick = async () => {
   } else {
     loadDashboard();
   }
+};
+
+// ============================================================
+//  AI ROLEPLAY — free-form spoken conversation with Gemini (Max
+//  only). Unlike the scripted conversations above, there's no
+//  fixed node tree: the learner can say/type anything and the AI
+//  improvises in character. Stateless server-side (see
+//  /api/roleplay/reply in main.py) -- the browser holds the
+//  transcript and resends it each turn.
+// ============================================================
+const ROLEPLAY_TOPICS = [
+  {key: "cafe",     scenario: "Making small talk at a coffee shop with a stranger in line"},
+  {key: "travel",   scenario: "Planning a weekend trip together and deciding what to do"},
+  {key: "work",     scenario: "Getting to know a new coworker on your first day at work"},
+  {key: "movie",    scenario: "Chatting casually about a movie you both just watched"},
+  {key: "debate",   scenario: "A friendly, lighthearted debate about a harmless topic (e.g. cats vs dogs, pizza toppings)"},
+  {key: "anything", scenario: ""},
+];
+let roleplayHistory = [];        // [{role:"user"|"ai", text}] the whole transcript so far
+let roleplayScenario = "";
+let roleplayGeminiReady = null;  // cached result of /api/ai/status
+
+function renderRoleplayChips(){
+  const wrap = $("roleplayChips"); wrap.innerHTML = "";
+  ROLEPLAY_TOPICS.forEach(top => {
+    const span = document.createElement("span");
+    span.textContent = t("roleplay.topic." + top.key);
+    span.onclick = () => startRoleplay(top.scenario, t("roleplay.topic." + top.key));
+    wrap.appendChild(span);
+  });
+}
+
+// Called from renderStats() in loadDashboard() -- Max status comes straight
+// from currentUser, already loaded, so no extra network round-trip.
+function loadRoleplayCard(){
+  const isMax = !!(currentUser && currentUser.is_premium && currentUser.plan_tier === "max");
+  $("roleplayCard").classList.toggle("hidden", !isMax);
+  $("roleplayTeaser").classList.toggle("hidden", isMax);
+}
+$("roleplayBtn").onclick = () => openRoleplay();
+$("roleplayUpgradeBtn").onclick = () => { selectedBillingTier = "max"; show("paywallView"); };
+$("backRoleplay").onclick = () => loadDashboard();
+
+async function openRoleplay(){
+  show("roleplayView");
+  renderRoleplayChips();
+  $("roleplayTopicInput").value = "";
+  $("roleplaySetup").classList.remove("hidden");
+  $("roleplayChatWrap").classList.add("hidden");
+  if (roleplayGeminiReady === null){
+    try { roleplayGeminiReady = (await api("/api/ai/status")).ready; }
+    catch(e){ roleplayGeminiReady = true; }   // don't block the UI on a status-check hiccup
+  }
+  $("roleplayOff").classList.toggle("hidden", roleplayGeminiReady);
+  $("roleplayStartBtn").disabled = !roleplayGeminiReady;
+}
+
+$("roleplayStartBtn").onclick = () => {
+  const topic = $("roleplayTopicInput").value.trim();
+  startRoleplay(topic, topic || t("roleplay.freeTopic"));
+};
+$("roleplayTopicInput").addEventListener("keydown", e => { if (e.key === "Enter") $("roleplayStartBtn").click(); });
+
+$("roleplayRestartBtn").onclick = () => {
+  $("roleplayChatWrap").classList.add("hidden");
+  $("roleplaySetup").classList.remove("hidden");
+};
+
+async function startRoleplay(scenario, label){
+  roleplayScenario = scenario || "";
+  roleplayHistory = [];
+  $("roleplayTopicTitle").textContent = label || t("roleplay.freeTopic");
+  $("roleplaySetup").classList.add("hidden");
+  $("roleplayChatWrap").classList.remove("hidden");
+  $("roleplayChatBox").innerHTML = "";
+  $("roleplayHint").textContent = t("roleplay.hintDefault");
+  const typing = addRoleplayTyping();
+  try {
+    // This synthetic opening line is never added to roleplayHistory, so it
+    // never resurfaces in later turns -- purely a one-time kickoff so the
+    // learner isn't staring at a blank chat.
+    const r = await api("/api/roleplay/reply", "POST", {
+      scenario: roleplayScenario, history: [],
+      message: "(Greet the learner and start the conversation naturally, in character, with a short opening line or question.)",
+    });
+    typing.remove();
+    addRoleplayBubble("ai", r.reply);
+    speakText(r.reply);
+    roleplayHistory.push({role: "ai", text: r.reply});
+  } catch(e){
+    typing.remove();
+    addRoleplayBubble("ai", e.message, true);
+  }
+}
+
+function addRoleplayTyping(){
+  const box = $("roleplayChatBox");
+  const b = document.createElement("div");
+  b.className = "bubble ai typing";
+  b.innerHTML = "<i></i><i></i><i></i>";
+  box.appendChild(b); box.scrollTop = box.scrollHeight;
+  return b;
+}
+
+function addRoleplayBubble(who, text, isErr){
+  const box = $("roleplayChatBox");
+  const b = document.createElement("div");
+  b.className = "bubble " + who + (isErr ? " err" : "");
+  b.dir = "ltr";
+  b.innerHTML = `<div class="txt"></div>`;
+  b.querySelector(".txt").textContent = text;
+  if (who === "ai" && !isErr){
+    const row = document.createElement("div");
+    row.className = "row";
+    const hear = document.createElement("button");
+    hear.className = "b-act"; hear.textContent = t("conv.hearIt");
+    hear.onclick = () => speakText(text);
+    const tr = document.createElement("button");
+    tr.className = "b-act"; tr.textContent = t("conv.translate");
+    tr.onclick = () => translateBubble(b, text, tr);
+    row.appendChild(hear); row.appendChild(tr);
+    b.appendChild(row);
+  }
+  box.appendChild(b);
+  box.scrollTop = box.scrollHeight;
+  return b;
+}
+
+async function sendRoleplayTurn(text){
+  text = (text || "").trim();
+  if (!text) return;
+  $("roleplayHint").textContent = t("roleplay.hintDefault");
+  $("roleplayTextInput").value = "";
+  addRoleplayBubble("me", text);
+  roleplayHistory.push({role: "user", text});
+  const typing = addRoleplayTyping();
+  $("roleplaySendBtn").disabled = true;
+  try {
+    const r = await api("/api/roleplay/reply", "POST", {
+      scenario: roleplayScenario, history: roleplayHistory.slice(0, -1), message: text,
+    });
+    typing.remove();
+    addRoleplayBubble("ai", r.reply);
+    speakText(r.reply);
+    roleplayHistory.push({role: "ai", text: r.reply});
+  } catch(e){
+    typing.remove();
+    addRoleplayBubble("ai", e.message, true);
+  }
+  $("roleplaySendBtn").disabled = false;
+}
+$("roleplaySendBtn").onclick = () => sendRoleplayTurn($("roleplayTextInput").value);
+$("roleplayTextInput").addEventListener("keydown", e => { if (e.key === "Enter") sendRoleplayTurn($("roleplayTextInput").value); });
+
+// Push-to-talk mic: one utterance per tap (unlike Voice Journal's continuous
+// mode), since each chat turn is naturally a single utterance -- tap, speak,
+// it auto-sends on the result.
+let roleplayRec = null;
+$("roleplayMicBtn").onclick = () => {
+  if (!SR){ $("roleplayHint").textContent = t("conv.speechNeedsChrome"); return; }
+  if (roleplayRec){ try { roleplayRec.stop(); } catch(e){} return; }
+  roleplayRec = new SR();
+  roleplayRec.lang = "en-US"; roleplayRec.interimResults = false; roleplayRec.maxAlternatives = 1;
+  $("roleplayMicBtn").classList.add("rec");
+  $("roleplayHint").textContent = t("conv.listening");
+  roleplayRec.start();
+  roleplayRec.onresult = (ev) => { sendRoleplayTurn(ev.results[0][0].transcript); };
+  roleplayRec.onerror = () => { $("roleplayHint").textContent = t("conv.didntCatch"); };
+  roleplayRec.onend = () => { $("roleplayMicBtn").classList.remove("rec"); roleplayRec = null; };
 };
 
 
