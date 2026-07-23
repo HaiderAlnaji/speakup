@@ -99,17 +99,17 @@
   /* ---------- Auth screen ---------- */
   .auth-wrap{min-height:100vh;display:grid;place-items:center;padding:24px;
     background:radial-gradient(1000px 500px at 50% -5%,#2E2419,var(--ink))}
-  .auth-card{width:100%;max-width:420px;background:var(--surface);border-radius:20px;
-    padding:34px 30px;box-shadow:var(--shadow)}
-  .auth-logo{display:flex;align-items:center;gap:10px;justify-content:center;margin-bottom:20px}
+  .auth-card{width:100%;max-width:420px;background:var(--surface);border-radius:24px;
+    padding:44px 36px;box-shadow:0 30px 70px rgba(0,0,0,.35)}
+  .auth-logo{display:flex;align-items:center;gap:10px;justify-content:center;margin-bottom:24px}
   .auth-logo .brandmark{font-size:26px;font-weight:400;color:var(--ink)}
-  .auth-card h1{font-size:24px;text-align:center;margin-bottom:6px}
-  .auth-sub{text-align:center;color:var(--muted);font-size:14px;margin-bottom:22px}
-  .field{margin-bottom:14px}
+  .auth-card h1{font-size:30px;text-align:center;margin-bottom:8px}
+  .auth-sub{text-align:center;color:var(--muted);font-size:14.5px;margin-bottom:26px}
+  .field{margin-bottom:16px}
   .field label{display:block;font-size:13px;font-weight:500;margin-bottom:6px;color:var(--ink)}
-  .field input{width:100%;padding:12px 14px;border:1.5px solid var(--line);border-radius:12px;
-    font-size:15px;transition:border-color .15s}
-  .field input:focus{outline:none;border-color:var(--brand)}
+  .field input{width:100%;padding:13px 16px;border:1.5px solid var(--line);border-radius:14px;
+    font-size:15px;font-family:inherit;transition:border-color .15s,box-shadow .15s}
+  .field input:focus{outline:none;border-color:var(--brand);box-shadow:0 0 0 4px rgba(199,91,57,.12)}
   .btn-primary{width:100%;padding:13px;border-radius:100px;background:var(--brand-grad);
     color:#fff;font-weight:600;font-size:15px;transition:filter .2s var(--ease),transform .15s var(--ease)}
   .btn-primary:hover{filter:brightness(1.05);transform:translateY(-1px)}
