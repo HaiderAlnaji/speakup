@@ -279,6 +279,38 @@ def call_gemini(scenario: str, history: list, message: str) -> str:
         raise HTTPException(502, f"Gemini didn't return a reply (reason: {reason}).")
 
 
+def call_gemini_translate(text: str) -> str:
+    """
+    One-off English -> Arabic translation via Gemini. Separate from
+    call_gemini (the roleplay chat helper) -- no persona, no history, just a
+    faithful translation of one piece of text. Used only as a fallback when
+    _TRANSLATION_LOOKUP misses below, i.e. AI Roleplay's replies -- those
+    are generated fresh every time and can never be pre-baked into that
+    dictionary the way Lessons/Shadow/scripted-Conversations text is.
+    """
+    resp = requests.post(
+        f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent",
+        params={"key": GEMINI_API_KEY},
+        json={
+            "system_instruction": {"parts": [{"text":
+                "Translate the given English text into natural, conversational "
+                "Arabic. Reply with ONLY the Arabic translation -- no quotes, "
+                "no notes, no English."
+            }]},
+            "contents": [{"role": "user", "parts": [{"text": text}]}],
+            "generationConfig": {"maxOutputTokens": 200, "temperature": 0.2},
+        },
+        timeout=15,
+    )
+    if not resp.ok:
+        raise HTTPException(502, f"Gemini translate failed ({resp.status_code}): {resp.text[:300]}")
+    body = resp.json()
+    try:
+        return body["candidates"][0]["content"]["parts"][0]["text"].strip()
+    except (KeyError, IndexError, TypeError):
+        return ""
+
+
 # ----------------------------------------------------------------------
 # 1f. PAYMENTS — QiCard / "Pay with SuperQi" (a second, separate Iraqi
 # payment rail alongside ZainCash — reaches customers who hold a Qi Card
@@ -4434,11 +4466,28 @@ for _convs in SPRINT_CONVS_BY_SPRINT.values():
 
 
 @app.post("/api/translate")
-def translate(data: TranslateIn, user: User = Depends(get_current_user)):
-    """Look up a baked-in translation. Instant, free, offline."""
+def translate(data: TranslateIn, request: Request, user: User = Depends(get_current_user)):
+    """
+    Look up a baked-in translation first -- instant, free, offline, and
+    covers every pre-authored phrase in Lessons/Shadow/Conversations (any
+    miss there is a real content gap, not expected). Falls back to a live
+    Gemini translation ONLY for Max users when the lookup misses, which is
+    what makes Translate work on AI Roleplay's replies -- those are
+    generated fresh every turn and can never live in the static dictionary.
+    Free/Pro users see byte-identical behavior to before this fallback existed.
+    """
     text = data.text.strip()
     ar = _TRANSLATION_LOOKUP.get(text, "")
-    return {"translated": ar, "lang": "ar", "found": bool(ar)}
+    if ar:
+        return {"translated": ar, "lang": "ar", "found": True}
+    if text and GEMINI_CONFIGURED and user.is_premium and user.plan_tier == "max":
+        rate_limit(request, "translate-ai", limit=40, window=300)
+        try:
+            ar = call_gemini_translate(text[:800])
+        except HTTPException:
+            ar = ""   # fail quiet -- same "not found" shape the frontend already handles
+        return {"translated": ar, "lang": "ar", "found": bool(ar)}
+    return {"translated": "", "lang": "ar", "found": False}
 
 
 # ---- Scripted conversations (branching, no API) ----

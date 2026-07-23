@@ -1741,6 +1741,14 @@
             <button class="btn-ghost" id="roleplayRestartBtn" data-i18n="roleplay.newTopic">New topic</button>
           </div>
         </div>
+        <!-- Same shared speed preference as Lessons/Shadow's speedRow (see
+             playbackRate in the script) -- just a second entry point onto it. -->
+        <div class="speed-row" id="roleplaySpeedRow">
+          <span class="speed-label" data-i18n="speed.label">Speed</span>
+          <button class="speed-btn" id="roleplaySpeedSlowBtn" data-i18n="speed.slow">🐢 Slow</button>
+          <button class="speed-btn" id="roleplaySpeedNormalBtn" data-i18n="speed.normal">Normal</button>
+          <button class="speed-btn" id="roleplaySpeedFastBtn" data-i18n="speed.fast">🐇 Fast</button>
+        </div>
         <div class="chat" id="roleplayChatBox" dir="ltr"></div>
         <div class="chat-hint" id="roleplayHint" data-i18n="roleplay.hintDefault">Tap the mic and speak, or type below.</div>
         <div class="chat-input" dir="ltr">
@@ -3541,20 +3549,28 @@ const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 // Just a rate on the SpeechSynthesisUtterance -- persisted locally since
 // it's a personal listening preference, not account data.
 let playbackRate = parseFloat(localStorage.getItem("speakport_rate")) || 0.9;
+// One shared preference, several entry points (Lessons/Shadow's speedRow,
+// AI Roleplay's roleplaySpeedRow) -- all of them just call this and it
+// keeps every visible speed-row in sync, wherever the learner changed it.
+const SPEED_BTN_IDS = ["speedSlowBtn","speedNormalBtn","speedFastBtn",
+                       "roleplaySpeedSlowBtn","roleplaySpeedNormalBtn","roleplaySpeedFastBtn"];
 function setPlaybackRate(rate, btnId){
   playbackRate = rate;
   localStorage.setItem("speakport_rate", String(rate));
-  ["speedSlowBtn","speedNormalBtn","speedFastBtn"].forEach(id => $(id).classList.remove("active"));
-  $(btnId).classList.add("active");
+  SPEED_BTN_IDS.forEach(id => { const el = $(id); if (el) el.classList.remove("active"); });
+  const active = $(btnId); if (active) active.classList.add("active");
 }
 $("speedSlowBtn").onclick = () => setPlaybackRate(0.65, "speedSlowBtn");
 $("speedNormalBtn").onclick = () => setPlaybackRate(0.9, "speedNormalBtn");
 $("speedFastBtn").onclick = () => setPlaybackRate(1.15, "speedFastBtn");
+$("roleplaySpeedSlowBtn").onclick = () => setPlaybackRate(0.65, "roleplaySpeedSlowBtn");
+$("roleplaySpeedNormalBtn").onclick = () => setPlaybackRate(0.9, "roleplaySpeedNormalBtn");
+$("roleplaySpeedFastBtn").onclick = () => setPlaybackRate(1.15, "roleplaySpeedFastBtn");
 (function initSpeedButtons(){
-  const map = {0.65: "speedSlowBtn", 0.9: "speedNormalBtn", 1.15: "speedFastBtn"};
-  const id = map[playbackRate] || "speedNormalBtn";
-  ["speedSlowBtn","speedNormalBtn","speedFastBtn"].forEach(x => $(x).classList.remove("active"));
-  $(id).classList.add("active");
+  const map = {0.65: ["speedSlowBtn","roleplaySpeedSlowBtn"], 0.9: ["speedNormalBtn","roleplaySpeedNormalBtn"], 1.15: ["speedFastBtn","roleplaySpeedFastBtn"]};
+  const ids = map[playbackRate] || ["speedNormalBtn","roleplaySpeedNormalBtn"];
+  SPEED_BTN_IDS.forEach(x => { const el = $(x); if (el) el.classList.remove("active"); });
+  ids.forEach(id => { const el = $(id); if (el) el.classList.add("active"); });
 })();
 
 // Dictation mode: hides the printed phrase until you've had a go at it from
@@ -4838,7 +4854,7 @@ async function translateBubble(bubble, text, btn){
 function speakText(text){
   if (!window.speechSynthesis) return;
   const u = new SpeechSynthesisUtterance(text);
-  u.lang = "en-US"; u.rate = 0.95;
+  u.lang = "en-US"; u.rate = playbackRate;
   speechSynthesis.cancel(); speechSynthesis.speak(u);
 }
 

@@ -110,6 +110,43 @@ main.requests.post = fake_post_error
 r = c.post("/api/roleplay/reply", json={"message": "hi"}, headers=max_auth)
 check("Gemini HTTP error -> 502 with detail", r.status_code == 502 and "429" in r.json()["detail"])
 
+# ============================================================
+#  /api/translate -- Gemini fallback on dictionary miss (Max only).
+#  Fixes: AI Roleplay's dynamic replies are never in the static
+#  LESSON_TRANSLATIONS/SENTENCE_BANK/etc dictionary, so Translate always
+#  returned "(no translation)" for them. Free/Pro behavior must stay
+#  byte-identical to before this fallback existed.
+# ============================================================
+main.requests.post = fake_post   # restore the happy-path fake from above
+
+# A real dictionary entry, so we can check the fast path is untouched.
+known_en, known_ar = next(iter(main._TRANSLATION_LOOKUP.items()))
+never_baked = "This exact sentence was never authored anywhere, only Gemini would know it."
+
+r = c.post("/api/translate", json={"text": known_en}, headers=free_auth)
+check("free user, dictionary HIT -> unchanged (found=true)", r.json() == {"translated": known_ar, "lang": "ar", "found": True})
+
+r = c.post("/api/translate", json={"text": never_baked}, headers=free_auth)
+check("free user, dictionary MISS -> still empty (no Gemini fallback for free)", r.json() == {"translated": "", "lang": "ar", "found": False})
+
+r = c.post("/api/translate", json={"text": never_baked}, headers=pro_auth)
+check("pro (non-max) user, dictionary MISS -> still empty (no Gemini fallback for pro)", r.json() == {"translated": "", "lang": "ar", "found": False})
+
+def fake_post_translate(url, **kwargs):
+    return FakeResp({"candidates": [{"content": {"parts": [{"text": "هذه الجملة بالضبط لم يكتبها أحد."}]}}]})
+main.requests.post = fake_post_translate
+r = c.post("/api/translate", json={"text": never_baked}, headers=max_auth)
+check("max user, dictionary MISS -> Gemini fallback returns a real translation",
+      r.json() == {"translated": "هذه الجملة بالضبط لم يكتبها أحد.", "lang": "ar", "found": True})
+
+r = c.post("/api/translate", json={"text": known_en}, headers=max_auth)
+check("max user, dictionary HIT -> fast path still used (no Gemini needed for pre-authored text)",
+      r.json() == {"translated": known_ar, "lang": "ar", "found": True})
+
+main.requests.post = fake_post_error   # 429 from earlier
+r = c.post("/api/translate", json={"text": never_baked}, headers=max_auth)
+check("max user, Gemini errors on translate -> graceful not-found, not a 500", r.status_code == 200 and r.json()["found"] is False)
+
 print(f"\n{ok} passed, {fail} failed")
 if os.path.exists("app.db"):
     os.remove("app.db")
