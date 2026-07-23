@@ -42,6 +42,12 @@
   .anim-in-2{animation:riseIn .55s var(--ease) .12s both}
   .anim-in-3{animation:riseIn .55s var(--ease) .19s both}
   .anim-pop{animation:popIn .4s var(--ease-snap) both}
+  /* Scroll-triggered reveal for sections further down the (now much longer)
+     dashboard -- distinct from anim-in-*, which plays immediately whenever a
+     view is first shown and is kept for above-the-fold content. */
+  .reveal{opacity:0;transform:translateY(40px);transition:opacity .8s cubic-bezier(.16,1,.3,1),
+    transform .8s cubic-bezier(.16,1,.3,1)}
+  .reveal.visible{opacity:1;transform:translateY(0)}
   body{font-family:'Space Grotesk',system-ui,-apple-system,sans-serif;color:var(--text);
     background:var(--surface-2);line-height:1.5;-webkit-font-smoothing:antialiased}
   h1,h2,h3,.brandmark{font-family:'Instrument Serif','Space Grotesk',serif;letter-spacing:-.01em;font-weight:400}
@@ -157,9 +163,13 @@
   .plan-pill.pro{background:var(--gold);color:#3a2600}
 
   /* ---------- App shell ---------- */
-  .topbar{background:var(--surface);border-bottom:1px solid var(--line);
+  .topbar{background:var(--surface);border-bottom:1px solid transparent;
     padding:14px 22px;display:flex;align-items:center;justify-content:space-between;
-    position:sticky;top:0;z-index:10}
+    position:sticky;top:0;z-index:10;
+    transition:background .3s var(--ease),border-color .3s var(--ease),box-shadow .3s var(--ease)}
+  .topbar.scrolled{background:rgba(255,255,255,.86);backdrop-filter:blur(16px);
+    -webkit-backdrop-filter:blur(16px);border-bottom-color:var(--line);
+    box-shadow:0 4px 24px rgba(26,26,26,.05)}
   .topbar .brand{display:flex;align-items:center;gap:9px}
   .topbar .brandmark{font-size:21px;font-weight:400}
   .topbar .user{display:flex;align-items:center;gap:12px;font-size:13.5px;color:var(--muted)}
@@ -192,6 +202,8 @@
   .page-head{margin-bottom:22px}
   .page-head h2{font-size:22px}
   .page-head p{color:var(--muted);font-size:14.5px;margin-top:3px}
+  .page-head h2 em,.shadow-hero h2 em{font-style:italic;color:var(--brand)}
+  .page-head .sh-eyebrow{margin-bottom:10px}
   .stat-row{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line);
     border-radius:var(--radius);overflow:hidden;margin-bottom:26px}
   @media (max-width:640px){.stat-row{grid-template-columns:repeat(2,1fr)}}
@@ -320,20 +332,20 @@
   .progress-teaser p{font-size:13px;color:var(--muted);margin-top:3px}
 
   /* ---------- Go Pro (consolidated upsell gallery) ---------- */
-  .pro-scroll{display:flex;gap:20px;overflow-x:auto;padding:2px 2px 16px;margin-bottom:10px;
+  .pro-scroll{display:flex;gap:24px;overflow-x:auto;padding:2px 2px 16px;margin-bottom:10px;
     scrollbar-width:none}
   .pro-scroll::-webkit-scrollbar{display:none}
-  .pro-card{min-width:300px;max-width:340px;flex:0 0 auto;background:var(--surface);
-    border:1px solid var(--line);border-radius:var(--radius);padding:30px;cursor:pointer;
+  .pro-card{min-width:340px;max-width:380px;flex:0 0 auto;background:var(--surface);
+    border:1px solid var(--line);border-radius:var(--radius);padding:38px;cursor:pointer;
     transition:all .35s var(--ease)}
   .pro-card:hover{border-color:var(--gold);transform:translateY(-4px);
     box-shadow:0 20px 45px rgba(212,168,67,.14)}
-  .pro-card-number{font-family:'Instrument Serif';font-size:42px;color:var(--gold);opacity:.4;
-    line-height:1;margin-bottom:14px}
-  .pro-card-title{font-family:'Instrument Serif';font-size:22px;margin-bottom:10px;line-height:1.25}
-  .pro-card-desc{font-size:13.5px;color:var(--muted);line-height:1.6;margin-bottom:20px}
+  .pro-card-number{font-family:'Instrument Serif';font-size:48px;color:var(--gold);opacity:.35;
+    line-height:1;margin-bottom:18px}
+  .pro-card-title{font-family:'Instrument Serif';font-size:27px;margin-bottom:11px;line-height:1.2}
+  .pro-card-desc{font-size:14px;color:var(--muted);line-height:1.7;margin-bottom:22px}
   .pro-card-btn{display:inline-flex;align-items:center;gap:6px;background:transparent;
-    border:1.5px solid var(--gold);color:#8a6316;padding:10px 20px;border-radius:100px;
+    border:1.5px solid var(--gold);color:#8a6316;padding:11px 22px;border-radius:100px;
     font-weight:600;font-size:13px;transition:all .25s var(--ease)}
   .pro-card-btn::after{content:" →"}
   html[dir="rtl"] .pro-card-btn::after{content:" ←"}
@@ -356,9 +368,13 @@
     color:var(--muted);margin-top:8px}
   .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:20px}
   .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);
-    padding:24px;transition:transform .2s var(--ease),box-shadow .2s var(--ease),border-color .2s var(--ease);position:relative}
+    overflow:hidden;transition:transform .2s var(--ease),box-shadow .2s var(--ease),border-color .2s var(--ease);position:relative}
   .card.clickable:hover{transform:translateY(-6px);box-shadow:var(--shadow);border-color:var(--brand)}
   .card.clickable:active{transform:translateY(-1px) scale(.99)}
+  .card-image{width:100%;height:150px;object-fit:cover;display:block;
+    transition:transform .5s var(--ease);background:var(--surface-2)}
+  .card.clickable:hover .card-image{transform:scale(1.05)}
+  .card-body{padding:22px}
   .card .lvl{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;
     color:var(--brand)}
   .card h3{font-size:17px;margin:8px 0 4px}
@@ -490,44 +506,34 @@
   .unsupported{background:#FFF7E6;border:1px solid #F5D98B;color:#7a5a12;
     font-size:13.5px;padding:12px 14px;border-radius:12px;margin-bottom:20px}
 
-  /* ---------- Sprint hero ---------- */
-  .sprint-hero{background:linear-gradient(150deg,var(--ink) 0%,#3D2B1F 60%,#7A4430 100%);
-    border-radius:20px;padding:34px;margin-bottom:34px;color:#fff;min-height:340px;
-    display:flex;align-items:stretch;justify-content:space-between;gap:26px;
-    box-shadow:var(--shadow);position:relative;overflow:hidden;
-    touch-action:pan-y}
-  .sh-left{align-self:center}
-  .sh-right{align-self:flex-start}
-  .sprint-hero::before{content:"";position:absolute;inset:0;pointer-events:none;
-    background:radial-gradient(400px 200px at 85% 20%,rgba(199,91,57,.28),transparent 70%)}
-  /* the live letter curtain sits above the gradient, below the text */
-  #curtain{position:absolute;inset:0;width:100%;height:100%;display:block;z-index:1}
-  .drag-hint{position:absolute;left:50%;bottom:12px;transform:translateX(-50%);z-index:3;
-    font-size:10.5px;letter-spacing:.18em;text-transform:uppercase;color:rgba(185,194,224,.5);
-    pointer-events:none;white-space:nowrap}
-  .sh-left,.sh-right{position:relative;z-index:2;pointer-events:none}
-  .sh-left .sh-cta{pointer-events:auto}
-  .sh-eyebrow{font-size:11px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;
-    color:var(--gold);margin-bottom:9px}
-  .sprint-hero .sh-eyebrow{display:inline-flex;align-items:center;border:1px solid rgba(255,255,255,.18);
-    background:rgba(255,255,255,.06);padding:7px 16px;border-radius:100px;letter-spacing:.14em;
-    margin-bottom:18px}
-  .sh-title{font-size:44px;line-height:1.08;margin-bottom:16px}
-  .sh-title em{font-style:italic;color:var(--gold)}
-  .sh-promise{color:#D9C7B8;font-size:14.5px;max-width:380px;margin-bottom:20px}
-  .sh-cta{width:auto;padding:12px 26px}
-  .ring{position:relative;width:140px;height:140px;flex-shrink:0}
-  .ring svg{width:100%;height:100%;transform:rotate(-90deg)}
-  .ring circle{fill:none;stroke-width:9;stroke-linecap:round}
-  .ring-bg{stroke:rgba(255,255,255,.14)}
-  .ring-fg{stroke:var(--brand);stroke-dasharray:327;stroke-dashoffset:327;
-    transition:stroke-dashoffset .7s ease}
-  .ring-mid{position:absolute;inset:0;display:grid;place-content:center;text-align:center}
-  .ring-num{font-family:'Instrument Serif';font-size:32px;font-weight:400;line-height:1}
-  .ring-lbl{font-size:11px;color:#B8A38E;letter-spacing:.05em;margin-top:2px}
+  /* ---------- Sprint hero (full-bleed light splash, matches mockup) ---------- */
+  .sprint-hero{background:var(--surface-2);border-radius:28px;margin-bottom:34px;
+    min-height:70vh;display:flex;align-items:center;justify-content:center;
+    text-align:center;position:relative;overflow:hidden;padding:60px 28px}
+  #waveCanvas{position:absolute;inset:0;width:100%;height:100%;display:block;z-index:0;opacity:.6}
+  .sprint-hero::after{content:"";position:absolute;inset:0;pointer-events:none;z-index:1;
+    background:linear-gradient(180deg,transparent 0%,var(--surface-2) 92%)}
+  .sh-content{position:relative;z-index:2;max-width:520px;display:flex;flex-direction:column;
+    align-items:center}
+  .sh-eyebrow{display:inline-flex;align-items:center;font-size:11px;font-weight:600;
+    letter-spacing:.14em;text-transform:uppercase;color:var(--brand);border:1px solid var(--line);
+    background:rgba(255,255,255,.7);padding:7px 18px;border-radius:100px;margin-bottom:22px}
+  .sh-title{font-size:46px;line-height:1.06;margin-bottom:18px}
+  .sh-title em{font-style:italic;color:var(--brand)}
+  .sh-promise{color:var(--muted);font-size:15px;line-height:1.7;margin-bottom:18px}
+  .sh-progress{font-size:12.5px;font-weight:600;letter-spacing:.04em;color:var(--muted);
+    margin-bottom:22px}
+  .sh-cta{width:auto;padding:15px 30px}
+  .sh-cta::after{content:" →"}
+  html[dir="rtl"] .sh-cta::after{content:" ←"}
+  .sh-scroll-hint{position:absolute;left:50%;bottom:20px;transform:translateX(-50%);z-index:2;
+    display:flex;flex-direction:column;align-items:center;gap:8px;color:var(--muted);
+    font-size:10.5px;letter-spacing:.18em;text-transform:uppercase;pointer-events:none}
+  .sh-scroll-hint::after{content:"";width:1px;height:34px;
+    background:linear-gradient(to bottom,var(--muted),transparent)}
   @media (max-width:640px){
-    .sprint-hero{flex-direction:column;align-items:flex-start}
-    .sh-title{font-size:30px}
+    .sprint-hero{min-height:60vh;padding:48px 20px}
+    .sh-title{font-size:32px}
   }
 
   /* ---------- Shadow Mode hero (dashboard section intro) ---------- */
@@ -535,9 +541,24 @@
     border-radius:20px;padding:34px;color:#fff;position:relative;overflow:hidden}
   .shadow-hero::before{content:"";position:absolute;inset:0;pointer-events:none;
     background:radial-gradient(400px 200px at 85% 15%,rgba(199,91,57,.28),transparent 70%)}
-  .shadow-hero h2,.shadow-hero p{position:relative;z-index:1}
+  .shadow-hero h2,.shadow-hero p,.shadow-hero .sh-eyebrow{position:relative;z-index:1}
   .shadow-hero h2{font-size:28px;margin-bottom:8px}
   .shadow-hero p{color:#D9C7B8;font-size:14.5px;max-width:520px}
+
+  /* ---------- Drill any topic (dark bar, matches mockup's drill-section) ---------- */
+  .drill-section{background:linear-gradient(150deg,var(--ink) 0%,#3D2B1F 60%,#7A4430 100%);
+    border-radius:24px;padding:34px;position:relative;overflow:hidden}
+  .drill-section::before{content:"";position:absolute;inset:0;pointer-events:none;
+    background:radial-gradient(400px 200px at 15% 20%,rgba(199,91,57,.22),transparent 70%)}
+  .drill-section .page-head{position:relative;z-index:1}
+  .drill-section .page-head h2{color:#fff;font-size:24px}
+  .drill-section .page-head p{color:#D9C7B8}
+  .drill-section .topic-bar{position:relative;z-index:1;margin-top:22px}
+  .drill-section .topic-bar input,.drill-section .topic-bar select{
+    background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.16);color:#fff}
+  .drill-section .topic-bar input::placeholder{color:rgba(255,255,255,.45)}
+  .drill-section .topic-bar input:focus{border-color:var(--gold);background:rgba(255,255,255,.12)}
+  .drill-section .topic-bar select option{color:#1A1A1A}
 
   /* ---------- Sprint day grid ---------- */
   .day-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
@@ -889,26 +910,15 @@
 
       <!-- The Sprint is the headline product, so it sits above everything. -->
       <div class="sprint-hero anim-in" id="sprintHero">
-        <canvas id="curtain" aria-hidden="true"></canvas>
-        <div class="sh-left">
+        <canvas id="waveCanvas" aria-hidden="true"></canvas>
+        <div class="sh-content">
           <div class="sh-eyebrow" data-i18n="sprint.eyebrow">The flagship program</div>
-          <h2 class="sh-title" data-i18n-html="sprint.title14html">The 14-Day<br>Speaking Sprint</h2>
+          <h2 class="sh-title" data-i18n-html="sprint.title14html">The 14-Day<br><em>Speaking Sprint</em></h2>
           <p class="sh-promise" id="shPromise">Speak English out loud every single day for two weeks. One day unlocks per day. No skipping, no drifting.</p>
+          <div class="sh-progress" id="shProgress"></div>
           <button class="btn-gold sh-cta" id="sprintCta">Open the Sprint</button>
         </div>
-        <div class="sh-right">
-          <div class="ring" id="sprintRing">
-            <svg viewBox="0 0 120 120">
-              <circle class="ring-bg" cx="60" cy="60" r="52"></circle>
-              <circle class="ring-fg" id="ringFg" cx="60" cy="60" r="52"></circle>
-            </svg>
-            <div class="ring-mid">
-              <div class="ring-num" id="ringNum">14</div>
-              <div class="ring-lbl" id="ringLbl">days</div>
-            </div>
-          </div>
-        </div>
-        <div class="drag-hint" data-i18n="sprint.dragHint">↔ drag through the words</div>
+        <div class="sh-scroll-hint" data-i18n="sprint.scrollHint">Scroll</div>
       </div>
 
       <!-- Second Sprint: Business English -- a reason for power users who've
@@ -924,7 +934,8 @@
       </div>
 
       <div class="page-head anim-in-1">
-        <h2 data-i18n="talk.title">Talk to someone</h2>
+        <span class="sh-eyebrow" data-i18n="talk.eyebrow">Conversations</span>
+        <h2 data-i18n-html="talk.title">Talk to <em>someone</em></h2>
         <p data-i18n="talk.sub">Real conversations with a goal. Speak or type — get your meaning across.</p>
       </div>
       <div id="aiOff" class="unsupported hidden">
@@ -933,35 +944,40 @@
       </div>
       <div class="grid anim-in-2" id="scenarioGrid"></div>
 
-      <div class="page-head anim-in-2" style="margin-top:36px">
-        <h2><span data-i18n="drill.title">Drill any topic</span> <span class="pro-pill" id="drillProPill">PRO</span></h2>
-        <p data-i18n="drill.sub">Timed practice sessions with any level and length. Sentences never repeat.</p>
-      </div>
-      <div class="topic-bar anim-in-2">
-        <input id="topicInput" placeholder="e.g. renting a flat, at the pharmacy, arguing politely…"
-               data-i18n-ph="topicInput.ph" maxlength="80">
-        <select id="topicLevel">
-          <option value="Beginner" data-i18n="level.beginner">Beginner</option><option value="Intermediate" data-i18n="level.intermediate">Intermediate</option><option value="Advanced" data-i18n="level.advanced">Advanced</option>
-        </select>
-        <button class="btn-sm solid" id="topicBtn" data-i18n="topicBtn">Start practicing</button>
+      <div class="drill-section reveal" style="margin-top:36px">
+        <div class="page-head" style="margin-bottom:0">
+          <span class="sh-eyebrow" data-i18n="drill.eyebrow">Custom practice</span>
+          <h2><span data-i18n="drill.title">Drill any topic</span> <span class="pro-pill" id="drillProPill">PRO</span></h2>
+          <p data-i18n="drill.sub">Timed practice sessions with any level and length. Sentences never repeat.</p>
+        </div>
+        <div class="topic-bar">
+          <input id="topicInput" placeholder="e.g. renting a flat, at the pharmacy, arguing politely…"
+                 data-i18n-ph="topicInput.ph" maxlength="80">
+          <select id="topicLevel">
+            <option value="Beginner" data-i18n="level.beginner">Beginner</option><option value="Intermediate" data-i18n="level.intermediate">Intermediate</option><option value="Advanced" data-i18n="level.advanced">Advanced</option>
+          </select>
+          <button class="btn-sm solid" id="topicBtn" data-i18n="topicBtn">Start practicing</button>
+        </div>
       </div>
       <div id="topicOut" class="topic-out hidden"></div>
 
-      <div class="page-head anim-in-3" style="margin-top:36px">
-        <h2 data-i18n="lessons.title">Practice lessons</h2>
+      <div class="page-head reveal" style="margin-top:36px">
+        <span class="sh-eyebrow" data-i18n="lessons.eyebrow">Your journey</span>
+        <h2 data-i18n-html="lessons.title">Practice <em>lessons</em></h2>
         <p data-i18n="lessons.sub">Fixed phrases to warm up with. Pick a lesson, listen, then speak.</p>
       </div>
-      <div class="stat-row anim-in-2">
+      <div class="stat-row reveal">
         <div class="stat"><div class="num" id="statAttempts">0</div><div class="lbl" data-i18n="stat.totalAttempts">Total attempts</div></div>
         <div class="stat"><div class="num" id="statDone">0</div><div class="lbl" data-i18n="stat.lessonsStarted">Lessons started</div></div>
         <div class="stat"><div class="num" id="statBest">—</div><div class="lbl" data-i18n="stat.bestScore">Best score</div></div>
         <div class="stat"><div class="num" id="statXp">0</div><div class="lbl" data-i18n="stat.xpEarned">XP earned</div></div>
       </div>
 
-      <div class="page-head anim-in-2" style="margin-top:8px">
-        <h2 data-i18n="badges.title">Achievements</h2>
+      <div class="page-head reveal" style="margin-top:8px">
+        <span class="sh-eyebrow" data-i18n="badges.eyebrow">Milestones</span>
+        <h2 data-i18n-html="badges.title">Your <em>Achievements</em></h2>
       </div>
-      <div class="badge-grid anim-in-2" id="badgeGrid"></div>
+      <div class="badge-grid reveal" id="badgeGrid"></div>
 
       <!-- Progress graph — Pro feature, shows a teaser to free users -->
       <div class="progress-card anim-in-2 hidden" id="progressCard">
@@ -1055,16 +1071,16 @@
         <button class="btn-sm solid" id="journalUpgradeBtn" data-i18n="progress.upgradeBtn">Upgrade to Pro</button>
       </div>
 
-      <div class="grid anim-in-3" id="lessonGrid"></div>
+      <div class="grid reveal" id="lessonGrid"></div>
 
       <!-- Go Pro — consolidated upsell gallery. Replaces the 5 scattered
            progress-teaser blocks above (those stay in the DOM, permanently
            hidden, so their button-click wiring elsewhere keeps working). -->
-      <div class="page-head anim-in-3" style="margin-top:36px" id="goProSection">
+      <div class="page-head reveal" style="margin-top:36px" id="goProSection">
         <span class="sh-eyebrow" data-i18n="goPro.eyebrow">Unlock more</span>
         <h2 data-i18n="goPro.title">Go Pro</h2>
       </div>
-      <div class="pro-scroll anim-in-3" id="goProScroll">
+      <div class="pro-scroll reveal" id="goProScroll">
         <div class="pro-card">
           <div class="pro-card-number">01</div>
           <div class="pro-card-title" data-i18n="progress.seeImprovement">See your improvement over time</div>
@@ -1097,8 +1113,9 @@
         </div>
       </div>
 
-      <div class="shadow-hero anim-in-3" style="margin-top:36px">
-        <h2 data-i18n="shadow.title">Shadow Mode</h2>
+      <div class="shadow-hero reveal" style="margin-top:36px">
+        <span class="sh-eyebrow" data-i18n="shadow.eyebrow">Immersive</span>
+        <h2 data-i18n-html="shadow.title">Shadow <em>Mode</em></h2>
         <p data-i18n="shadow.sub">Speak along WITH the recording, not after it — the fastest way to pick up native rhythm, linking, and reductions.</p>
       </div>
 
@@ -1106,7 +1123,7 @@
            Arabic-L1 speakers (not just generic ESL tips). No backend, no
            per-user state: just content, toggled open/closed like the
            phrase-translate box already does elsewhere on this page. -->
-      <div class="progress-card arabic-tips-card anim-in-3" id="arabicTipsCard">
+      <div class="progress-card arabic-tips-card reveal" id="arabicTipsCard">
         <div class="pc-head">
           <h3 data-i18n="arabicTips.title">🇮🇶 Sounds Arabic Speakers Often Mix Up</h3>
           <button class="atc-toggle" id="arabicTipsToggle" data-i18n="arabicTips.show">Show tips</button>
@@ -1139,7 +1156,7 @@
         </div>
       </div>
 
-      <div class="grid anim-in-3" id="shadowGrid"></div>
+      <div class="grid reveal" id="shadowGrid"></div>
     </div>
 
     <!-- Practice -->
@@ -1587,6 +1604,37 @@ let current = null;                     // active practice session
 let sprint = null;                      // sprint data + state
 let scenarios = [];                     // scripted conversation scenarios
 
+// Card photos (id -> Unsplash URL), from the redesign mockup. Placeholders
+// until real CDN images replace them -- swap the URLs here when that's ready.
+const SCENARIO_IMAGES = {
+  cafe: "https://images.unsplash.com/photo-1509042239860-f550ce710c93?w=600&h=400&fit=crop",
+  directions: "https://images.unsplash.com/photo-1480714378408-67cf0d13bc1b?w=600&h=400&fit=crop",
+  interview: "https://images.unsplash.com/photo-1556761175-5973dc0f32e7?w=600&h=400&fit=crop",
+  complaint: "https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=600&h=400&fit=crop",
+  smalltalk: "https://images.unsplash.com/photo-1511795409834-ef04bbd61622?w=600&h=400&fit=crop",
+  hotel: "https://images.unsplash.com/photo-1566073771259-6a8506099945?w=600&h=400&fit=crop",
+  doctor: "https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=600&h=400&fit=crop",
+  landlord: "https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=600&h=400&fit=crop",
+  presentation: "https://images.unsplash.com/photo-1557804506-669a67965ba0?w=600&h=400&fit=crop",
+  // no dedicated mockup photo for these two (added after the mockup was made) --
+  // reusing the closest thematic match from the same verified set for now.
+  negotiation: "https://images.unsplash.com/photo-1556761175-5973dc0f32e7?w=600&h=400&fit=crop",
+  airport: "https://images.unsplash.com/photo-1436491865332-7a61a109cc05?w=600&h=400&fit=crop",
+};
+const LESSON_IMAGES = {
+  greetings: "https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=600&h=400&fit=crop",
+  cafe: "https://images.unsplash.com/photo-1445116572660-236099ec97a0?w=600&h=400&fit=crop",
+  interview: "https://images.unsplash.com/photo-1551836022-d5d88e9218df?w=600&h=400&fit=crop",
+  travel: "https://images.unsplash.com/photo-1436491865332-7a61a109cc05?w=600&h=400&fit=crop",
+  business: "https://images.unsplash.com/photo-1517048676732-d65bc937f952?w=600&h=400&fit=crop",
+};
+const SHADOW_IMAGES = {
+  contractions: "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=600&h=400&fit=crop",
+  linking: "https://images.unsplash.com/photo-1478737270239-2f02b77fc618?w=600&h=400&fit=crop",
+  "flap-t": "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=600&h=400&fit=crop",
+  "stress-rhythm": "https://images.unsplash.com/photo-1510915361894-db8b60106cb1?w=600&h=400&fit=crop",
+};
+
 // ---- helpers ----
 const $ = (id) => document.getElementById(id);
 
@@ -1658,6 +1706,7 @@ const T = {
     "dash.personalBest": "Personal best 🎉",
     "dash.best": "Best: {n} days",
     "sprint.eyebrow": "The flagship program",
+    "sprint.scrollHint": "Scroll",
     "sprint.title14html": "The 14-Day<br><em>Speaking Sprint</em>",
     "sprint.promiseDefault": "Speak English out loud every single day for two weeks. One day unlocks per day. No skipping, no drifting.",
     "sprint.openBtn": "Open the Sprint", "sprint.continueBtn": "Continue the Sprint",
@@ -1670,20 +1719,24 @@ const T = {
     "bizSprint.lockedSub": "Finish the Core Sprint first to unlock this one.",
     "bizSprint.lockedCta": "Locked for now",
     "bizSprint.continueBtn": "Continue ({pct}% done)",
-    "talk.title": "Talk to someone",
+    "talk.eyebrow": "Conversations",
+    "talk.title": "Talk to <em>someone</em>",
     "talk.sub": "Real conversations with a goal. Speak or type — get your meaning across.",
     "aiOff.b": "AI conversations are switched off.",
+    "drill.eyebrow": "Custom practice",
     "drill.title": "Drill any topic",
     "drill.sub": "Timed practice sessions with any level and length. Sentences never repeat.",
     "topicInput.ph": "e.g. renting a flat, at the pharmacy, arguing politely…",
     "level.beginner": "Beginner", "level.intermediate": "Intermediate", "level.advanced": "Advanced",
     "topicBtn": "Start practicing",
-    "lessons.title": "Practice lessons",
+    "lessons.eyebrow": "Your journey",
+    "lessons.title": "Practice <em>lessons</em>",
     "lessons.sub": "Fixed phrases to warm up with. Pick a lesson, listen, then speak.",
     "stat.totalAttempts": "Total attempts", "stat.lessonsStarted": "Lessons started",
     "stat.bestScore": "Best score", "stat.xpEarned": "XP earned",
     "xp.badge": "⭐ {n} XP",
-    "badges.title": "Achievements",
+    "badges.eyebrow": "Milestones",
+    "badges.title": "Your <em>Achievements</em>",
     "badge.firstSteps.title": "First Steps", "badge.firstSteps.desc": "Complete your first practice attempt",
     "badge.dedicated.title": "Dedicated", "badge.dedicated.desc": "Complete 50 practice attempts",
     "badge.century.title": "Century", "badge.century.desc": "Complete 100 practice attempts",
@@ -1726,7 +1779,8 @@ const T = {
     "newPhrases.bannerTitle": "{n} new phrases today",
     "newPhrases.bannerSub": "Fresh phrases rotate into Lessons and Shadow Mode every day.",
     "newPhrases.cta": "Take a look",
-    "shadow.title": "Shadow Mode",
+    "shadow.eyebrow": "Immersive",
+    "shadow.title": "Shadow <em>Mode</em>",
     "shadow.sub": "Speak along WITH the recording, not after it — the fastest way to pick up native rhythm, linking, and reductions.",
     "arabicTips.title": "🇮🇶 Sounds Arabic Speakers Often Mix Up",
     "arabicTips.show": "Show tips", "arabicTips.hide": "Hide tips",
@@ -1940,6 +1994,7 @@ const T = {
     "dash.personalBest": "رقمك القياسي 🎉",
     "dash.best": "الأفضل: {n} يوماً",
     "sprint.eyebrow": "البرنامج الرئيسي",
+    "sprint.scrollHint": "مرر للأسفل",
     "sprint.title14html": "<em>سبرنت التحدث</em><br>لمدة 14 يوماً",
     "sprint.promiseDefault": "تحدث الإنجليزية بصوت عالٍ كل يوم لمدة أسبوعين. يوم واحد يُفتح كل يوم. بلا تخطٍّ وبلا تراخٍ.",
     "sprint.openBtn": "افتح السبرنت", "sprint.continueBtn": "تابع السبرنت",
@@ -1952,20 +2007,24 @@ const T = {
     "bizSprint.lockedSub": "أكمل السبرنت الأساسي أولاً لفتح هذا السبرنت.",
     "bizSprint.lockedCta": "مقفل حالياً",
     "bizSprint.continueBtn": "تابع ({pct}% مكتمل)",
-    "talk.title": "تحدث مع شخص",
+    "talk.eyebrow": "محادثات",
+    "talk.title": "تحدث مع <em>شخص</em>",
     "talk.sub": "محادثات حقيقية بهدف محدد. تحدث أو اكتب — أوصل معناك.",
     "aiOff.b": "محادثات الذكاء الاصطناعي متوقفة.",
+    "drill.eyebrow": "تدريب مخصص",
     "drill.title": "تدرّب على أي موضوع",
     "drill.sub": "جلسات تدريب محددة بوقت بأي مستوى وأي مدة. الجمل لا تتكرر.",
     "topicInput.ph": "مثال: استئجار شقة، في الصيدلية، الجدال بأدب…",
     "level.beginner": "مبتدئ", "level.intermediate": "متوسط", "level.advanced": "متقدم",
     "topicBtn": "ابدأ التدريب",
-    "lessons.title": "دروس تدريبية",
+    "lessons.eyebrow": "رحلتك",
+    "lessons.title": "دروس <em>تدريبية</em>",
     "lessons.sub": "عبارات ثابتة للإحماء. اختر درساً، استمع، ثم تحدث.",
     "stat.totalAttempts": "مجموع المحاولات", "stat.lessonsStarted": "الدروس التي بدأتها",
     "stat.bestScore": "أفضل نتيجة", "stat.xpEarned": "نقاط الخبرة",
     "xp.badge": "⭐ {n} XP",
-    "badges.title": "الإنجازات",
+    "badges.eyebrow": "الإنجازات البارزة",
+    "badges.title": "<em>إنجازاتك</em>",
     "badge.firstSteps.title": "أول خطوة", "badge.firstSteps.desc": "أكمل أول محاولة تدريب لك",
     "badge.dedicated.title": "مثابر", "badge.dedicated.desc": "أكمل 50 محاولة تدريب",
     "badge.century.title": "المئة", "badge.century.desc": "أكمل 100 محاولة تدريب",
@@ -2008,7 +2067,8 @@ const T = {
     "newPhrases.bannerTitle": "{n} عبارة جديدة اليوم",
     "newPhrases.bannerSub": "تتجدد عبارات الدروس ووضع المحاكاة كل يوم.",
     "newPhrases.cta": "ألقِ نظرة",
-    "shadow.title": "وضع المحاكاة (Shadow Mode)",
+    "shadow.eyebrow": "غامر بالتجربة",
+    "shadow.title": "وضع <em>المحاكاة</em>",
     "shadow.sub": "تحدث بالتزامن مع التسجيل، لا بعده — أسرع طريقة لاكتساب الإيقاع الطبيعي والربط والاختصارات الصوتية.",
     "arabicTips.title": "🇮🇶 أصوات يخلط بها المتحدثون بالعربية غالباً",
     "arabicTips.show": "إظهار النصائح", "arabicTips.hide": "إخفاء النصائح",
@@ -2234,6 +2294,31 @@ function show(view){
   });
 }
 
+// Nav gains a blurred background + bottom border once you scroll away from
+// the very top of the page (matches the mockup's nav/nav.scrolled pattern).
+(function navScroll(){
+  const nav = document.querySelector(".topbar");
+  if (!nav) return;
+  const update = () => nav.classList.toggle("scrolled", window.scrollY > 50);
+  window.addEventListener("scroll", update, { passive: true });
+  update();
+})();
+
+// Scroll reveal -- sections further down the dashboard fade + slide up as
+// they enter the viewport (matches the mockup's .reveal/.visible pattern).
+// Elements keep .visible permanently once shown, so revisiting a view you've
+// already scrolled through doesn't hide everything again.
+(function scrollReveal(){
+  const reveals = document.querySelectorAll(".reveal");
+  if (!reveals.length) return;
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) entry.target.classList.add("visible");
+    });
+  }, { threshold: 0.1 });
+  reveals.forEach(el => observer.observe(el));
+})();
+
 // ---- AUTH ----
 // mode is one of "login" | "register" | "forgot" | "reset".
 let resetToken = null;   // set when the page loads with ?reset=TOKEN
@@ -2403,8 +2488,8 @@ function enterApp(user){
   if (pill) pill.classList.toggle("hidden", !!user.is_premium);
   loadDashboard();
   // The hero had zero size while the login screen was up, so size the
-  // curtain now that it's actually on screen.
-  requestAnimationFrame(() => window.__rebuildCurtain && window.__rebuildCurtain());
+  // wave canvas now that it's actually on screen.
+  requestAnimationFrame(() => window.__rebuildWaves && window.__rebuildWaves());
 }
 async function loadDashboard(){
   show("dashboard");
@@ -2493,22 +2578,19 @@ function renderBadges(stats){
 }
 $("certReadyBtn").onclick = showCertificate;
 
-// The hero ring shows sprint progress at a glance.
+// A small text badge shows sprint progress at a glance (was a ring before
+// the redesign moved to a full-bleed hero with no room for one).
 function renderHero(){
   const st = sprint.state;
   const done = st.enrolled ? st.completed_days.length : 0;
   const total = sprint.days.length;
-  const pct = st.enrolled ? st.percent : 0;
-  // circle circumference = 2 * PI * 52 ≈ 327
-  $("ringFg").style.strokeDashoffset = 327 - (327 * pct / 100);
   $("shPromise").textContent = sprint.promise;
   if (st.enrolled){
-    $("ringNum").textContent = done + "/" + total;
-    $("ringLbl").textContent = st.streak > 0 ? "🔥 " + st.streak + " " + t("sprint.streakLbl") : t("sprint.daysCleared");
+    const streakBit = st.streak > 0 ? ("🔥 " + st.streak + " " + t("sprint.streakLbl") + " · ") : "";
+    $("shProgress").textContent = streakBit + done + "/" + total + " " + t("sprint.daysCleared");
     $("sprintCta").textContent = st.finished ? t("sprint.seeCert") : t("sprint.continueBtn");
   } else {
-    $("ringNum").textContent = total;
-    $("ringLbl").textContent = t("sprint.daysLbl");
+    $("shProgress").textContent = total + " " + t("sprint.daysLbl");
     $("sprintCta").textContent = t("sprint.startBtn");
   }
 }
@@ -2844,10 +2926,13 @@ function renderLessons(best){
     const score = best[le.id] || 0;
     card.innerHTML = `
       ${le.locked ? '<span class="lock-tag">' + t("card.lockPro") + '</span>' : ''}
-      <div class="lvl">${le.level}${le.recommended ? '<span class="rec-badge">' + t("goal.recommended") + '</span>' : ''}</div>
-      <h3 dir="ltr">${le.title}</h3>
-      <div class="meta">${le.locked ? t("card.premiumLesson") : t("card.phrasesCount", {n: le.phrases.length})}</div>
-      <div class="bar"><i style="width:${score}%"></i></div>`;
+      <img class="card-image" src="${LESSON_IMAGES[le.id] || ''}" alt="" loading="lazy">
+      <div class="card-body">
+        <div class="lvl">${le.level}${le.recommended ? '<span class="rec-badge">' + t("goal.recommended") + '</span>' : ''}</div>
+        <h3 dir="ltr">${le.title}</h3>
+        <div class="meta">${le.locked ? t("card.premiumLesson") : t("card.phrasesCount", {n: le.phrases.length})}</div>
+        <div class="bar"><i style="width:${score}%"></i></div>
+      </div>`;
     card.onclick = () => le.locked ? show("paywallView") : startLesson(le);
     grid.appendChild(card);
   });
@@ -2862,11 +2947,14 @@ function renderShadowGrid(best){
     const score = best[cat.id] || 0;
     card.innerHTML = `
       ${cat.locked ? '<span class="lock-tag">' + t("card.lockPro") + '</span>' : ''}
-      <div class="lvl">${cat.level}</div>
-      <h3 dir="ltr">${cat.title}</h3>
-      <div class="meta">${cat.locked ? t("card.premiumCategory") : t("card.phrasesCount", {n: cat.phrases.length})}</div>
-      <div class="meta" style="margin-top:2px" dir="ltr">${cat.focus}</div>
-      <div class="bar"><i style="width:${score}%"></i></div>`;
+      <img class="card-image" src="${SHADOW_IMAGES[cat.id] || ''}" alt="" loading="lazy">
+      <div class="card-body">
+        <div class="lvl">${cat.level}</div>
+        <h3 dir="ltr">${cat.title}</h3>
+        <div class="meta">${cat.locked ? t("card.premiumCategory") : t("card.phrasesCount", {n: cat.phrases.length})}</div>
+        <div class="meta" style="margin-top:2px" dir="ltr">${cat.focus}</div>
+        <div class="bar"><i style="width:${score}%"></i></div>
+      </div>`;
     card.onclick = () => cat.locked ? show("paywallView") : startShadow(cat);
     grid.appendChild(card);
   });
@@ -4130,169 +4218,73 @@ async function pollForProConfirmation(){
 }
 
 // ============================================================
-//  LETTER CURTAIN — a hanging cloth made of English letters.
-//  Same technique as the reference video: verlet integration
-//  (each point remembers where it was, and that difference IS
-//  its velocity), plus distance constraints that hold the
-//  cloth together. Drag your pointer through it to part it.
+//  HERO WAVE CANVAS — soft animated sine-wave field behind the
+//  hero text, matching the mockup exactly (colors + math ported
+//  as-is). Sized to the hero element itself since it lives inside
+//  a contained dashboard, not a full browser page.
 // ============================================================
-(function letterCurtain(){
-  const canvas = document.getElementById("curtain");
+(function heroWaves(){
+  const canvas = document.getElementById("waveCanvas");
   if (!canvas) return;
-  const ctx = canvas.getContext("2d", { alpha: true });
+  const ctx = canvas.getContext("2d");
+  const hero = document.getElementById("sprintHero");
+  let W = 0, H = 0, dpr = 1, time = 0, raf = null, visible = true;
 
-  // Words the curtain is woven from — the vocabulary you practice.
-  const WORDS = ("SPEAK ENGLISH OUT LOUD EVERY DAY HELLO NICE TO MEET YOU HOW ARE "
-    + "COULD I HAVE A COFFEE PLEASE WHERE IS THE STATION THANK YOU VERY MUCH I "
-    + "WOULD LIKE TO PRACTICE MY NAME IS WHAT DO YOU THINK LET US BEGIN AGAIN "
-    + "CONFIDENCE COMES FROM SPEAKING NOT FROM READING KEEP GOING ONE MORE TIME").split(/\s+/);
-
-  const GRID = { cols: 15, rows: 15 };
-  const SPACING = 19;      // design-space gap between letters
-  const GRAVITY = 0.22;
-  const DAMPING = 0.97;
-  const ITER = 3;          // constraint passes per frame — higher = stiffer cloth
-  const TEAR_R = 62;       // pointer influence radius
-
-  let pts = [], links = [], chars = [], W = 0, H = 0, dpr = 1;
-  let pointer = { x: -9999, y: -9999, px: -9999, py: -9999, active: false };
-  let raf = null, visible = true;
-
-  function build(){
-    const rect = canvas.getBoundingClientRect();
+  function resize(){
+    const rect = hero.getBoundingClientRect();
     W = rect.width; H = rect.height;
     if (W === 0 || H === 0) return false;
     dpr = Math.min(window.devicePixelRatio || 1, 2);
     canvas.width = Math.round(W * dpr);
     canvas.height = Math.round(H * dpr);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    ctx.font = "400 13px 'Instrument Serif', system-ui, sans-serif";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-
-    // Hang the curtain from the ring, exactly like cloth hanging from a roof.
-    const clothW = (GRID.cols - 1) * SPACING;
-    const ringEl = document.getElementById("sprintRing");
-    let originX = W - clothW - 60;
-    let originY = 26;
-    if (ringEl){
-      const rr = ringEl.getBoundingClientRect();
-      if (rr.width){
-        originX = (rr.left - rect.left) + rr.width / 2 - clothW / 2;
-        originY = (rr.top - rect.top) + rr.height - 10;   // just under the ring
-      }
-    }
-
-    pts = []; links = []; chars = [];
-    let wi = 0, ci = 0;
-    for (let r = 0; r < GRID.rows; r++){
-      for (let c = 0; c < GRID.cols; c++){
-        const x = originX + c * SPACING;
-        const y = originY + r * SPACING;
-        pts.push({ x, y, px: x, py: y, pinned: r === 0 });
-        // Walk through the word list letter by letter, so the cloth
-        // literally reads as English text.
-        let word = WORDS[wi % WORDS.length];
-        if (ci >= word.length){ wi++; ci = 0; word = WORDS[wi % WORDS.length]; }
-        chars.push(word[ci] || "·");
-        ci++;
-      }
-    }
-    const idx = (c, r) => r * GRID.cols + c;
-    for (let r = 0; r < GRID.rows; r++){
-      for (let c = 0; c < GRID.cols; c++){
-        if (c < GRID.cols - 1) links.push({ a: idx(c, r), b: idx(c + 1, r), len: SPACING });
-        if (r < GRID.rows - 1) links.push({ a: idx(c, r), b: idx(c, r + 1), len: SPACING });
-      }
-    }
     return true;
   }
 
-  function step(){
-    // 1. Verlet integration: position - previous position = velocity.
-    for (const p of pts){
-      if (p.pinned) continue;
-      const vx = (p.x - p.px) * DAMPING;
-      const vy = (p.y - p.py) * DAMPING;
-      p.px = p.x; p.py = p.y;
-      p.x += vx;
-      p.y += vy + GRAVITY;
+  function drawWave(yOffset, amplitude, frequency, speed, color){
+    ctx.beginPath();
+    ctx.moveTo(0, H);
+    for (let x = 0; x <= W; x += 3){
+      const y = yOffset + Math.sin(x * frequency + time * speed) * amplitude
+                + Math.sin(x * frequency * 0.5 + time * speed * 0.7) * amplitude * 0.5;
+      ctx.lineTo(x, y);
     }
-    // 2. Pointer sweeps the cloth aside.
-    if (pointer.active){
-      const dxm = pointer.x - pointer.px;
-      const dym = pointer.y - pointer.py;
-      for (const p of pts){
-        if (p.pinned) continue;
-        const dx = p.x - pointer.x, dy = p.y - pointer.y;
-        const d2 = dx * dx + dy * dy;
-        if (d2 < TEAR_R * TEAR_R){
-          const d = Math.sqrt(d2) || 1;
-          const force = (1 - d / TEAR_R);
-          // push along the pointer's travel + gently outward
-          p.x += dxm * force * 0.85 + (dx / d) * force * 2.2;
-          p.y += dym * force * 0.85 + (dy / d) * force * 2.2;
-        }
-      }
-    }
-    // 3. Satisfy the distance constraints so it behaves like cloth.
-    for (let k = 0; k < ITER; k++){
-      for (const l of links){
-        const a = pts[l.a], b = pts[l.b];
-        const dx = b.x - a.x, dy = b.y - a.y;
-        const d = Math.sqrt(dx * dx + dy * dy) || 1e-6;
-        const diff = (d - l.len) / d * 0.5;
-        const ox = dx * diff, oy = dy * diff;
-        if (!a.pinned){ a.x += ox; a.y += oy; }
-        if (!b.pinned){ b.x -= ox; b.y -= oy; }
-      }
-    }
+    ctx.lineTo(W, H);
+    ctx.closePath();
+    ctx.fillStyle = color;
+    ctx.fill();
   }
 
-  function draw(){
+  function frame(){
     ctx.clearRect(0, 0, W, H);
-    for (let i = 0; i < pts.length; i++){
-      const p = pts[i];
-      if (p.x < -20 || p.x > W + 20 || p.y > H + 20) continue;
-      const row = (i / GRID.cols) | 0;
-      // fade the letters out toward the bottom, like the reference
-      const fade = 1 - row / GRID.rows;
-      // stretched links glow terracotta — you can see where you disturbed it
-      const stretch = Math.min(Math.abs(p.x - p.px) + Math.abs(p.y - p.py), 6) / 6;
-      const alpha = (0.22 + fade * 0.55);
-      ctx.fillStyle = stretch > 0.25
-        ? `rgba(199,91,57,${Math.min(alpha + stretch * 0.5, 0.95)})`
-        : `rgba(240,230,220,${alpha})`;
-      ctx.fillText(chars[i], p.x, p.y);
-    }
+    time += 0.008;
+    drawWave(H * 0.75, 40, 0.003, 1.2, "rgba(245,240,232,0.4)");
+    drawWave(H * 0.78, 35, 0.004, 1.5, "rgba(232,228,220,0.5)");
+    drawWave(H * 0.82, 30, 0.005, 1.8, "rgba(199,91,57,0.06)");
+    drawWave(H * 0.85, 25, 0.006, 2.0, "rgba(199,91,57,0.08)");
   }
 
   function loop(){
-    if (visible){ step(); draw(); }
+    if (visible) frame();
     raf = requestAnimationFrame(loop);
   }
 
-  // --- pointer plumbing (mouse + touch both work) ---
-  function toLocal(clientX, clientY){
-    const r = canvas.getBoundingClientRect();
-    return { x: clientX - r.left, y: clientY - r.top };
-  }
-  function move(e){
-    const t = e.touches ? e.touches[0] : e;
-    if (!t) return;
-    const { x, y } = toLocal(t.clientX, t.clientY);
-    pointer.px = pointer.active ? pointer.x : x;
-    pointer.py = pointer.active ? pointer.y : y;
-    pointer.x = x; pointer.y = y;
-    pointer.active = true;
-  }
-  function leave(){ pointer.active = false; pointer.x = pointer.y = -9999; }
+  // Respect people who don't want motion.
+  const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-  const hero = document.getElementById("sprintHero");
-  hero.addEventListener("mousemove", move);
-  hero.addEventListener("mouseleave", leave);
-  hero.addEventListener("touchmove", (e) => { move(e); }, { passive: true });
-  hero.addEventListener("touchend", leave);
+  function start(){
+    if (!resize()){ setTimeout(start, 120); return; }   // hero not laid out yet
+    if (reduced){ frame(); return; }                    // draw one static frame
+    if (raf) cancelAnimationFrame(raf);
+    loop();
+  }
+  start();
+
+  let rt = null;
+  window.addEventListener("resize", () => {
+    clearTimeout(rt);
+    rt = setTimeout(() => { if (resize() && reduced) frame(); }, 150);
+  });
 
   // Pause when the dashboard isn't on screen — no wasted battery.
   const io = new IntersectionObserver((entries) => {
@@ -4300,24 +4292,8 @@ async function pollForProConfirmation(){
   }, { threshold: 0.01 });
   io.observe(hero);
 
-  let rt = null;
-  window.addEventListener("resize", () => {
-    clearTimeout(rt);
-    rt = setTimeout(() => { if (build()) { /* rebuilt */ } }, 150);
-  });
-
-  // Respect people who don't want motion.
-  const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-
-  function start(){
-    if (!build()){ setTimeout(start, 120); return; }   // hero not laid out yet
-    if (reduced){ step(); draw(); return; }            // draw one static frame
-    if (raf) cancelAnimationFrame(raf);
-    loop();
-  }
-  start();
   // Rebuild if the hero was hidden at first paint (e.g. user was logged out).
-  window.__rebuildCurtain = () => { if (build() && reduced){ step(); draw(); } };
+  window.__rebuildWaves = () => { if (resize() && reduced) frame(); };
 })();
 
 // ============================================================
@@ -4334,10 +4310,12 @@ function renderScenarios(){
     card.className = "card clickable";
     card.innerHTML = `
       ${s.locked ? '<span class="lock-tag">' + t("card.lockPro") + '</span>' : ''}
-      <div style="font-size:26px;line-height:1">${s.emoji}</div>
-      <div class="lvl" style="margin-top:8px">${s.level}${s.recommended ? '<span class="rec-badge">' + t("goal.recommended") + '</span>' : ''}</div>
-      <h3 dir="ltr">${s.title}</h3>
-      <div class="meta" dir="ltr">${s.locked ? t("card.premiumConversation") : s.goal}</div>`;
+      <img class="card-image" src="${SCENARIO_IMAGES[s.id] || ''}" alt="" loading="lazy">
+      <div class="card-body">
+        <div class="lvl">${s.level}${s.recommended ? '<span class="rec-badge">' + t("goal.recommended") + '</span>' : ''}</div>
+        <h3 dir="ltr">${s.title}</h3>
+        <div class="meta" dir="ltr">${s.locked ? t("card.premiumConversation") : s.goal}</div>
+      </div>`;
     card.onclick = () => s.locked ? show("paywallView") : openConvById(s.id, s.emoji, s.title, null);
     grid.appendChild(card);
   });
