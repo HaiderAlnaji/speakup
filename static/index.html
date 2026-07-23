@@ -169,14 +169,19 @@
     padding:3px 10px;border-radius:20px;letter-spacing:.01em;white-space:nowrap}
 
   /* ---------- Achievements ---------- */
-  .badge-grid{display:flex;flex-wrap:wrap;gap:12px;margin-bottom:26px}
-  .achievement{width:96px;text-align:center;padding:14px 8px 12px;border-radius:14px;
-    border:1px solid var(--line);background:var(--surface);transition:transform .15s var(--ease)}
-  .achievement:hover{transform:translateY(-2px)}
-  .achievement .ach-icon{font-size:28px;line-height:1;margin-bottom:6px}
-  .achievement .ach-title{font-size:11px;font-weight:600;color:var(--ink);line-height:1.25}
-  .achievement.locked{opacity:.4;filter:grayscale(1)}
-  .achievement.unlocked{border-color:var(--gold);background:#FFFBF0;box-shadow:0 4px 14px rgba(231,166,58,.15)}
+  .badge-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:26px}
+  @media (max-width:640px){.badge-grid{grid-template-columns:repeat(3,1fr)}}
+  .achievement{aspect-ratio:1;width:auto;text-align:center;padding:10px 6px;border-radius:var(--radius);
+    border:1px solid var(--line);background:var(--surface);display:flex;flex-direction:column;
+    align-items:center;justify-content:center;gap:8px;transition:all .35s var(--ease);position:relative}
+  .achievement:hover{transform:scale(1.05);border-color:var(--brand);box-shadow:0 16px 32px rgba(26,26,26,.06)}
+  .achievement .ach-icon{font-size:28px;line-height:1;filter:grayscale(1);opacity:.4;
+    transition:all .35s var(--ease)}
+  .achievement:hover .ach-icon{filter:grayscale(0);opacity:1}
+  .achievement .ach-title{font-size:10.5px;font-weight:600;color:var(--muted);line-height:1.25;
+    letter-spacing:.02em}
+  .achievement.unlocked{border-color:var(--gold)}
+  .achievement.unlocked .ach-icon{filter:grayscale(0);opacity:1}
   .btn-ghost{background:var(--surface-2);color:var(--ink);font-weight:500;font-size:13px;
     padding:7px 13px;border-radius:9px;transition:background .18s var(--ease),transform .15s var(--ease)}
   .btn-ghost:hover{background:#E9EDF6;transform:translateY(-1px)}
@@ -187,7 +192,9 @@
   .page-head{margin-bottom:22px}
   .page-head h2{font-size:22px}
   .page-head p{color:var(--muted);font-size:14.5px;margin-top:3px}
-  .stat-row{display:flex;gap:14px;margin-bottom:26px;flex-wrap:wrap}
+  .stat-row{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line);
+    border-radius:var(--radius);overflow:hidden;margin-bottom:26px}
+  @media (max-width:640px){.stat-row{grid-template-columns:repeat(2,1fr)}}
 
   /* ---------- Certificate ready banner ---------- */
   .cert-ready{display:flex;align-items:center;gap:16px;margin-bottom:16px;
@@ -321,13 +328,15 @@
   .lb-row.me{background:var(--surface-2);border-radius:10px}
   .lb-empty{color:var(--muted);font-size:13.5px;padding:8px 6px}
 
-  .stat{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);
-    padding:16px 18px;flex:1;min-width:150px}
-  .stat .num{font-family:'Instrument Serif';font-size:26px;font-weight:700;color:var(--ink)}
-  .stat .lbl{font-size:13px;color:var(--muted);margin-top:2px}
-  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px}
+  .stat{background:var(--surface);border:none;border-radius:0;
+    padding:26px 14px;text-align:center;transition:background .3s;min-width:0}
+  .stat:hover{background:var(--surface-2)}
+  .stat .num{font-family:'Instrument Serif';font-size:36px;font-weight:400;color:var(--brand);line-height:1}
+  .stat .lbl{font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;
+    color:var(--muted);margin-top:8px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:20px}
   .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);
-    padding:20px;transition:transform .2s var(--ease),box-shadow .2s var(--ease);position:relative}
+    padding:24px;transition:transform .2s var(--ease),box-shadow .2s var(--ease),border-color .2s var(--ease);position:relative}
   .card.clickable:hover{transform:translateY(-6px);box-shadow:var(--shadow);border-color:var(--brand)}
   .card.clickable:active{transform:translateY(-1px) scale(.99)}
   .card .lvl{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;
@@ -496,6 +505,15 @@
     .sprint-hero{flex-direction:column;align-items:flex-start}
     .sh-title{font-size:26px}
   }
+
+  /* ---------- Shadow Mode hero (dashboard section intro) ---------- */
+  .shadow-hero{background:linear-gradient(150deg,var(--ink) 0%,#3D2B1F 100%);
+    border-radius:20px;padding:34px;color:#fff;position:relative;overflow:hidden}
+  .shadow-hero::before{content:"";position:absolute;inset:0;pointer-events:none;
+    background:radial-gradient(400px 200px at 85% 15%,rgba(199,91,57,.28),transparent 70%)}
+  .shadow-hero h2,.shadow-hero p{position:relative;z-index:1}
+  .shadow-hero h2{font-size:28px;margin-bottom:8px}
+  .shadow-hero p{color:#D9C7B8;font-size:14.5px;max-width:520px}
 
   /* ---------- Sprint day grid ---------- */
   .day-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
@@ -1011,7 +1029,7 @@
 
       <div class="grid anim-in-3" id="lessonGrid"></div>
 
-      <div class="page-head anim-in-3" style="margin-top:36px">
+      <div class="shadow-hero anim-in-3" style="margin-top:36px">
         <h2 data-i18n="shadow.title">Shadow Mode</h2>
         <p data-i18n="shadow.sub">Speak along WITH the recording, not after it — the fastest way to pick up native rhythm, linking, and reductions.</p>
       </div>
