@@ -19,9 +19,10 @@
 <style>
   :root{
     --ink:#1A1A1A; --ink-2:#2E2A24;
+    --bg:#FAF9F6;
     --surface:#FFFFFF; --surface-2:#F5F0E8; --line:#E8E4DC;
     --text:#1A1A1A; --muted:#6B6B6B;
-    --brand:#C75B39; --brand-2:#E07A5F;
+    --brand:#C75B39; --brand-2:#E07A5F; --brand-glow:rgba(199,91,57,.12);
     --brand-grad:linear-gradient(135deg,#C75B39,#E07A5F);
     --gold:#D4A843; --good:#20B562; --danger:#E5484D;
     --radius:20px; --shadow:0 12px 40px rgba(26,26,26,.08);
@@ -49,7 +50,7 @@
     transform .8s cubic-bezier(.16,1,.3,1)}
   .reveal.visible{opacity:1;transform:translateY(0)}
   body{font-family:'Space Grotesk',system-ui,-apple-system,sans-serif;color:var(--text);
-    background:var(--surface-2);line-height:1.5;-webkit-font-smoothing:antialiased}
+    background:var(--bg);line-height:1.5;-webkit-font-smoothing:antialiased}
   h1,h2,h3,.brandmark{font-family:'Instrument Serif','Space Grotesk',serif;letter-spacing:-.01em;font-weight:400}
   .brandmark em{font-style:italic;color:var(--brand)}
   button{font-family:inherit;cursor:pointer;border:none}
@@ -117,8 +118,10 @@
     font-size:15px;font-family:inherit;transition:border-color .15s,box-shadow .15s}
   .field input:focus{outline:none;border-color:var(--brand);box-shadow:0 0 0 4px rgba(199,91,57,.12)}
   .btn-primary{width:100%;padding:13px;border-radius:100px;background:var(--brand-grad);
-    color:#fff;font-weight:600;font-size:15px;transition:filter .2s var(--ease),transform .15s var(--ease)}
-  .btn-primary:hover{filter:brightness(1.05);transform:translateY(-1px)}
+    color:#fff;font-weight:600;font-size:15px;
+    transition:filter .3s var(--ease),transform .3s var(--ease),box-shadow .3s var(--ease)}
+  .btn-primary:hover{filter:brightness(1.05);transform:translateY(-1px) scale(1.02);
+    box-shadow:0 12px 30px rgba(199,91,57,.3)}
   .btn-primary:active{transform:translateY(0) scale(.98)}
   .btn-primary:disabled{opacity:.6;cursor:default;transform:none}
   .auth-toggle{text-align:center;font-size:14px;color:var(--muted);margin-top:18px}
@@ -167,8 +170,8 @@
     padding:20px 40px;display:flex;align-items:center;justify-content:space-between;
     position:fixed;top:0;left:0;right:0;z-index:100;
     transition:background .3s var(--ease),border-color .3s var(--ease),box-shadow .3s var(--ease)}
-  .topbar.scrolled{background:rgba(255,255,255,.86);backdrop-filter:blur(16px);
-    -webkit-backdrop-filter:blur(16px);border-bottom-color:var(--line);
+  .topbar.scrolled{background:rgba(250,249,246,.9);backdrop-filter:blur(20px);
+    -webkit-backdrop-filter:blur(20px);border-bottom-color:var(--line);
     box-shadow:0 4px 24px rgba(26,26,26,.05)}
   @media (max-width:640px){.topbar{padding:14px 22px}}
   .topbar .brand{display:flex;align-items:center;gap:9px}
@@ -208,13 +211,13 @@
   html[dir="rtl"] .account-menu-panel button{text-align:right}
 
   /* ---------- Achievements ---------- */
-  .badge-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:26px}
-  @media (max-width:640px){.badge-grid{grid-template-columns:repeat(3,1fr)}}
+  .badge-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:16px;margin-bottom:26px}
+  @media (max-width:900px){.badge-grid{grid-template-columns:repeat(3,1fr)}}
   .achievement{aspect-ratio:1;width:auto;text-align:center;padding:10px 6px;border-radius:var(--radius);
     border:1px solid var(--line);background:var(--surface);display:flex;flex-direction:column;
     align-items:center;justify-content:center;gap:8px;transition:all .35s var(--ease);position:relative}
-  .achievement:hover{transform:scale(1.05);border-color:var(--brand);box-shadow:0 16px 32px rgba(26,26,26,.06)}
-  .achievement .ach-icon{font-size:28px;line-height:1;filter:grayscale(1);opacity:.4;
+  .achievement:hover{transform:scale(1.05);border-color:var(--brand);box-shadow:0 20px 40px rgba(0,0,0,.06)}
+  .achievement .ach-icon{font-size:32px;line-height:1;filter:grayscale(1);opacity:.4;
     transition:all .35s var(--ease)}
   .achievement:hover .ach-icon{filter:grayscale(0);opacity:1}
   .achievement .ach-title{font-size:10.5px;font-weight:600;color:var(--muted);line-height:1.25;
@@ -242,7 +245,7 @@
      used all over settings/admin/etc). Only used on the main dashboard
      sections that mirror the mockup's own section-header layout. */
   .section-header{display:flex;justify-content:space-between;align-items:flex-end;
-    gap:24px;margin-bottom:32px}
+    gap:24px;margin-bottom:60px}
   .section-header h2{margin-top:8px;font-size:clamp(32px,5vw,56px);line-height:1.1}
   .section-desc{color:var(--muted);font-size:16px;line-height:1.7;max-width:400px;
     text-align:right;flex-shrink:0}
@@ -385,8 +388,8 @@
   .pro-scroll{display:flex;gap:24px;overflow-x:auto;padding:2px 2px 16px;margin-bottom:10px;
     scrollbar-width:none}
   .pro-scroll::-webkit-scrollbar{display:none}
-  .pro-card{min-width:340px;max-width:380px;flex:0 0 auto;background:var(--surface);
-    border:1px solid var(--line);border-radius:var(--radius);padding:38px;cursor:pointer;
+  .pro-card{min-width:380px;max-width:380px;flex:0 0 auto;background:var(--surface);
+    border:1px solid var(--line);border-radius:var(--radius);padding:40px;cursor:pointer;
     transition:all .35s var(--ease)}
   .pro-card:hover{border-color:var(--gold);transform:translateY(-4px);
     box-shadow:0 20px 45px rgba(212,168,67,.14)}
@@ -411,29 +414,38 @@
   .lb-empty{color:var(--muted);font-size:13.5px;padding:8px 6px}
 
   .stat{background:var(--surface);border:none;border-radius:0;
-    padding:26px 14px;text-align:center;transition:background .3s;min-width:0}
+    padding:48px 32px;text-align:center;transition:background .3s;min-width:0}
   .stat:hover{background:var(--surface-2)}
-  .stat .num{font-family:'Instrument Serif';font-size:36px;font-weight:400;color:var(--brand);line-height:1}
-  .stat .lbl{font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;
+  .stat .num{font-family:'Instrument Serif';font-size:56px;font-weight:400;color:var(--brand);line-height:1;
+    margin-bottom:8px}
+  .stat .lbl{font-size:12px;font-weight:600;letter-spacing:2px;text-transform:uppercase;
     color:var(--muted);margin-top:8px}
   .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px}
   @media (max-width:900px){.grid{grid-template-columns:1fr}}
   .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);
-    overflow:hidden;transition:transform .2s var(--ease),box-shadow .2s var(--ease),border-color .2s var(--ease);position:relative}
-  .card.clickable:hover{transform:translateY(-6px);box-shadow:var(--shadow);border-color:var(--brand)}
+    overflow:hidden;transition:all .5s cubic-bezier(.16,1,.3,1);position:relative}
+  .card::before{content:"";position:absolute;inset:0;
+    background:linear-gradient(135deg,var(--brand-glow),transparent);
+    opacity:0;transition:opacity .5s;z-index:1;pointer-events:none}
+  .card.clickable:hover::before{opacity:1}
+  .card.clickable:hover{transform:translateY(-8px);box-shadow:0 30px 60px rgba(0,0,0,.08);border-color:var(--brand)}
   .card.clickable:active{transform:translateY(-1px) scale(.99)}
   .card-image{width:100%;height:180px;object-fit:cover;display:block;
-    transition:transform .5s var(--ease);background:var(--surface-2)}
+    transition:transform .6s cubic-bezier(.16,1,.3,1);background:var(--surface-2)}
   .card.clickable:hover .card-image{transform:scale(1.05)}
-  .card-body{padding:22px}
+  .card-body{padding:22px;position:relative;z-index:2}
+  .card-locked{opacity:.65}
+  .card-locked:hover{opacity:1}
   .card .lvl{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;
     color:var(--brand)}
   .card h3{font-size:17px;margin:8px 0 4px}
   .card .meta{font-size:13px;color:var(--muted)}
   .card .bar{height:6px;background:var(--surface-2);border-radius:6px;margin-top:14px;overflow:hidden}
   .card .bar i{display:block;height:100%;background:var(--brand-grad);border-radius:6px;width:0}
-  .lock-tag{position:absolute;top:16px;right:16px;display:flex;align-items:center;gap:5px;
-    background:#FCF3E2;color:#8a6316;font-size:11px;font-weight:600;padding:4px 9px;border-radius:20px}
+  .lock-tag{position:absolute;top:16px;right:16px;display:flex;align-items:center;gap:6px;
+    background:rgba(26,26,26,.7);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+    border:1px solid rgba(255,255,255,.15);color:var(--gold);font-size:11px;font-weight:600;
+    padding:6px 14px;border-radius:100px;z-index:3}
   .pro-pill{display:inline-block;background:var(--gold);color:#3a2600;font-size:11px;font-weight:700;
     padding:2px 9px;border-radius:20px;vertical-align:middle;margin-left:8px;letter-spacing:.03em}
 
@@ -547,10 +559,11 @@
   .heard b{color:var(--ink);font-weight:600}
   .result-actions{display:flex;gap:10px;justify-content:center;margin-top:18px;flex-wrap:wrap}
   .btn-sm{padding:10px 18px;border-radius:10px;font-weight:600;font-size:14px;
-    transition:transform .15s var(--ease),filter .15s var(--ease)}
+    transition:transform .3s var(--ease),filter .3s var(--ease),box-shadow .3s var(--ease)}
   .btn-sm:active{transform:scale(.96)}
   .btn-sm.solid{background:var(--brand-grad);color:#fff}
-  .btn-sm.solid:hover{filter:brightness(1.05)}
+  .btn-sm.solid:hover{filter:brightness(1.05);transform:translateY(-1px) scale(1.02);
+    box-shadow:0 10px 26px rgba(199,91,57,.28)}
   .btn-sm.outline{background:#fff;border:1.5px solid var(--line);color:var(--ink)}
   .btn-sm.outline:hover{border-color:var(--brand);color:var(--brand)}
 
@@ -560,12 +573,12 @@
   /* ---------- Sprint hero (full-bleed light splash, matches mockup) ----------
      Lives outside .container (see HTML) so it can span the full viewport
      instead of being boxed in at 940px with rounded corners. ---------- */
-  .sprint-hero{background:var(--surface-2);width:100%;
+  .sprint-hero{background:var(--bg);width:100%;
     min-height:100vh;display:flex;align-items:center;justify-content:center;
     text-align:center;position:relative;overflow:hidden;padding:60px 28px}
   #waveCanvas{position:absolute;inset:0;width:100%;height:100%;display:block;z-index:0;opacity:.6}
   .sprint-hero::after{content:"";position:absolute;inset:0;pointer-events:none;z-index:1;
-    background:linear-gradient(180deg,transparent 0%,var(--surface-2) 92%)}
+    background:linear-gradient(180deg,transparent 0%,var(--bg) 92%)}
   .sh-content{position:relative;z-index:2;max-width:900px;display:flex;flex-direction:column;
     align-items:center}
   .sh-eyebrow{display:inline-flex;align-items:center;font-size:11px;font-weight:600;
@@ -577,12 +590,20 @@
     max-width:560px;margin:0 auto 18px}
   .sh-progress{font-size:12.5px;font-weight:600;letter-spacing:.04em;color:var(--muted);
     margin-bottom:22px}
-  .sh-cta{width:auto;padding:15px 30px}
+  .sh-cta{width:auto;padding:15px 30px;transition:all .4s cubic-bezier(.16,1,.3,1)}
+  .btn-gold.sh-cta:hover{transform:scale(1.05);background:var(--brand);color:#fff;
+    box-shadow:0 20px 60px rgba(199,91,57,.3)}
   .sh-cta::after{content:" →"}
   html[dir="rtl"] .sh-cta::after{content:" ←"}
+  @keyframes scrollBounce{
+    0%,20%,50%,80%,100%{transform:translateX(-50%) translateY(0)}
+    40%{transform:translateX(-50%) translateY(-10px)}
+    60%{transform:translateX(-50%) translateY(-5px)}
+  }
   .sh-scroll-hint{position:absolute;left:50%;bottom:20px;transform:translateX(-50%);z-index:2;
     display:flex;flex-direction:column;align-items:center;gap:8px;color:var(--muted);
-    font-size:10.5px;letter-spacing:.18em;text-transform:uppercase;pointer-events:none}
+    font-size:10.5px;letter-spacing:.18em;text-transform:uppercase;pointer-events:none;
+    animation:scrollBounce 2s infinite}
   .sh-scroll-hint::after{content:"";width:1px;height:34px;
     background:linear-gradient(to bottom,var(--muted),transparent)}
   @media (max-width:640px){
@@ -591,7 +612,7 @@
 
   /* ---------- Shadow Mode hero (dashboard section intro) ---------- */
   .shadow-hero{background:linear-gradient(150deg,var(--ink) 0%,#3D2B1F 100%);
-    border-radius:32px;padding:80px 60px;margin:36px 0 80px;color:#fff;position:relative;overflow:hidden}
+    border-radius:32px;padding:80px 60px;margin:100px 0 80px;color:#fff;position:relative;overflow:hidden}
   .shadow-hero::before{content:"";position:absolute;inset:0;pointer-events:none;
     background:radial-gradient(400px 200px at 85% 15%,rgba(199,91,57,.28),transparent 70%)}
   .shadow-hero h2,.shadow-hero p,.shadow-hero .sh-eyebrow,
@@ -603,7 +624,7 @@
 
   /* ---------- Drill any topic (dark bar, matches mockup's drill-section) ---------- */
   .drill-section{background:linear-gradient(150deg,var(--ink) 0%,#3D2B1F 60%,#7A4430 100%);
-    border-radius:24px;padding:56px 48px;position:relative;overflow:hidden}
+    border-radius:24px;padding:60px;position:relative;overflow:hidden}
   .drill-section::before{content:"";position:absolute;inset:0;pointer-events:none;
     background:radial-gradient(400px 200px at 15% 20%,rgba(199,91,57,.22),transparent 70%)}
   .drill-section .section-header{position:relative;z-index:1}
@@ -827,8 +848,9 @@
   .paywall .goal-btn.active{background:var(--brand);color:#fff;border-color:transparent}
   .btn-gold{background:var(--gold);color:#3a2600;font-weight:700;font-size:15px;
     padding:14px 28px;border-radius:100px;width:100%;
-    transition:filter .18s var(--ease),transform .15s var(--ease)}
-  .btn-gold:hover{filter:brightness(1.05);transform:translateY(-1px)}
+    transition:filter .3s var(--ease),transform .3s var(--ease),box-shadow .3s var(--ease)}
+  .btn-gold:hover{filter:brightness(1.05);transform:translateY(-1px) scale(1.02);
+    box-shadow:0 12px 30px rgba(212,168,67,.35)}
   .btn-gold:active{transform:translateY(0) scale(.98)}
   .upgrade-options{display:flex;flex-direction:column;gap:10px;width:100%}
   .paywall .note{font-size:12px;color:#9C8770;margin-top:14px}
@@ -1025,7 +1047,7 @@
       </div>
       <div class="grid reveal" id="scenarioGrid"></div>
 
-      <div class="drill-section reveal" style="margin-top:36px">
+      <div class="drill-section reveal" style="margin-top:100px">
         <div class="section-header" style="margin-bottom:0">
           <div>
             <span class="sh-eyebrow" data-i18n="drill.eyebrow">Custom practice</span>
@@ -1044,7 +1066,7 @@
       </div>
       <div id="topicOut" class="topic-out hidden"></div>
 
-      <div class="section-header reveal" style="margin-top:36px" id="lessonsSection">
+      <div class="section-header reveal" style="margin-top:100px" id="lessonsSection">
         <div>
           <span class="sh-eyebrow" data-i18n="lessons.eyebrow">Your journey</span>
           <h2 data-i18n-html="lessons.title">Practice <em>lessons</em></h2>
@@ -1058,7 +1080,7 @@
         <div class="stat"><div class="num" id="statXp">0</div><div class="lbl" data-i18n="stat.xpEarned">XP earned</div></div>
       </div>
 
-      <div class="section-header reveal" style="margin-top:8px" id="achievementsSection">
+      <div class="section-header reveal" style="margin-top:56px" id="achievementsSection">
         <div>
           <span class="sh-eyebrow" data-i18n="badges.eyebrow">Milestones</span>
           <h2 data-i18n-html="badges.title">Your <em>Achievements</em></h2>
@@ -1163,7 +1185,7 @@
       <!-- Go Pro — consolidated upsell gallery. Replaces the 5 scattered
            progress-teaser blocks above (those stay in the DOM, permanently
            hidden, so their button-click wiring elsewhere keeps working). -->
-      <div class="section-header reveal" style="margin-top:36px" id="goProSection">
+      <div class="section-header reveal" style="margin-top:100px" id="goProSection">
         <div>
           <span class="sh-eyebrow" data-i18n="goPro.eyebrow">Unlock more</span>
           <h2 data-i18n="goPro.title">Go Pro</h2>
@@ -3057,7 +3079,7 @@ function renderLessons(best){
   const grid = $("lessonGrid"); grid.innerHTML = "";
   sortByRecommended(lessons).forEach(le => {
     const card = document.createElement("div");
-    card.className = "card clickable";
+    card.className = "card clickable" + (le.locked ? " card-locked" : "");
     const score = best[le.id] || 0;
     card.innerHTML = `
       ${le.locked ? '<span class="lock-tag">' + t("card.lockPro") + '</span>' : ''}
@@ -3078,7 +3100,7 @@ function renderShadowGrid(best){
   const grid = $("shadowGrid"); grid.innerHTML = "";
   shadowCats.forEach(cat => {
     const card = document.createElement("div");
-    card.className = "card clickable";
+    card.className = "card clickable" + (cat.locked ? " card-locked" : "");
     const score = best[cat.id] || 0;
     card.innerHTML = `
       ${cat.locked ? '<span class="lock-tag">' + t("card.lockPro") + '</span>' : ''}
@@ -4442,7 +4464,7 @@ function renderScenarios(){
   const grid = $("scenarioGrid"); grid.innerHTML = "";
   sortByRecommended(scenarios).forEach(s => {
     const card = document.createElement("div");
-    card.className = "card clickable";
+    card.className = "card clickable" + (s.locked ? " card-locked" : "");
     card.innerHTML = `
       ${s.locked ? '<span class="lock-tag">' + t("card.lockPro") + '</span>' : ''}
       <img class="card-image" src="${SCENARIO_IMAGES[s.id] || ''}" alt="" loading="lazy">
