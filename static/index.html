@@ -173,7 +173,11 @@
   @media (max-width:640px){.topbar{padding:14px 22px}}
   .topbar .brand{display:flex;align-items:center;gap:9px}
   .topbar .brandmark{font-size:21px;font-weight:400}
-  .nav-links{display:flex;gap:32px}
+  /* Nav links + account cluster grouped together on the right, instead of
+     being spread across the full bar width by justify-content:space-between
+     on 3 separate items. */
+  .nav-group{display:flex;align-items:center;gap:36px}
+  .nav-links{display:flex;gap:28px}
   .nav-link{font-size:13px;font-weight:500;color:var(--muted);text-decoration:none;
     letter-spacing:.02em;position:relative;transition:color .3s var(--ease)}
   .nav-link:hover{color:var(--ink)}
@@ -183,10 +187,25 @@
   html[dir="rtl"] .nav-link::after{left:auto;right:0}
   @media (max-width:900px){.nav-links{display:none}}
   .topbar .user{display:flex;align-items:center;gap:12px;font-size:13.5px;color:var(--muted)}
+  html[dir="rtl"] .nav-group{flex-direction:row-reverse}
   .badge-pro{background:var(--gold);color:#3a2600;font-weight:600;font-size:11px;
     padding:3px 9px;border-radius:20px;letter-spacing:.02em}
   .badge-xp{background:#EAF6FF;color:#0B5C82;font-weight:600;font-size:11.5px;
     padding:3px 10px;border-radius:20px;letter-spacing:.01em;white-space:nowrap}
+
+  /* Admin/Settings/Log out consolidated behind one trigger. */
+  .account-menu{position:relative}
+  .account-menu-trigger{font-size:18px;line-height:1;padding:7px 12px}
+  .account-menu-panel{position:absolute;top:calc(100% + 8px);right:0;z-index:50;
+    background:var(--surface);border:1px solid var(--line);border-radius:12px;
+    box-shadow:var(--shadow);padding:6px;display:flex;flex-direction:column;gap:2px;
+    min-width:150px}
+  .account-menu-panel button{width:100%;text-align:left;background:transparent;
+    color:var(--ink);font-size:13.5px;font-weight:500;padding:9px 12px;border-radius:8px;
+    transition:background .15s var(--ease)}
+  .account-menu-panel button:hover{background:var(--surface-2)}
+  html[dir="rtl"] .account-menu-panel{right:auto;left:0}
+  html[dir="rtl"] .account-menu-panel button{text-align:right}
 
   /* ---------- Achievements ---------- */
   .badge-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:26px}
@@ -863,21 +882,30 @@
       <span class="wave"><span></span><span></span><span></span><span></span><span></span></span>
       <span class="brandmark">Speak<em>Up</em></span>
     </div>
-    <div class="nav-links" id="navLinks">
-      <a href="#sprintHero" class="nav-link" data-i18n="nav.linkSprint">Sprint</a>
-      <a href="#talkSection" class="nav-link" data-i18n="nav.linkTalk">Talk</a>
-      <a href="#lessonsSection" class="nav-link" data-i18n="nav.linkLessons">Lessons</a>
-      <a href="#shadowSection" class="nav-link" data-i18n="nav.linkShadow">Shadow</a>
-      <a href="#achievementsSection" class="nav-link" data-i18n="nav.linkProgress">Progress</a>
-    </div>
-    <div class="user">
-      <span id="userEmail"></span>
-      <span id="xpBadge" class="badge-xp hidden">⭐ 0 XP</span>
-      <span id="proBadge" class="badge-pro hidden">PRO</span>
-      <button class="btn-ghost" id="langToggle">العربية</button>
-      <button class="btn-ghost hidden" id="adminBtn" data-i18n="nav.admin">Admin</button>
-      <button class="btn-ghost" id="settingsBtn" data-i18n="nav.settings">Settings</button>
-      <button class="btn-ghost" id="logoutBtn" data-i18n="nav.logout">Log out</button>
+    <div class="nav-group">
+      <div class="nav-links" id="navLinks">
+        <a href="#sprintHero" class="nav-link" data-i18n="nav.linkSprint">Sprint</a>
+        <a href="#talkSection" class="nav-link" data-i18n="nav.linkTalk">Talk</a>
+        <a href="#lessonsSection" class="nav-link" data-i18n="nav.linkLessons">Lessons</a>
+        <a href="#shadowSection" class="nav-link" data-i18n="nav.linkShadow">Shadow</a>
+        <a href="#achievementsSection" class="nav-link" data-i18n="nav.linkProgress">Progress</a>
+      </div>
+      <div class="user">
+        <span id="userEmail"></span>
+        <span id="xpBadge" class="badge-xp hidden">⭐ 0 XP</span>
+        <span id="proBadge" class="badge-pro hidden">PRO</span>
+        <button class="btn-ghost" id="langToggle">العربية</button>
+        <!-- Admin/Settings/Log out consolidated into one menu instead of
+             three separate buttons -- same actions, less clutter. -->
+        <div class="account-menu" id="accountMenu">
+          <button class="btn-ghost account-menu-trigger" id="accountMenuBtn" aria-haspopup="true" aria-expanded="false" title="Account menu">⋯</button>
+          <div class="account-menu-panel hidden" id="accountMenuPanel">
+            <button class="hidden" id="adminBtn" data-i18n="nav.admin">Admin</button>
+            <button id="settingsBtn" data-i18n="nav.settings">Settings</button>
+            <button id="logoutBtn" data-i18n="nav.logout">Log out</button>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -2388,6 +2416,23 @@ document.querySelectorAll(".nav-link").forEach(link => {
     });
   });
 });
+
+// Account menu (Admin/Settings/Log out consolidated behind one trigger).
+(function accountMenu(){
+  const btn = $("accountMenuBtn"), panel = $("accountMenuPanel");
+  if (!btn || !panel) return;
+  const close = () => { panel.classList.add("hidden"); btn.setAttribute("aria-expanded", "false"); };
+  const open = () => { panel.classList.remove("hidden"); btn.setAttribute("aria-expanded", "true"); };
+  btn.onclick = (e) => {
+    e.stopPropagation();
+    panel.classList.contains("hidden") ? open() : close();
+  };
+  panel.querySelectorAll("button").forEach(b => b.addEventListener("click", close));
+  document.addEventListener("click", (e) => {
+    if (!panel.classList.contains("hidden") && !panel.contains(e.target) && e.target !== btn) close();
+  });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape") close(); });
+})();
 
 // Scroll reveal -- sections further down the dashboard fade + slide up as
 // they enter the viewport (matches the mockup's .reveal/.visible pattern).
