@@ -319,6 +319,26 @@
   .progress-teaser b{font-size:15px}
   .progress-teaser p{font-size:13px;color:var(--muted);margin-top:3px}
 
+  /* ---------- Go Pro (consolidated upsell gallery) ---------- */
+  .pro-scroll{display:flex;gap:20px;overflow-x:auto;padding:2px 2px 16px;margin-bottom:10px;
+    scrollbar-width:none}
+  .pro-scroll::-webkit-scrollbar{display:none}
+  .pro-card{min-width:300px;max-width:340px;flex:0 0 auto;background:var(--surface);
+    border:1px solid var(--line);border-radius:var(--radius);padding:30px;cursor:pointer;
+    transition:all .35s var(--ease)}
+  .pro-card:hover{border-color:var(--gold);transform:translateY(-4px);
+    box-shadow:0 20px 45px rgba(212,168,67,.14)}
+  .pro-card-number{font-family:'Instrument Serif';font-size:42px;color:var(--gold);opacity:.4;
+    line-height:1;margin-bottom:14px}
+  .pro-card-title{font-family:'Instrument Serif';font-size:22px;margin-bottom:10px;line-height:1.25}
+  .pro-card-desc{font-size:13.5px;color:var(--muted);line-height:1.6;margin-bottom:20px}
+  .pro-card-btn{display:inline-flex;align-items:center;gap:6px;background:transparent;
+    border:1.5px solid var(--gold);color:#8a6316;padding:10px 20px;border-radius:100px;
+    font-weight:600;font-size:13px;transition:all .25s var(--ease)}
+  .pro-card-btn::after{content:" →"}
+  html[dir="rtl"] .pro-card-btn::after{content:" ←"}
+  .pro-card-btn:hover{background:var(--gold);color:#3a2600}
+
   /* ---------- Weekly leaderboard ---------- */
   .lb-row{display:flex;align-items:center;gap:12px;padding:9px 6px;border-bottom:1px solid var(--line);font-size:14px}
   .lb-row:last-child{border-bottom:none}
@@ -1033,6 +1053,46 @@
 
       <div class="grid anim-in-3" id="lessonGrid"></div>
 
+      <!-- Go Pro — consolidated upsell gallery. Replaces the 5 scattered
+           progress-teaser blocks above (those stay in the DOM, permanently
+           hidden, so their button-click wiring elsewhere keeps working). -->
+      <div class="page-head anim-in-3" style="margin-top:36px" id="goProSection">
+        <span class="sh-eyebrow" data-i18n="goPro.eyebrow">Unlock more</span>
+        <h2 data-i18n="goPro.title">Go Pro</h2>
+      </div>
+      <div class="pro-scroll anim-in-3" id="goProScroll">
+        <div class="pro-card">
+          <div class="pro-card-number">01</div>
+          <div class="pro-card-title" data-i18n="progress.seeImprovement">See your improvement over time</div>
+          <div class="pro-card-desc" data-i18n="progress.teaserSub">Pro members get a score graph across their last 14 active days.</div>
+          <button class="pro-card-btn" data-i18n="progress.upgradeBtn">Upgrade to Pro</button>
+        </div>
+        <div class="pro-card">
+          <div class="pro-card-number">02</div>
+          <div class="pro-card-title" data-i18n="lb.teaserTitle">See how you rank this week</div>
+          <div class="pro-card-desc" data-i18n="lb.teaserSub">Pro members compete on a weekly XP leaderboard that resets every Monday.</div>
+          <button class="pro-card-btn" data-i18n="progress.upgradeBtn">Upgrade to Pro</button>
+        </div>
+        <div class="pro-card">
+          <div class="pro-card-number">03</div>
+          <div class="pro-card-title" data-i18n="leagues.teaserTitle">Climb the Speaking Leagues</div>
+          <div class="pro-card-desc" data-i18n="leagues.teaserSub">A small weekly cohort, not the whole world — finish top 5 to move up a league.</div>
+          <button class="pro-card-btn" data-i18n="progress.upgradeBtn">Upgrade to Pro</button>
+        </div>
+        <div class="pro-card">
+          <div class="pro-card-number">04</div>
+          <div class="pro-card-title" data-i18n="weakWords.teaserTitle">See which words trip you up</div>
+          <div class="pro-card-desc" data-i18n="weakWords.teaserSub">Pro members get a running list of the words they mispronounce most, tracked across every attempt.</div>
+          <button class="pro-card-btn" data-i18n="progress.upgradeBtn">Upgrade to Pro</button>
+        </div>
+        <div class="pro-card">
+          <div class="pro-card-number">05</div>
+          <div class="pro-card-title" data-i18n="journal.teaserTitle">Talk about your day, out loud</div>
+          <div class="pro-card-desc" data-i18n="journal.teaserSub">A new 60-second speaking prompt every day, with feedback and its own streak.</div>
+          <button class="pro-card-btn" data-i18n="progress.upgradeBtn">Upgrade to Pro</button>
+        </div>
+      </div>
+
       <div class="shadow-hero anim-in-3" style="margin-top:36px">
         <h2 data-i18n="shadow.title">Shadow Mode</h2>
         <p data-i18n="shadow.sub">Speak along WITH the recording, not after it — the fastest way to pick up native rhythm, linking, and reductions.</p>
@@ -1637,6 +1697,8 @@ const T = {
     "progress.seeImprovement": "See your improvement over time",
     "progress.teaserSub": "Pro members get a score graph across their last 14 active days.",
     "progress.upgradeBtn": "Upgrade to Pro",
+    "goPro.eyebrow": "Unlock more",
+    "goPro.title": "Go Pro",
     "lb.title": "Weekly leaderboard",
     "lb.teaserTitle": "See how you rank this week",
     "lb.teaserSub": "Pro members compete on a weekly XP leaderboard that resets every Monday.",
@@ -1917,6 +1979,8 @@ const T = {
     "progress.seeImprovement": "شاهد تطورك بمرور الوقت",
     "progress.teaserSub": "أعضاء Pro يحصلون على رسم بياني للنتائج خلال آخر 14 يوم نشط.",
     "progress.upgradeBtn": "الترقية إلى Pro",
+    "goPro.eyebrow": "افتح المزيد",
+    "goPro.title": "الترقية إلى Pro",
     "lb.title": "لوحة المتصدرين الأسبوعية",
     "lb.teaserTitle": "شاهد ترتيبك هذا الأسبوع",
     "lb.teaserSub": "يتنافس أعضاء Pro على لوحة متصدرين أسبوعية لنقاط الخبرة تُصفَّر كل يوم اثنين.",
@@ -2465,12 +2529,21 @@ function renderStats(prog){
   loadSpotlight();
   loadJournalCard();
   loadBizSprintCard();
+  updateGoProSection();
 }
+
+// Consolidated "Go Pro" gallery -- only free users should see the pitch.
+function updateGoProSection(){
+  const isPro = currentUser && currentUser.is_premium;
+  $("goProSection").classList.toggle("hidden", !!isPro);
+  $("goProScroll").classList.toggle("hidden", !!isPro);
+}
+document.querySelectorAll(".pro-card-btn").forEach(btn => btn.onclick = () => show("paywallView"));
 
 async function loadProgressGraph(){
   const isPro = currentUser && currentUser.is_premium;
   $("progressCard").classList.toggle("hidden", !isPro);
-  $("progressTeaser").classList.toggle("hidden", !!isPro);
+  $("progressTeaser").classList.add("hidden"); // superseded by consolidated Go Pro gallery
   if (!isPro) return;
   try {
     const h = await api("/api/progress/history");
@@ -2481,7 +2554,7 @@ async function loadProgressGraph(){
 async function loadLeaderboard(){
   const isPro = currentUser && currentUser.is_premium;
   $("leaderboardCard").classList.toggle("hidden", !isPro);
-  $("leaderboardTeaser").classList.toggle("hidden", !!isPro);
+  $("leaderboardTeaser").classList.add("hidden"); // superseded by consolidated Go Pro gallery
   if (!isPro) return;
   try {
     const lb = await api("/api/leaderboard");
@@ -2521,7 +2594,7 @@ $("lbUpgradeBtn").onclick = () => show("paywallView");
 async function loadLeagues(){
   const isPro = currentUser && currentUser.is_premium && !currentUser.is_admin;
   $("leaguesCard").classList.toggle("hidden", !isPro);
-  $("leaguesTeaser").classList.toggle("hidden", !!isPro);
+  $("leaguesTeaser").classList.add("hidden"); // superseded by consolidated Go Pro gallery
   if (!isPro) return;
   try {
     const lg = await api("/api/leagues");
@@ -2583,7 +2656,7 @@ $("weakWordsUpgradeBtn").onclick = () => show("paywallView");
 async function loadWeakWords(){
   const isPro = currentUser && currentUser.is_premium;
   $("weakWordsCard").classList.toggle("hidden", !isPro);
-  $("weakWordsTeaser").classList.toggle("hidden", !!isPro);
+  $("weakWordsTeaser").classList.add("hidden"); // superseded by consolidated Go Pro gallery
   if (!isPro) return;
   try {
     const ww = await api("/api/progress/weak-words");
@@ -3654,7 +3727,7 @@ let journalToday = null;
 async function loadJournalCard(){
   const isPro = currentUser && currentUser.is_premium;
   $("journalCard").classList.toggle("hidden", !isPro);
-  $("journalTeaser").classList.toggle("hidden", !!isPro);
+  $("journalTeaser").classList.add("hidden"); // superseded by consolidated Go Pro gallery
   if (!isPro) return;
   try {
     journalToday = await api("/api/journal/today");
