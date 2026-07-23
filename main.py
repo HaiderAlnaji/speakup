@@ -96,7 +96,7 @@ SMTP_FROM = os.getenv("SMTP_FROM", "").strip() or SMTP_USERNAME
 EMAIL_CONFIGURED = bool(SMTP_HOST and SMTP_USERNAME and SMTP_PASSWORD)
 
 # Used to build the absolute reset link in the email (e.g.
-# https://speakup-h4k8.onrender.com). Falls back to a same-origin relative
+# https://speakport-h4k8.onrender.com). Falls back to a same-origin relative
 # link if unset, which still works fine for the demo-mode response.
 PUBLIC_URL = os.getenv("PUBLIC_URL", "").strip().rstrip("/")
 
@@ -3241,7 +3241,7 @@ def zaincash_checkout(data: CheckoutPlanIn, request: Request,
     # order_id is OUR tracking id (embeds the user id, see _confirm_and_grant_zaincash).
     # externalReferenceId is a SEPARATE field ZainCash requires to be a UUID —
     # conflating the two caused a 400 Bad Request the first time this was tested.
-    order_id = f"speakup-{user.id}-{int(time.time())}"
+    order_id = f"speakport-{user.id}-{int(time.time())}"
     base = str(request.base_url).rstrip("/")
     token = get_zaincash_token()
 
@@ -3296,7 +3296,7 @@ def zaincash_checkout(data: CheckoutPlanIn, request: Request,
 def _confirm_and_grant_zaincash(order_id: str, session: Session) -> bool:
     """
     Looks up the user embedded in our own order_id (we control this format:
-    "speakup-{user_id}-{timestamp}"), then asks ZainCash's Inquiry API
+    "speakport-{user_id}-{timestamp}"), then asks ZainCash's Inquiry API
     whether that transaction actually succeeded before granting anything.
     """
     try:

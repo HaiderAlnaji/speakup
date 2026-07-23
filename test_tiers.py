@@ -98,7 +98,7 @@ with Session(main.engine) as s:
 
 main.zaincash_inquiry = lambda txn_id: "SUCCESS"
 with Session(main.engine) as s:
-    granted = main._confirm_and_grant_zaincash(f"speakup-{zc_id}-1", s)
+    granted = main._confirm_and_grant_zaincash(f"speakport-{zc_id}-1", s)
     check("_confirm_and_grant_zaincash returns True", granted is True)
     u = s.get(main.User, zc_id)
     check("granted user's plan_tier is 'max'", u.plan_tier == "max")

@@ -1734,7 +1734,7 @@
 //  Tiny front-end app. Talks to the FastAPI backend at /api.
 // ============================================================
 const API = "";                         // same origin as this page
-let token = localStorage.getItem("speakup_token") || null;
+let token = localStorage.getItem("speakport_token") || null;
 let mode = "login";                     // "login" or "register"
 let lessons = [];
 let shadowCats = [];                    // Shadow Mode categories
@@ -1782,7 +1782,7 @@ const $ = (id) => document.getElementById(id);
 //  purpose — that's the material being practiced. Only the surrounding
 //  interface (nav, buttons, labels, hints, alerts) is translated here.
 // ============================================================
-let LANG = localStorage.getItem("speakup_lang") || "en";
+let LANG = localStorage.getItem("speakport_lang") || "en";
 
 const T = {
   en: {
@@ -2391,7 +2391,7 @@ function applyI18n(){
 
 function setLang(lang){
   LANG = lang;
-  localStorage.setItem("speakup_lang", lang);
+  localStorage.setItem("speakport_lang", lang);
   applyI18n();
   // Re-render whatever dynamic view is currently on screen so it picks up
   // the new language too (static data-i18n elements are handled above).
@@ -2577,7 +2577,7 @@ $("authBtn").onclick = async () => {
       msg.className = "msg ok";
       msg.textContent = t("auth.resetSuccess");
       token = data.token;
-      localStorage.setItem("speakup_token", token);
+      localStorage.setItem("speakport_token", token);
       resetToken = null;
       history.replaceState(null, "", window.location.pathname);
       setTimeout(() => enterApp(data.user), 900);
@@ -2585,7 +2585,7 @@ $("authBtn").onclick = async () => {
       if (!email || !password){ msg.className = "msg err"; msg.textContent = t("auth.fillBoth"); return; }
       const data = await api("/api/" + mode, "POST", {email, password});
       token = data.token;
-      localStorage.setItem("speakup_token", token);
+      localStorage.setItem("speakport_token", token);
       enterApp(data.user);
     }
   } catch(e){ msg.className = "msg err"; msg.textContent = e.message; }
@@ -2636,14 +2636,14 @@ async function onGoogleCredential(response){
   try {
     const data = await api("/api/auth/google", "POST", {credential: response.credential});
     token = data.token;
-    localStorage.setItem("speakup_token", token);
+    localStorage.setItem("speakport_token", token);
     enterApp(data.user);
   } catch(e){ msg.className = "msg err"; msg.textContent = e.message; }
 }
 initGoogleSignIn();
 
 $("logoutBtn").onclick = () => {
-  token = null; localStorage.removeItem("speakup_token");
+  token = null; localStorage.removeItem("speakport_token");
   $("app").classList.add("hidden"); $("auth").classList.remove("hidden");
 };
 
@@ -3283,7 +3283,7 @@ $("confirmDeleteBtn").onclick = async () => {
   try {
     await api("/api/account/delete", "POST", {confirm_email: $("deleteConfirmInput").value});
     token = null;
-    localStorage.removeItem("speakup_token");
+    localStorage.removeItem("speakport_token");
     $("app").classList.add("hidden");
     $("auth").classList.remove("hidden");
     mode = "login";
@@ -3427,10 +3427,10 @@ const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 // Playback speed for native audio (Listen + both Shadow Mode audio buttons).
 // Just a rate on the SpeechSynthesisUtterance -- persisted locally since
 // it's a personal listening preference, not account data.
-let playbackRate = parseFloat(localStorage.getItem("speakup_rate")) || 0.9;
+let playbackRate = parseFloat(localStorage.getItem("speakport_rate")) || 0.9;
 function setPlaybackRate(rate, btnId){
   playbackRate = rate;
-  localStorage.setItem("speakup_rate", String(rate));
+  localStorage.setItem("speakport_rate", String(rate));
   ["speedSlowBtn","speedNormalBtn","speedFastBtn"].forEach(id => $(id).classList.remove("active"));
   $(btnId).classList.add("active");
 }
@@ -3449,13 +3449,13 @@ $("speedFastBtn").onclick = () => setPlaybackRate(1.15, "speedFastBtn");
 // Lessons and Review (the two modes where the text is normally shown right
 // away) -- Shadow Mode already has its own listen-then-speak mechanic, and
 // timed Sessions run on a strict clock, so both are left out of v1.
-let dictationMode = localStorage.getItem("speakup_dictation") === "1";
+let dictationMode = localStorage.getItem("speakport_dictation") === "1";
 function dictationEligible(){
   return current && (current.mode === "lesson" || current.mode === "review");
 }
 $("dictationToggleBtn").onclick = () => {
   dictationMode = !dictationMode;
-  localStorage.setItem("speakup_dictation", dictationMode ? "1" : "0");
+  localStorage.setItem("speakport_dictation", dictationMode ? "1" : "0");
   $("dictationToggleBtn").classList.toggle("active", dictationMode);
   $("dictationToggleBtn").textContent = t(dictationMode ? "dictation.toggleOn" : "dictation.toggleOff");
   if (current) renderPhrase();
@@ -4851,7 +4851,7 @@ if ("serviceWorker" in navigator){
   if (resetToken) return;
   if (!token) return;
   try { const user = await api("/api/me"); enterApp(user); }
-  catch { token = null; localStorage.removeItem("speakup_token"); return; }
+  catch { token = null; localStorage.removeItem("speakport_token"); return; }
 
   // Returning from a full-page redirect checkout (ZainCash, QiCard) or a
   // Paddle successUrl fallback. Clean the URL either way so a refresh

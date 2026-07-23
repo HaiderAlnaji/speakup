@@ -10,7 +10,7 @@
 //
 // It also never touches /api/ requests — those must always be live,
 // authenticated, and fresh; caching them would be actively wrong.
-const CACHE_NAME = "speakup-shell-v1";
+const CACHE_NAME = "speakport-shell-v1";
 const SHELL_ASSETS = ["/manifest.json", "/icon-192.png", "/icon-512.png"];
 
 self.addEventListener("install", (event) => {

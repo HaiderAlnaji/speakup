@@ -1,14 +1,14 @@
 # Tells Render.com how to run this app.
 # Render reads this automatically when you connect the repo.
 databases:
-  - name: speakup-db
+  - name: speakport-db
     plan: free           # Render's free Postgres — see the note in README about its limits
-    databaseName: speakup
-    user: speakup
+    databaseName: speakport
+    user: speakport
 
 services:
   - type: web
-    name: speakup
+    name: speakport
     runtime: python
     plan: free
     buildCommand: pip install -r requirements.txt
@@ -23,5 +23,5 @@ services:
       # this is what makes your data survive restarts and redeploys.
       - key: DATABASE_URL
         fromDatabase:
-          name: speakup-db
+          name: speakport-db
           property: connectionString

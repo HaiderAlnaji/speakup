@@ -211,7 +211,7 @@ Render gives you **HTTPS automatically**, which you need for the microphone to
 work at all in public. Browsers block mic access on non-HTTPS pages.
 
 ### Step 1 — Put the code on GitHub
-Create a **new empty repo** on github.com (call it `speakup`). Then, one line at a time:
+Create a **new empty repo** on github.com (call it `speakport`). Then, one line at a time:
 ```
 cd english-app
 ```
@@ -228,7 +228,7 @@ git commit -m "SpeakUp: 14-Day Speaking Sprint"
 git branch -M main
 ```
 ```
-git remote add origin https://github.com/YOUR-USERNAME/speakup.git
+git remote add origin https://github.com/YOUR-USERNAME/speakport.git
 ```
 ```
 git push -u origin main
@@ -239,13 +239,13 @@ git push -u origin main
 1. Go to **render.com** → sign up with your GitHub account.
 2. Click **New +** → **Blueprint** (not "Web Service" — Blueprint reads
    `render.yaml`, which now also provisions your Postgres database automatically).
-3. Pick your `speakup` repo → **Connect**. Render shows you the web service
-   AND a `speakup-db` Postgres database it's about to create together.
+3. Pick your `speakport` repo → **Connect**. Render shows you the web service
+   AND a `speakport-db` Postgres database it's about to create together.
 4. Click **Apply**. Wait ~3 minutes.
 5. Add your `ADMIN_EMAIL` in the web service's **Environment** tab, then
    **Manual Deploy** to restart with it applied.
 
-You get a live URL like `https://speakup.onrender.com` — live, on HTTPS, with
+You get a live URL like `https://speakport.onrender.com` — live, on HTTPS, with
 a real mic, and a **real Postgres database already connected** (verified: I
 tested this exact setup against a genuine Postgres server before writing
 this, not just in theory).
@@ -464,7 +464,7 @@ SMTP_HOST=smtp.gmail.com
 SMTP_PORT=587
 SMTP_USERNAME=you@gmail.com
 SMTP_PASSWORD=your-16-char-app-password
-PUBLIC_URL=https://speakup-h4k8.onrender.com
+PUBLIC_URL=https://speakport-h4k8.onrender.com
 ```
 Any SMTP account works — a Gmail address with an
 [app password](https://myaccount.google.com/apppasswords), Zoho, Outlook, or
@@ -491,7 +491,7 @@ To get one:
    "External," add an app name and your support email.
 3. **Create Credentials → OAuth client ID → Application type: Web application.**
 4. Under **Authorized JavaScript origins**, add your live URL
-   (`https://speakup-h4k8.onrender.com`) and, for local testing,
+   (`https://speakport-h4k8.onrender.com`) and, for local testing,
    `http://localhost:8000`.
 5. Create it, then copy the Client ID (looks like
    `123456789-abc123.apps.googleusercontent.com`).
