@@ -386,7 +386,7 @@
 
   /* ---------- Go Pro (consolidated upsell gallery) ---------- */
   .pro-scroll{display:flex;gap:24px;overflow-x:auto;padding:2px 2px 16px;margin-bottom:10px;
-    scrollbar-width:none}
+    scrollbar-width:none;scroll-padding-left:2px}
   .pro-scroll::-webkit-scrollbar{display:none}
   .pro-card{min-width:380px;max-width:380px;flex:0 0 auto;background:var(--surface);
     border:1px solid var(--line);border-radius:var(--radius);padding:40px;cursor:pointer;
@@ -420,8 +420,22 @@
     margin-bottom:8px}
   .stat .lbl{font-size:12px;font-weight:600;letter-spacing:2px;text-transform:uppercase;
     color:var(--muted);margin-top:8px}
-  .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px}
-  @media (max-width:900px){.grid{grid-template-columns:1fr}}
+  /* ---------- Shared horizontal scroll-row behavior ----------
+     Used by Go Pro, Talk, Lessons and Shadow's card rows: native
+     scroll-snap + click-and-drag + dim-non-hovered-siblings.
+     Snap is switched off while .dragging so it doesn't fight the
+     drag; it re-engages (and the browser eases to the nearest
+     card) the instant the mouse is released. */
+  .scroll-row{scroll-snap-type:x mandatory;cursor:grab}
+  .scroll-row.dragging{cursor:grabbing;scroll-snap-type:none;user-select:none}
+  .scroll-row:hover > *:not(:hover){opacity:.55}
+  .scroll-row img{-webkit-user-drag:none;user-drag:none}
+  .scroll-row > .card,.scroll-row > .pro-card{scroll-snap-align:start}
+
+  .grid{display:flex;gap:24px;overflow-x:auto;padding:2px 2px 16px;scrollbar-width:none}
+  .grid::-webkit-scrollbar{display:none}
+  .grid > .card{flex:0 0 340px}
+  @media (max-width:640px){.grid > .card{flex-basis:82vw}}
   .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);
     overflow:hidden;transition:all .5s cubic-bezier(.16,1,.3,1);position:relative}
   .card::before{content:"";position:absolute;inset:0;
@@ -1052,7 +1066,7 @@
         <b data-i18n="aiOff.b">AI conversations are switched off.</b> Add <code>ANTHROPIC_API_KEY</code> to your
         <code>.env</code> file and restart the server to turn them on.
       </div>
-      <div class="grid reveal" id="scenarioGrid"></div>
+      <div class="grid scroll-row reveal" id="scenarioGrid"></div>
 
       <div class="drill-section reveal" style="margin-top:100px">
         <div class="section-header" style="margin-bottom:0">
@@ -1187,7 +1201,7 @@
         <button class="btn-sm solid" id="journalUpgradeBtn" data-i18n="progress.upgradeBtn">Upgrade to Pro</button>
       </div>
 
-      <div class="grid reveal" id="lessonGrid"></div>
+      <div class="grid scroll-row reveal" id="lessonGrid"></div>
 
       <!-- Go Pro — consolidated upsell gallery. Replaces the 5 scattered
            progress-teaser blocks above (those stay in the DOM, permanently
@@ -1198,7 +1212,7 @@
           <h2 data-i18n="goPro.title">Go Pro</h2>
         </div>
       </div>
-      <div class="pro-scroll reveal" id="goProScroll">
+      <div class="pro-scroll scroll-row reveal" id="goProScroll">
         <div class="pro-card">
           <div class="pro-card-number">01</div>
           <div class="pro-card-title" data-i18n="progress.seeImprovement">See your improvement over time</div>
@@ -1278,7 +1292,7 @@
         </div>
       </div>
 
-      <div class="grid reveal" id="shadowGrid"></div>
+      <div class="grid scroll-row reveal" id="shadowGrid"></div>
     </div>
 
     <!-- Practice -->
@@ -4570,6 +4584,49 @@ async function pollForProConfirmation(){
   io2.observe(hero);
 
   window.__rebuildHeroLetters = () => { if (resize() && staticOnly) frame(); };
+})();
+
+// ============================================================
+//  Click-and-drag scrolling for horizontal card rows (Go Pro,
+//  Talk, Lessons, Shadow). Lets a mouse user grab the row and
+//  drag it left/right instead of needing a trackpad or scrollbar.
+//  Touch devices already scroll these natively, untouched here.
+//  A real drag (moved past a small threshold) suppresses the
+//  click that would otherwise land on whatever card the cursor
+//  released over, so dragging never accidentally opens a lesson.
+// ============================================================
+(function dragToScroll(){
+  document.querySelectorAll(".scroll-row").forEach(row => {
+    let down = false, moved = false, startX = 0, startScroll = 0;
+
+    row.addEventListener("mousedown", (e) => {
+      down = true; moved = false;
+      startX = e.pageX;
+      startScroll = row.scrollLeft;
+      row.classList.add("dragging");
+      e.preventDefault();   // stops native image-drag ghosting over card photos
+    });
+
+    window.addEventListener("mousemove", (e) => {
+      if (!down) return;
+      const dx = e.pageX - startX;
+      if (Math.abs(dx) > 4) moved = true;
+      row.scrollLeft = startScroll - dx;
+    });
+
+    function release(){
+      if (!down) return;
+      down = false;
+      row.classList.remove("dragging");
+    }
+    window.addEventListener("mouseup", release);
+    row.addEventListener("mouseleave", () => { if (down) release(); });
+
+    // Capture phase so this runs before the card's own onclick.
+    row.addEventListener("click", (e) => {
+      if (moved){ e.stopPropagation(); e.preventDefault(); moved = false; }
+    }, true);
+  });
 })();
 
 // ============================================================
