@@ -173,6 +173,15 @@
   @media (max-width:640px){.topbar{padding:14px 22px}}
   .topbar .brand{display:flex;align-items:center;gap:9px}
   .topbar .brandmark{font-size:21px;font-weight:400}
+  .nav-links{display:flex;gap:32px}
+  .nav-link{font-size:13px;font-weight:500;color:var(--muted);text-decoration:none;
+    letter-spacing:.02em;position:relative;transition:color .3s var(--ease)}
+  .nav-link:hover{color:var(--ink)}
+  .nav-link::after{content:"";position:absolute;bottom:-4px;left:0;width:0;height:1px;
+    background:var(--brand);transition:width .3s var(--ease)}
+  .nav-link:hover::after{width:100%}
+  html[dir="rtl"] .nav-link::after{left:auto;right:0}
+  @media (max-width:900px){.nav-links{display:none}}
   .topbar .user{display:flex;align-items:center;gap:12px;font-size:13.5px;color:var(--muted)}
   .badge-pro{background:var(--gold);color:#3a2600;font-weight:600;font-size:11px;
     padding:3px 9px;border-radius:20px;letter-spacing:.02em}
@@ -854,6 +863,13 @@
       <span class="wave"><span></span><span></span><span></span><span></span><span></span></span>
       <span class="brandmark">Speak<em>Up</em></span>
     </div>
+    <div class="nav-links" id="navLinks">
+      <a href="#sprintHero" class="nav-link" data-i18n="nav.linkSprint">Sprint</a>
+      <a href="#talkSection" class="nav-link" data-i18n="nav.linkTalk">Talk</a>
+      <a href="#lessonsSection" class="nav-link" data-i18n="nav.linkLessons">Lessons</a>
+      <a href="#shadowSection" class="nav-link" data-i18n="nav.linkShadow">Shadow</a>
+      <a href="#achievementsSection" class="nav-link" data-i18n="nav.linkProgress">Progress</a>
+    </div>
     <div class="user">
       <span id="userEmail"></span>
       <span id="xpBadge" class="badge-xp hidden">⭐ 0 XP</span>
@@ -965,7 +981,7 @@
         <button class="btn-sm solid" id="bizSprintCta" data-i18n="bizSprint.cta">Start the Business Sprint</button>
       </div>
 
-      <div class="section-header reveal">
+      <div class="section-header reveal" id="talkSection">
         <div>
           <span class="sh-eyebrow" data-i18n="talk.eyebrow">Conversations</span>
           <h2 data-i18n-html="talk.title">Talk to <em>someone</em></h2>
@@ -997,7 +1013,7 @@
       </div>
       <div id="topicOut" class="topic-out hidden"></div>
 
-      <div class="section-header reveal" style="margin-top:36px">
+      <div class="section-header reveal" style="margin-top:36px" id="lessonsSection">
         <div>
           <span class="sh-eyebrow" data-i18n="lessons.eyebrow">Your journey</span>
           <h2 data-i18n-html="lessons.title">Practice <em>lessons</em></h2>
@@ -1011,7 +1027,7 @@
         <div class="stat"><div class="num" id="statXp">0</div><div class="lbl" data-i18n="stat.xpEarned">XP earned</div></div>
       </div>
 
-      <div class="section-header reveal" style="margin-top:8px">
+      <div class="section-header reveal" style="margin-top:8px" id="achievementsSection">
         <div>
           <span class="sh-eyebrow" data-i18n="badges.eyebrow">Milestones</span>
           <h2 data-i18n-html="badges.title">Your <em>Achievements</em></h2>
@@ -1153,7 +1169,7 @@
         </div>
       </div>
 
-      <div class="shadow-hero reveal">
+      <div class="shadow-hero reveal" id="shadowSection">
         <div class="section-header" style="margin-bottom:0">
           <div>
             <span class="sh-eyebrow" data-i18n="shadow.eyebrow">Immersive</span>
@@ -1711,6 +1727,8 @@ const T = {
     "auth.invalidResetLink": "That reset link looks invalid. Please request a new one.",
     "auth.orDivider": "or",
     "nav.admin": "Admin", "nav.logout": "Log out", "nav.langToggle": "العربية",
+    "nav.linkSprint": "Sprint", "nav.linkTalk": "Talk", "nav.linkLessons": "Lessons",
+    "nav.linkShadow": "Shadow", "nav.linkProgress": "Progress",
     "nav.settings": "Settings",
     "nav.badgePro": "PRO", "nav.badgeMax": "MAX",
     "settings.title": "Account settings", "settings.sub": "Manage your profile, password, and plan.",
@@ -1999,6 +2017,8 @@ const T = {
     "auth.invalidResetLink": "رابط إعادة التعيين هذا غير صالح. يرجى طلب رابط جديد.",
     "auth.orDivider": "أو",
     "nav.admin": "الإدارة", "nav.logout": "تسجيل الخروج", "nav.langToggle": "English",
+    "nav.linkSprint": "السبرنت", "nav.linkTalk": "التحدث", "nav.linkLessons": "الدروس",
+    "nav.linkShadow": "المحاكاة", "nav.linkProgress": "التقدم",
     "nav.settings": "الإعدادات",
     "nav.badgePro": "PRO", "nav.badgeMax": "MAX",
     "settings.title": "إعدادات الحساب", "settings.sub": "إدارة ملفك الشخصي وكلمة المرور والخطة.",
@@ -2352,6 +2372,22 @@ function show(view){
   window.addEventListener("scroll", update, { passive: true });
   update();
 })();
+
+// Nav links jump to a dashboard section. Since the targets only exist on the
+// dashboard, clicking one from another screen (Settings, Paywall, etc.)
+// switches back to the dashboard first, then scrolls once it's laid out.
+document.querySelectorAll(".nav-link").forEach(link => {
+  link.addEventListener("click", (e) => {
+    e.preventDefault();
+    const targetId = link.getAttribute("href").slice(1);
+    const wasOnDashboard = !$("dashboard").classList.contains("hidden");
+    if (!wasOnDashboard) show("dashboard");
+    requestAnimationFrame(() => {
+      const target = document.getElementById(targetId);
+      if (target) target.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  });
+});
 
 // Scroll reveal -- sections further down the dashboard fade + slide up as
 // they enter the viewport (matches the mockup's .reveal/.visible pattern).
