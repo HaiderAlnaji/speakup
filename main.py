@@ -143,6 +143,11 @@ PADDLE_PRICE_ID = os.getenv("PADDLE_PRICE_ID", "").strip()          # the $4.99/
 # checkout is only offered to Paddle customers once this is set; until
 # then they still get the monthly price, same as before this existed.
 PADDLE_PRICE_ID_ANNUAL = os.getenv("PADDLE_PRICE_ID_ANNUAL", "").strip()
+# Optional: the Max tier's Paddle Prices (Pro + AI Roleplay). Same idea as
+# above -- create these yourself in the Paddle dashboard. Max checkout is
+# only offered to Paddle customers once at least the monthly one is set.
+PADDLE_PRICE_ID_MAX = os.getenv("PADDLE_PRICE_ID_MAX", "").strip()
+PADDLE_PRICE_ID_MAX_ANNUAL = os.getenv("PADDLE_PRICE_ID_MAX_ANNUAL", "").strip()
 PADDLE_ENV = os.getenv("PADDLE_ENV", "sandbox").strip()             # "sandbox" or "production"
 
 # All four must be set for real payments to be live. Until then, SpeakUp
@@ -179,8 +184,15 @@ ZAINCASH_SERVICE_TYPE = os.getenv("ZAINCASH_SERVICE_TYPE", "JAWS").strip()
 # Pro plan price. USD is display-only; PRO_PRICE_IQD is what ZainCash
 # actually charges. ~1,300 IQD = $1 as of mid-2026 — adjust in your .env
 # if the exchange rate moves a lot.
-PRO_PRICE_USD = os.getenv("PRO_PRICE_USD", "4.99").strip()
-PRO_PRICE_IQD = os.getenv("PRO_PRICE_IQD", "6500").strip()
+PRO_PRICE_USD = os.getenv("PRO_PRICE_USD", "6.99").strip()
+PRO_PRICE_IQD = os.getenv("PRO_PRICE_IQD", "9100").strip()
+
+# Max plan price — everything Pro includes, PLUS AI Roleplay (free-form AI
+# conversation practice). NOTE: the AI engine itself isn't built yet; Max is
+# being introduced now as a purchasable tier ("coming soon" for that one
+# perk) so pricing/checkout/gating are ready ahead of it.
+MAX_PRICE_USD = os.getenv("MAX_PRICE_USD", "9.99").strip()
+MAX_PRICE_IQD = os.getenv("MAX_PRICE_IQD", "13000").strip()
 
 # Annual pass — a second, longer one-time option alongside the 30-day pass
 # above (same ZainCash/QiCard checkout flow, just a different amount/
@@ -195,6 +207,8 @@ def _default_annual(monthly_str: str) -> str:
 
 PRO_PRICE_USD_ANNUAL = os.getenv("PRO_PRICE_USD_ANNUAL", "").strip() or _default_annual(PRO_PRICE_USD)
 PRO_PRICE_IQD_ANNUAL = os.getenv("PRO_PRICE_IQD_ANNUAL", "").strip() or _default_annual(PRO_PRICE_IQD)
+MAX_PRICE_USD_ANNUAL = os.getenv("MAX_PRICE_USD_ANNUAL", "").strip() or _default_annual(MAX_PRICE_USD)
+MAX_PRICE_IQD_ANNUAL = os.getenv("MAX_PRICE_IQD_ANNUAL", "").strip() or _default_annual(MAX_PRICE_IQD)
 
 # How many days of Pro each plan grants once payment is confirmed --
 # shared by ZainCash and QiCard (both one-time, non-recurring rails).
@@ -292,6 +306,15 @@ class User(SQLModel, table=True):
     # webhook, or the /sync fallback) so all three grant the right number
     # of days. Irrelevant for Paddle, which tracks its own billing interval.
     checkout_plan: str = "monthly"
+    # Which tier ("pro" | "max") this user's Pro access is currently at --
+    # Max adds AI Roleplay on top of everything Pro includes. Deliberately
+    # separate from is_premium (which stays a plain "has paid access" bool
+    # used by ~20 existing gates across the app) so introducing tiers can't
+    # touch any of those. Only meaningful while is_premium is True.
+    plan_tier: str = "pro"
+    # Which tier the customer picked at ZainCash/QiCard checkout -- same
+    # role as checkout_plan above, just for tier instead of billing period.
+    checkout_tier: str = "pro"
 
 
 class Attempt(SQLModel, table=True):
@@ -1680,6 +1703,7 @@ def public_user(user: User) -> dict:
         "pro_expires_at": user.pro_expires_at.isoformat() if user.pro_expires_at else None,
         "pro_provider": pro_provider,
         "goal": user.goal,
+        "plan_tier": user.plan_tier,
     }
 
 
@@ -2959,13 +2983,17 @@ def badges_data(user: User = Depends(get_current_user),
     }
 
 
+class UpgradeIn(BaseModel):
+    tier: str = "pro"
+
+
 @app.post("/api/upgrade")
-def upgrade(user: User = Depends(get_current_user),
+def upgrade(data: UpgradeIn = UpgradeIn(), user: User = Depends(get_current_user),
             session: Session = Depends(get_session)):
     """
     DEMO-MODE ONLY. While no real payment provider is configured, this
-    instantly grants Pro so you can test the whole app without a Paddle
-    account. The moment PADDLE_* env vars are set (production), this
+    instantly grants Pro (or Max) so you can test the whole app without a
+    Paddle account. The moment PADDLE_* env vars are set (production), this
     shortcut is disabled — real Pro access then comes ONLY from a signed
     payment webhook (see /api/billing/webhook below). This prevents anyone
     from just calling this endpoint directly to get Pro for free.
@@ -2974,6 +3002,7 @@ def upgrade(user: User = Depends(get_current_user),
         raise HTTPException(403, "Real payments are live — use the Upgrade "
                                  "button to check out.")
     user.is_premium = True
+    user.plan_tier = data.tier if data.tier in ("pro", "max") else "pro"
     session.add(user)
     session.commit()
     return {"is_premium": True}
@@ -3013,6 +3042,9 @@ def billing_config(user: User = Depends(get_current_user)):
         # annual option to Paddle customers once you've created a second
         # Price in your Paddle dashboard and set PADDLE_PRICE_ID_ANNUAL.
         "price_id_annual": PADDLE_PRICE_ID_ANNUAL if PADDLE_CONFIGURED else "",
+        # Same "not offered yet until configured" rule for the Max tier.
+        "price_id_max": PADDLE_PRICE_ID_MAX if PADDLE_CONFIGURED else "",
+        "price_id_max_annual": PADDLE_PRICE_ID_MAX_ANNUAL if PADDLE_CONFIGURED else "",
         "environment": PADDLE_ENV,
         "price_usd": PRO_PRICE_USD,
         "price_iqd": PRO_PRICE_IQD,
@@ -3021,6 +3053,11 @@ def billing_config(user: User = Depends(get_current_user)):
         # extra setup needed the way Paddle's recurring billing requires.
         "price_usd_annual": PRO_PRICE_USD_ANNUAL,
         "price_iqd_annual": PRO_PRICE_IQD_ANNUAL,
+        # Max tier -- everything Pro includes, plus AI Roleplay (coming soon).
+        "price_usd_max": MAX_PRICE_USD,
+        "price_iqd_max": MAX_PRICE_IQD,
+        "price_usd_max_annual": MAX_PRICE_USD_ANNUAL,
+        "price_iqd_max_annual": MAX_PRICE_IQD_ANNUAL,
         "customer_email": user.email,
         "user_id": user.id,
     }
@@ -3171,6 +3208,7 @@ def zaincash_inquiry(transaction_id: str) -> str | None:
 
 class CheckoutPlanIn(BaseModel):
     plan: str = "monthly"
+    tier: str = "pro"
 
 
 @app.post("/api/billing/zaincash/checkout")
@@ -3187,11 +3225,16 @@ def zaincash_checkout(data: CheckoutPlanIn, request: Request,
     if not ZAINCASH_CONFIGURED:
         raise HTTPException(503, "ZainCash is not configured on this server.")
     plan = data.plan if data.plan in PRO_PLAN_DAYS else "monthly"
-    amount_iqd = PRO_PRICE_IQD_ANNUAL if plan == "annual" else PRO_PRICE_IQD
+    tier = data.tier if data.tier in ("pro", "max") else "pro"
+    if tier == "max":
+        amount_iqd = MAX_PRICE_IQD_ANNUAL if plan == "annual" else MAX_PRICE_IQD
+    else:
+        amount_iqd = PRO_PRICE_IQD_ANNUAL if plan == "annual" else PRO_PRICE_IQD
     # Remembered now, read back whenever this transaction is confirmed
-    # (callback, or the /sync fallback) so the right number of days gets
-    # granted -- see PRO_PLAN_DAYS.
+    # (callback, or the /sync fallback) so the right number of days AND the
+    # right tier get granted -- see PRO_PLAN_DAYS.
     user.checkout_plan = plan
+    user.checkout_tier = tier
     session.add(user)
     session.commit()
 
@@ -3267,6 +3310,7 @@ def _confirm_and_grant_zaincash(order_id: str, session: Session) -> bool:
         return False
     user.is_premium = True
     user.subscription_status = "active"
+    user.plan_tier = user.checkout_tier
     user.pro_expires_at = dt.datetime.utcnow() + dt.timedelta(days=PRO_PLAN_DAYS.get(user.checkout_plan, 30))
     session.add(user)
     session.commit()
@@ -3297,6 +3341,7 @@ def zaincash_sync(user: User = Depends(get_current_user),
         if zaincash_inquiry(user.zaincash_transaction_id) == "SUCCESS":
             user.is_premium = True
             user.subscription_status = "active"
+            user.plan_tier = user.checkout_tier
             user.pro_expires_at = dt.datetime.utcnow() + dt.timedelta(days=PRO_PLAN_DAYS.get(user.checkout_plan, 30))
             session.add(user)
             session.commit()
@@ -3352,8 +3397,13 @@ def qicard_checkout(data: CheckoutPlanIn, request: Request,
     if not QICARD_CONFIGURED:
         raise HTTPException(503, "QiCard is not configured on this server.")
     plan = data.plan if data.plan in PRO_PLAN_DAYS else "monthly"
-    amount_iqd = PRO_PRICE_IQD_ANNUAL if plan == "annual" else PRO_PRICE_IQD
+    tier = data.tier if data.tier in ("pro", "max") else "pro"
+    if tier == "max":
+        amount_iqd = MAX_PRICE_IQD_ANNUAL if plan == "annual" else MAX_PRICE_IQD
+    else:
+        amount_iqd = PRO_PRICE_IQD_ANNUAL if plan == "annual" else PRO_PRICE_IQD
     user.checkout_plan = plan
+    user.checkout_tier = tier
     session.add(user)
     session.commit()
 
@@ -3400,6 +3450,7 @@ def _confirm_and_grant_qicard(user_id: int, session: Session) -> bool:
         return False
     user.is_premium = True
     user.subscription_status = "active"
+    user.plan_tier = user.checkout_tier
     user.pro_expires_at = dt.datetime.utcnow() + dt.timedelta(days=PRO_PLAN_DAYS.get(user.checkout_plan, 30))
     session.add(user)
     session.commit()
@@ -3444,6 +3495,7 @@ async def qicard_webhook(request: Request, session: Session = Depends(get_sessio
     if not user.is_premium and qicard_get_status(payment_id) == "SUCCESS":
         user.is_premium = True
         user.subscription_status = "active"
+        user.plan_tier = user.checkout_tier
         user.pro_expires_at = dt.datetime.utcnow() + dt.timedelta(days=PRO_PLAN_DAYS.get(user.checkout_plan, 30))
         session.add(user)
         session.commit()
@@ -3462,6 +3514,7 @@ def qicard_sync(user: User = Depends(get_current_user),
         if qicard_get_status(user.qicard_payment_id) == "SUCCESS":
             user.is_premium = True
             user.subscription_status = "active"
+            user.plan_tier = user.checkout_tier
             user.pro_expires_at = dt.datetime.utcnow() + dt.timedelta(days=PRO_PLAN_DAYS.get(user.checkout_plan, 30))
             session.add(user)
             session.commit()

@@ -375,6 +375,8 @@
   .goal-btn:hover{border-color:var(--brand)}
   .goal-btn.active{background:var(--brand);color:#fff}
   .plan-toggle{display:flex;justify-content:center;gap:8px;margin-bottom:14px}
+  .tier-toggle{display:flex;justify-content:center;gap:8px;margin-bottom:10px}
+  .perks li.max-only{color:var(--brand);font-weight:600}
   .ww-badge,.rec-badge{display:inline-block;background:var(--brand);color:#fff;font-size:10.5px;
     font-weight:700;padding:2px 8px;border-radius:10px;margin-inline-start:6px;vertical-align:middle}
 
@@ -1447,6 +1449,10 @@
       <div class="paywall">
         <h2 data-i18n="paywall.title">Unlock SpeakUp Pro</h2>
         <p data-i18n="paywall.sub">Get the 14-Day Speaking Sprint — plus every lesson and level.</p>
+        <div class="tier-toggle hidden" id="tierToggle">
+          <button class="goal-btn active" id="tierProBtn" data-i18n="paywall.tierPro">Pro</button>
+          <button class="goal-btn" id="tierMaxBtn" data-i18n="paywall.tierMax">Max ✨</button>
+        </div>
         <div class="plan-toggle hidden" id="planToggle">
           <button class="goal-btn active" id="planMonthlyBtn" data-i18n="paywall.monthly">Monthly</button>
           <button class="goal-btn" id="planAnnualBtn" data-i18n="paywall.annualSave">Annual — save 2 months</button>
@@ -1462,6 +1468,7 @@
           <li data-i18n="paywall.perk6">Weekly leaderboard + spaced-repetition review</li>
           <li data-i18n="paywall.perk7">A daily Spotlight phrase, hand-picked each day</li>
           <li data-i18n="paywall.perk8">Voice Journal — a daily 60-second speaking prompt with its own streak</li>
+          <li class="max-only hidden" id="perkAiRoleplay" data-i18n="paywall.perkAiRoleplay">✨ AI Roleplay — free-form spoken conversation with an AI partner (coming soon)</li>
         </ul>
         <button class="btn-gold" id="upgradeBtn" data-i18n="paywall.upgradeBtn">Upgrade to Pro</button>
         <div class="upgrade-options hidden" id="upgradeOptions"></div>
@@ -1526,6 +1533,7 @@ const T = {
     "auth.orDivider": "or",
     "nav.admin": "Admin", "nav.logout": "Log out", "nav.langToggle": "العربية",
     "nav.settings": "Settings",
+    "nav.badgePro": "PRO", "nav.badgeMax": "MAX",
     "settings.title": "Account settings", "settings.sub": "Manage your profile, password, and plan.",
     "settings.profileTitle": "Profile",
     "settings.displayName": "Display name", "settings.displayNamePh": "e.g. Haider",
@@ -1752,6 +1760,8 @@ const T = {
     "paywall.perYear": " / year",
     "paywall.monthly": "Monthly",
     "paywall.annualSave": "Annual — save 2 months",
+    "paywall.tierPro": "Pro",
+    "paywall.tierMax": "Max ✨",
     "paywall.perk1": "Two 14-Day Sprints — Speaking & Business English",
     "paywall.perk2": "A daily challenge, a real streak, and a Streak Shield that covers one missed day",
     "paywall.perk3": "Certificate when you finish all 14 days",
@@ -1760,6 +1770,7 @@ const T = {
     "paywall.perk6": "Weekly leaderboard + spaced-repetition review",
     "paywall.perk7": "A daily Spotlight phrase, hand-picked each day",
     "paywall.perk8": "Voice Journal — a daily 60-second speaking prompt with its own streak",
+    "paywall.perkAiRoleplay": "✨ AI Roleplay — free-form spoken conversation with an AI partner (coming soon)",
     "paywall.upgradeBtn": "Upgrade to Pro", "paywall.loading": "Loading…",
     "paywall.demoMode": "Demo mode: this unlocks instantly.",
     "billing.oneTimeNote": "This is a one-time 30-day pass, not a subscription — it won't auto-renew or charge you again. Come back and pay once more anytime you want to keep going.",
@@ -1802,6 +1813,7 @@ const T = {
     "auth.orDivider": "أو",
     "nav.admin": "الإدارة", "nav.logout": "تسجيل الخروج", "nav.langToggle": "English",
     "nav.settings": "الإعدادات",
+    "nav.badgePro": "PRO", "nav.badgeMax": "MAX",
     "settings.title": "إعدادات الحساب", "settings.sub": "إدارة ملفك الشخصي وكلمة المرور والخطة.",
     "settings.profileTitle": "الملف الشخصي",
     "settings.displayName": "الاسم المعروض", "settings.displayNamePh": "مثال: حيدر",
@@ -2028,6 +2040,8 @@ const T = {
     "paywall.perYear": " / سنوياً",
     "paywall.monthly": "شهري",
     "paywall.annualSave": "سنوي — وفّر شهرين",
+    "paywall.tierPro": "Pro",
+    "paywall.tierMax": "Max ✨",
     "paywall.perk1": "سبرنتان لمدة 14 يوماً — التحدث والإنجليزية للأعمال",
     "paywall.perk2": "تحدٍّ يومي، سلسلة حقيقية، ودرع للسلسلة يحمي يوماً فائتاً واحداً",
     "paywall.perk3": "شهادة عند إتمام الأيام الـ14",
@@ -2036,6 +2050,7 @@ const T = {
     "paywall.perk6": "لوحة الصدارة الأسبوعية + مراجعة بالتكرار المتباعد",
     "paywall.perk7": "عبارة يومية مميزة، مختارة كل يوم",
     "paywall.perk8": "اليوميات الصوتية — تمرين تحدث يومي لمدة 60 ثانية بسلسلة أيام خاصة به",
+    "paywall.perkAiRoleplay": "✨ محادثة حرة مع الذكاء الاصطناعي — تدرّب بالتحدث بحرية مع شريك ذكاء اصطناعي (قريباً)",
     "paywall.upgradeBtn": "الترقية إلى Pro", "paywall.loading": "جارٍ التحميل…",
     "paywall.demoMode": "وضع تجريبي: يتم الفتح فوراً.",
     "billing.oneTimeNote": "هذه بطاقة دخول لمرة واحدة لمدة 30 يوماً، وليست اشتراكاً — لن تتجدد تلقائياً ولن تُخصم منك مرة أخرى. عد وادفع مرة أخرى في أي وقت تريد المتابعة فيه.",
@@ -2278,12 +2293,19 @@ $("logoutBtn").onclick = () => {
 
 // ---- ENTER APP ----
 let currentUser = null;
+// Shows/hides the header badge AND picks its text (PRO vs MAX) -- Max is a
+// separate tier from Pro (adds AI Roleplay) but both are "is_premium".
+function updateProBadge(u){
+  const badge = $("proBadge");
+  badge.classList.toggle("hidden", !u.is_premium);
+  badge.textContent = (u.is_premium && u.plan_tier === "max") ? t("nav.badgeMax") : t("nav.badgePro");
+}
 function enterApp(user){
   currentUser = user;
   $("auth").classList.add("hidden");
   $("app").classList.remove("hidden");
   $("userEmail").textContent = user.name || user.email;
-  $("proBadge").classList.toggle("hidden", !user.is_premium);
+  updateProBadge(user);
   $("adminBtn").classList.toggle("hidden", !user.is_admin);
   // Pro pill on "Drill any topic" shows only to free users.
   const pill = $("drillProPill");
@@ -2304,7 +2326,7 @@ async function loadDashboard(){
   // changed in Settings — is reflected right away, everywhere.
   currentUser = me_;
   $("userEmail").textContent = me_.name || me_.email;
-  $("proBadge").classList.toggle("hidden", !me_.is_premium);
+  updateProBadge(me_);
   lessons = ls; sprint = sp; scenarios = sc.scenarios; shadowCats = sh;
   $("aiOff").classList.toggle("hidden", sc.ai_ready);
   renderStats(prog);
@@ -3807,6 +3829,7 @@ function renderJournalReward(streak, alreadyDone){
 // ---- UPGRADE ----
 let billingCfg = null;
 let selectedBillingPlan = "monthly";   // "monthly" | "annual" — which price the paywall is showing
+let selectedBillingTier = "pro";       // "pro" | "max" — which plan tier the paywall is showing
 
 async function getBillingCfg(){
   if (!billingCfg) billingCfg = await api("/api/billing/config");
@@ -3822,18 +3845,35 @@ async function refreshPriceDisplay(){
     const opts = $("upgradeOptions");
     opts.innerHTML = "";
 
-    // Annual is only offered where there's a real annual price behind it:
-    // any local provider (we compute that price ourselves) or Paddle once a
-    // second Price object has been set up in the Paddle dashboard.
-    const annualAvailable = localProviders.length > 0 || (cfg.provider === "paddle" && !!cfg.price_id_annual);
+    // Max is only gated for Paddle, which needs its own dashboard-created
+    // Price before we can charge for it. The local rails (and demo mode)
+    // compute Max's price ourselves, so it's always available there —
+    // including in demo mode, so you can preview it without a real payment
+    // provider configured.
+    const maxAvailable = cfg.provider === "paddle" ? !!cfg.price_id_max : true;
+    if (!maxAvailable) selectedBillingTier = "pro";
+    $("tierToggle").classList.toggle("hidden", !maxAvailable);
+    $("tierProBtn").classList.toggle("active", selectedBillingTier === "pro");
+    $("tierMaxBtn").classList.toggle("active", selectedBillingTier === "max");
+    const isMax = selectedBillingTier === "max";
+    $("perkAiRoleplay").classList.toggle("hidden", !isMax);
+
+    // Same idea for annual, but checked against whichever tier is currently
+    // selected (Paddle needs a separate annual Price per tier).
+    const annualPriceId = isMax ? cfg.price_id_max_annual : cfg.price_id_annual;
+    const annualAvailable = cfg.provider === "paddle" ? !!annualPriceId : true;
     if (!annualAvailable) selectedBillingPlan = "monthly";
     $("planToggle").classList.toggle("hidden", !annualAvailable);
     $("planMonthlyBtn").classList.toggle("active", selectedBillingPlan === "monthly");
     $("planAnnualBtn").classList.toggle("active", selectedBillingPlan === "annual");
 
     const isAnnual = selectedBillingPlan === "annual";
-    const usd = isAnnual ? cfg.price_usd_annual : cfg.price_usd;
-    const iqd = isAnnual ? cfg.price_iqd_annual : cfg.price_iqd;
+    const usd = isMax
+      ? (isAnnual ? cfg.price_usd_max_annual : cfg.price_usd_max)
+      : (isAnnual ? cfg.price_usd_annual : cfg.price_usd);
+    const iqd = isMax
+      ? (isAnnual ? cfg.price_iqd_max_annual : cfg.price_iqd_max)
+      : (isAnnual ? cfg.price_iqd_annual : cfg.price_iqd);
     $("proPrice").innerHTML = `$${usd}<small>${isAnnual ? t("paywall.perYear") : t("paywall.perMonth")}</small>`;
 
     if (cfg.provider === "paddle"){
@@ -3879,6 +3919,8 @@ async function refreshPriceDisplay(){
 
 $("planMonthlyBtn").onclick = () => { selectedBillingPlan = "monthly"; refreshPriceDisplay(); };
 $("planAnnualBtn").onclick = () => { selectedBillingPlan = "annual"; refreshPriceDisplay(); };
+$("tierProBtn").onclick = () => { selectedBillingTier = "pro"; refreshPriceDisplay(); };
+$("tierMaxBtn").onclick = () => { selectedBillingTier = "max"; refreshPriceDisplay(); };
 
 $("upgradeBtn").onclick = async () => {
   $("upgradeBtn").disabled = true; $("upgradeBtn").textContent = t("paywall.loading");
@@ -3891,7 +3933,7 @@ $("upgradeBtn").onclick = async () => {
       await startLocalCheckout(localProviders[0].id, $("upgradeBtn"));
     } else {
       // Demo mode: no real payment provider configured on the server yet.
-      await api("/api/upgrade","POST");
+      await api("/api/upgrade","POST",{tier: selectedBillingTier});
       await onBecamePro();
     }
   } catch(e){ alert(e.message); }
@@ -3907,7 +3949,7 @@ async function startLocalCheckout(providerId, btn){
   const original = btn.textContent;
   btn.disabled = true; btn.textContent = t("paywall.openingCheckout");
   try {
-    const res = await api(`/api/billing/${providerId}/checkout`, "POST", {plan: selectedBillingPlan});
+    const res = await api(`/api/billing/${providerId}/checkout`, "POST", {plan: selectedBillingPlan, tier: selectedBillingTier});
     if (!res.redirect_url) throw new Error(t("paywall.couldNotStart"));
     window.location.href = res.redirect_url;
   } catch(e){
@@ -3918,8 +3960,11 @@ async function startLocalCheckout(providerId, btn){
 
 // Shared cleanup once the user is confirmed Pro, whichever path got them there.
 async function onBecamePro(){
-  if (currentUser) currentUser.is_premium = true;
-  $("proBadge").classList.remove("hidden");
+  if (currentUser){
+    currentUser.is_premium = true;
+    currentUser.plan_tier = selectedBillingTier;   // optimistic; loadDashboard() below confirms it
+    updateProBadge(currentUser);
+  }
   const pill = $("drillProPill");
   if (pill) pill.classList.add("hidden");
   await loadDashboard();
@@ -3939,7 +3984,11 @@ async function startPaddleCheckout(cfg){
     paddleInitialized = true;
   }
 
-  const priceId = (selectedBillingPlan === "annual" && cfg.price_id_annual) ? cfg.price_id_annual : cfg.price_id;
+  const isMax = selectedBillingTier === "max";
+  const isAnnual = selectedBillingPlan === "annual";
+  const priceId = isMax
+    ? ((isAnnual && cfg.price_id_max_annual) ? cfg.price_id_max_annual : cfg.price_id_max)
+    : ((isAnnual && cfg.price_id_annual) ? cfg.price_id_annual : cfg.price_id);
 
   $("upgradeBtn").textContent = t("paywall.openingCheckout");
   Paddle.Checkout.open({
