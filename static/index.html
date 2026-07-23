@@ -579,7 +579,13 @@
   #waveCanvas{position:absolute;inset:0;width:100%;height:100%;display:block;z-index:0;opacity:.6}
   .sprint-hero::after{content:"";position:absolute;inset:0;pointer-events:none;z-index:1;
     background:linear-gradient(180deg,transparent 0%,var(--bg) 92%)}
-  .sh-content{position:relative;z-index:2;max-width:900px;display:flex;flex-direction:column;
+  /* Sits above the fade-to-background overlay so the letters stay crisp in
+     the lower half of the hero, but below .sh-content so the real hero copy
+     always reads cleanly on top. Purely decorative -- pointer-events:none,
+     mouse tracking happens on #sprintHero itself. */
+  #heroLetterCanvas{position:absolute;inset:0;width:100%;height:100%;display:block;
+    z-index:2;pointer-events:none}
+  .sh-content{position:relative;z-index:3;max-width:900px;display:flex;flex-direction:column;
     align-items:center}
   .sh-eyebrow{display:inline-flex;align-items:center;font-size:11px;font-weight:600;
     letter-spacing:3px;text-transform:uppercase;color:var(--brand);border:1px solid var(--line);
@@ -600,7 +606,7 @@
     40%{transform:translateX(-50%) translateY(-10px)}
     60%{transform:translateX(-50%) translateY(-5px)}
   }
-  .sh-scroll-hint{position:absolute;left:50%;bottom:20px;transform:translateX(-50%);z-index:2;
+  .sh-scroll-hint{position:absolute;left:50%;bottom:20px;transform:translateX(-50%);z-index:3;
     display:flex;flex-direction:column;align-items:center;gap:8px;color:var(--muted);
     font-size:10.5px;letter-spacing:.18em;text-transform:uppercase;pointer-events:none;
     animation:scrollBounce 2s infinite}
@@ -941,6 +947,7 @@
        show(), since it's no longer a DOM descendant of #dashboard. -->
   <div class="sprint-hero anim-in" id="sprintHero">
     <canvas id="waveCanvas" aria-hidden="true"></canvas>
+    <canvas id="heroLetterCanvas" aria-hidden="true"></canvas>
     <div class="sh-content">
       <div class="sh-eyebrow" data-i18n="sprint.eyebrow">The flagship program</div>
       <h2 class="sh-title" data-i18n-html="sprint.title14html">The 14-Day<br><em>Speaking Sprint</em></h2>
@@ -2647,6 +2654,7 @@ function enterApp(user){
   // The hero had zero size while the login screen was up, so size the
   // wave canvas now that it's actually on screen.
   requestAnimationFrame(() => window.__rebuildWaves && window.__rebuildWaves());
+  requestAnimationFrame(() => window.__rebuildHeroLetters && window.__rebuildHeroLetters());
 }
 async function loadDashboard(){
   show("dashboard");
@@ -4451,6 +4459,117 @@ async function pollForProConfirmation(){
 
   // Rebuild if the hero was hidden at first paint (e.g. user was logged out).
   window.__rebuildWaves = () => { if (resize() && reduced) frame(); };
+})();
+
+// ============================================================
+//  Hero letter field -- a dense grid of faint letters across the
+//  lower half of the hero (under the CTA, above the scroll hint)
+//  that darken, rotate and gather toward the cursor, like ink
+//  pooling wherever you point. Purely decorative: pointer-events
+//  are off on the canvas itself, and it degrades to one static
+//  frame for reduced-motion and touch/no-hover devices instead of
+//  running a pointless animation loop that can never be "near"
+//  anything.
+// ============================================================
+(function heroLetterField(){
+  const canvas = document.getElementById("heroLetterCanvas");
+  if (!canvas) return;
+  const ctx = canvas.getContext("2d");
+  const hero = document.getElementById("sprintHero");
+  const LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  const CELL = 30;             // grid spacing, CSS px
+  const RADIUS = 150;          // cursor influence radius, CSS px
+  let W = 0, H = 0, dpr = 1, raf = null, visible = true, cells = [];
+  let mouseX = -9999, mouseY = -9999, curX = -9999, curY = -9999;
+
+  function buildGrid(){
+    cells = [];
+    const startY = H * 0.5;   // leave the top half (badge/title/CTA) clear
+    for (let y = startY; y < H - 10; y += CELL){
+      for (let x = CELL / 2; x < W; x += CELL){
+        cells.push({ x, y, ch: LETTERS[(Math.random() * LETTERS.length) | 0] });
+      }
+    }
+  }
+
+  function resize(){
+    const rect = hero.getBoundingClientRect();
+    W = rect.width; H = rect.height;
+    if (W === 0 || H === 0) return false;
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    canvas.width = Math.round(W * dpr);
+    canvas.height = Math.round(H * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.font = "15px 'Space Grotesk', sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    buildGrid();
+    return true;
+  }
+
+  function frame(){
+    ctx.clearRect(0, 0, W, H);
+    for (let i = 0; i < cells.length; i++){
+      const c = cells[i];
+      const dx = curX - c.x, dy = curY - c.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      const t = Math.max(0, 1 - dist / RADIUS);        // 0 far, 1 right under the cursor
+      const opacity = 0.08 + t * 0.72;
+      const angle = Math.atan2(dy, dx) * t * 0.4;       // lean toward the cursor
+      const pull = (t * 6) / (dist || 1);
+      ctx.save();
+      ctx.translate(c.x + dx * pull, c.y + dy * pull);
+      ctx.rotate(angle);
+      ctx.fillStyle = `rgba(26,26,26,${opacity.toFixed(3)})`;
+      ctx.fillText(c.ch, 0, 0);
+      ctx.restore();
+    }
+  }
+
+  function loop(){
+    if (visible){
+      // Ease toward the real cursor each frame instead of snapping, so the
+      // gathering/release reads as a fluid trail rather than a jump.
+      curX += (mouseX - curX) * 0.15;
+      curY += (mouseY - curY) * 0.15;
+      frame();
+    }
+    raf = requestAnimationFrame(loop);
+  }
+
+  const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const canHover = window.matchMedia("(hover: hover) and (pointer: fine)").matches;
+  const staticOnly = reduced || !canHover;
+
+  function start(){
+    if (!resize()){ setTimeout(start, 120); return; }   // hero not laid out yet
+    if (staticOnly){ frame(); return; }                 // one calm frame, no loop
+    if (raf) cancelAnimationFrame(raf);
+    loop();
+  }
+  start();
+
+  if (!staticOnly){
+    hero.addEventListener("mousemove", (e) => {
+      const rect = hero.getBoundingClientRect();
+      mouseX = e.clientX - rect.left;
+      mouseY = e.clientY - rect.top;
+    });
+    hero.addEventListener("mouseleave", () => { mouseX = -9999; mouseY = -9999; });
+  }
+
+  let rt2 = null;
+  window.addEventListener("resize", () => {
+    clearTimeout(rt2);
+    rt2 = setTimeout(() => { if (resize() && staticOnly) frame(); }, 150);
+  });
+
+  const io2 = new IntersectionObserver((entries) => {
+    visible = entries[0].isIntersecting;
+  }, { threshold: 0.01 });
+  io2.observe(hero);
+
+  window.__rebuildHeroLetters = () => { if (resize() && staticOnly) frame(); };
 })();
 
 // ============================================================
