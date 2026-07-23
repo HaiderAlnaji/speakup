@@ -709,14 +709,18 @@
 
   /* ---------- Paywall ---------- */
   .paywall{background:linear-gradient(160deg,var(--ink),var(--ink-2));color:#fff;
-    border-radius:20px;padding:34px 30px;max-width:520px;margin:10px auto;text-align:center}
-  .paywall h2{font-size:24px;margin-bottom:8px}
+    border-radius:24px;padding:42px 36px;max-width:520px;margin:10px auto;text-align:center;
+    box-shadow:0 30px 70px rgba(0,0,0,.3)}
+  .paywall h2{font-size:28px;margin-bottom:8px}
   .paywall p{color:#D9C7B8;font-size:14.5px;margin-bottom:22px}
-  .price{font-family:'Instrument Serif';font-size:40px;font-weight:700;margin-bottom:2px}
+  .price{font-family:'Instrument Serif';font-size:48px;font-weight:400;margin-bottom:2px}
   .price small{font-size:15px;color:#B8A38E;font-weight:500}
   .perks{list-style:none;text-align:left;max-width:300px;margin:20px auto 26px}
   .perks li{padding:8px 0;font-size:14.5px;display:flex;gap:10px;align-items:center}
   .perks li::before{content:"✓";color:var(--brand);font-weight:700}
+  .paywall .goal-btn{background:rgba(255,255,255,.08);color:#fff;border-color:rgba(255,255,255,.15)}
+  .paywall .goal-btn:hover{border-color:var(--brand)}
+  .paywall .goal-btn.active{background:var(--brand);color:#fff;border-color:transparent}
   .btn-gold{background:var(--gold);color:#3a2600;font-weight:700;font-size:15px;
     padding:14px 28px;border-radius:100px;width:100%;
     transition:filter .18s var(--ease),transform .15s var(--ease)}
