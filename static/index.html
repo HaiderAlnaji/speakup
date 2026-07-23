@@ -50,7 +50,10 @@
     transform .8s cubic-bezier(.16,1,.3,1)}
   .reveal.visible{opacity:1;transform:translateY(0)}
   body{font-family:'Space Grotesk',system-ui,-apple-system,sans-serif;color:var(--text);
-    background:var(--bg);line-height:1.5;-webkit-font-smoothing:antialiased}
+    background:var(--bg);line-height:1.5;-webkit-font-smoothing:antialiased;
+    overflow-x:hidden}   /* the .mode-hero full-bleed breakout below can add a hair of
+                            overflow on some browsers if a scrollbar is present -- this
+                            keeps that from ever showing a horizontal scrollbar */
   h1,h2,h3,.brandmark{font-family:'Instrument Serif','Space Grotesk',serif;letter-spacing:-.01em;font-weight:400}
   .brandmark em{font-style:italic;color:var(--brand)}
   button{font-family:inherit;cursor:pointer;border:none}
@@ -630,7 +633,12 @@
     .sprint-hero{min-height:100vh;padding:48px 20px}
   }
 
-  /* ---------- Shadow Mode hero (dashboard section intro) ---------- */
+  /* ---------- Shadow Mode hero (dashboard section intro) ----------
+     Kept for its background gradient / glow / color rules below -- the
+     sizing properties (padding, margin, border-radius) are superseded by
+     the .mode-hero.shadow-hero override further down, which turns this
+     into a full-bleed 100vh section like the others instead of an inset
+     rounded card. */
   .shadow-hero{background:linear-gradient(150deg,var(--ink) 0%,#3D2B1F 100%);
     border-radius:32px;padding:80px 60px;margin:100px 0 80px;color:#fff;position:relative;overflow:hidden}
   .shadow-hero::before{content:"";position:absolute;inset:0;pointer-events:none;
@@ -641,6 +649,51 @@
   .shadow-hero p{color:#D9C7B8;font-size:14.5px;max-width:520px}
   .shadow-hero .section-desc{color:#D9C7B8}
   @media (max-width:640px){.shadow-hero{padding:48px 28px}}
+
+  /* ---------- Full-bleed "mode hero" family ----------
+     Talk/Lessons/Shadow/AI Roleplay each get the same visual grammar as
+     .sprint-hero (eyebrow pill, big serif title with an italic accent
+     word, subtitle, gold CTA, mouse-reactive letter-scatter canvas), just
+     its own tint -- the four "pillar" features, all matching the same
+     scale. Escapes .container's max-width with the standard breakout
+     trick (100vw + negative margin) instead of moving these out of the
+     DOM the way sprint-hero is: they're interspersed with normal contained
+     dashboard content, so relocating them would mean opening/closing
+     .container repeatedly for no real benefit. */
+  .mode-hero{width:100vw;position:relative;left:50%;right:50%;margin-left:-50vw;margin-right:-50vw;
+    min-height:100vh;display:flex;align-items:center;justify-content:center;text-align:center;
+    overflow:hidden;background:var(--bg);margin-top:100px;margin-bottom:100px;padding:60px 28px}
+  .mode-hero canvas{position:absolute;inset:0;width:100%;height:100%;display:block;
+    z-index:0;pointer-events:none}
+  .mode-hero .sh-content{position:relative;z-index:2}
+  .mode-hero .sh-stat{font-size:12.5px;font-weight:600;letter-spacing:.04em;color:var(--muted);
+    margin-bottom:22px}
+  @media (max-width:640px){.mode-hero{padding:48px 20px;margin-top:60px;margin-bottom:60px}}
+
+  .mode-hero.talk-hero{background:#FBF1EC}
+  .mode-hero.talk-hero .sh-eyebrow{color:#C2603F}
+  .mode-hero.talk-hero .sh-title em{color:#C2603F}
+
+  .mode-hero.lessons-hero{background:#FAF5E8}
+  .mode-hero.lessons-hero .sh-eyebrow{color:#B8813A}
+  .mode-hero.lessons-hero .sh-title em{color:#B8813A}
+
+  .mode-hero.ai-hero{background:#FBF6E7}
+  .mode-hero.ai-hero .sh-eyebrow{color:#A9822F}
+  .mode-hero.ai-hero .sh-title em{color:var(--gold)}
+
+  /* Shadow keeps its dark-ink identity (declared above) -- this resets the
+     inset-card sizing to the shared full-bleed .mode-hero treatment and
+     recolors the text for the dark background. Combined two-class
+     selectors so these reliably win over the plain .shadow-hero rules
+     above regardless of source order. */
+  .mode-hero.shadow-hero{padding:60px 28px;margin-top:100px;margin-bottom:100px;border-radius:0}
+  .mode-hero.shadow-hero .sh-eyebrow{background:rgba(255,255,255,.08);
+    border-color:rgba(255,255,255,.15);color:#E8B78C}
+  .mode-hero.shadow-hero .sh-title{color:#fff;font-size:clamp(48px,10vw,96px);margin-bottom:18px}
+  .mode-hero.shadow-hero .sh-promise{color:#D9C7B8}
+  .mode-hero.shadow-hero .sh-stat{color:#C9B29E}
+  @media (max-width:640px){.mode-hero.shadow-hero{padding:48px 20px}}
 
   /* ---------- Drill any topic (dark bar, matches mockup's drill-section) ---------- */
   .drill-section{background:linear-gradient(150deg,var(--ink) 0%,#3D2B1F 60%,#7A4430 100%);
@@ -930,9 +983,10 @@
     <div class="nav-group">
       <div class="nav-links" id="navLinks">
         <a href="#sprintHero" class="nav-link" data-i18n="nav.linkSprint">Sprint</a>
-        <a href="#talkSection" class="nav-link" data-i18n="nav.linkTalk">Talk</a>
-        <a href="#lessonsSection" class="nav-link" data-i18n="nav.linkLessons">Lessons</a>
+        <a href="#talkHero" class="nav-link" data-i18n="nav.linkTalk">Talk</a>
+        <a href="#lessonsHero" class="nav-link" data-i18n="nav.linkLessons">Lessons</a>
         <a href="#shadowSection" class="nav-link" data-i18n="nav.linkShadow">Shadow</a>
+        <a href="#aiHero" class="nav-link" data-i18n="nav.linkAi">AI</a>
         <a href="#achievementsSection" class="nav-link" data-i18n="nav.linkProgress">Progress</a>
       </div>
       <div class="user">
@@ -1055,12 +1109,15 @@
         <button class="btn-sm solid" id="bizSprintCta" data-i18n="bizSprint.cta">Start the Business Sprint</button>
       </div>
 
-      <div class="section-header reveal" id="talkSection">
-        <div>
+      <div class="mode-hero talk-hero reveal" id="talkHero">
+        <canvas id="talkLetterCanvas" aria-hidden="true"></canvas>
+        <div class="sh-content">
           <span class="sh-eyebrow" data-i18n="talk.eyebrow">Conversations</span>
-          <h2 data-i18n-html="talk.title">Talk to <em>someone</em></h2>
+          <h2 class="sh-title" data-i18n-html="talk.title">Talk to <em>someone</em></h2>
+          <p class="sh-promise" data-i18n="talk.sub">Real conversations with a goal. Speak or type — get your meaning across.</p>
+          <div class="sh-stat" id="talkHeroStat"></div>
+          <button class="btn-gold sh-cta" id="talkHeroCta" data-i18n="talk.cta">Start Talking</button>
         </div>
-        <p class="section-desc" data-i18n="talk.sub">Real conversations with a goal. Speak or type — get your meaning across.</p>
       </div>
       <div id="aiOff" class="unsupported hidden">
         <b data-i18n="aiOff.b">AI conversations are switched off.</b> Add <code>ANTHROPIC_API_KEY</code> to your
@@ -1087,12 +1144,15 @@
       </div>
       <div id="topicOut" class="topic-out hidden"></div>
 
-      <div class="section-header reveal" style="margin-top:100px" id="lessonsSection">
-        <div>
+      <div class="mode-hero lessons-hero reveal" id="lessonsHero">
+        <canvas id="lessonsLetterCanvas" aria-hidden="true"></canvas>
+        <div class="sh-content">
           <span class="sh-eyebrow" data-i18n="lessons.eyebrow">Your journey</span>
-          <h2 data-i18n-html="lessons.title">Practice <em>lessons</em></h2>
+          <h2 class="sh-title" data-i18n-html="lessons.title">Practice <em>lessons</em></h2>
+          <p class="sh-promise" data-i18n="lessons.sub">Fixed phrases to warm up with. Pick a lesson, listen, then speak.</p>
+          <div class="sh-stat" id="lessonsHeroStat"></div>
+          <button class="btn-gold sh-cta" id="lessonsHeroCta" data-i18n="lessons.cta">Browse Lessons</button>
         </div>
-        <p class="section-desc" data-i18n="lessons.sub">Fixed phrases to warm up with. Pick a lesson, listen, then speak.</p>
       </div>
       <div class="stat-row reveal">
         <div class="stat"><div class="num" id="statAttempts">0</div><div class="lbl" data-i18n="stat.totalAttempts">Total attempts</div></div>
@@ -1201,25 +1261,6 @@
         <button class="btn-sm solid" id="journalUpgradeBtn" data-i18n="progress.upgradeBtn">Upgrade to Pro</button>
       </div>
 
-      <!-- AI Roleplay — Max-exclusive free-form spoken conversation with
-           Gemini. Unlike scripted Conversations (below), there's no fixed
-           node tree -- the learner can say anything and the AI improvises
-           in character. Stateless on the server; see /api/roleplay/reply. -->
-      <div class="progress-card anim-in-2 hidden" id="roleplayCard">
-        <div class="pc-head">
-          <h3 data-i18n="roleplay.title">✨ AI Roleplay</h3>
-        </div>
-        <p class="journal-prompt-preview" data-i18n="roleplay.cardSub">Free-form spoken conversation with an AI partner — talk about anything.</p>
-        <button class="btn-sm solid" id="roleplayBtn" data-i18n="roleplay.start">Start a conversation</button>
-      </div>
-      <div class="progress-teaser anim-in-2 hidden" id="roleplayTeaser">
-        <div>
-          <b data-i18n="roleplay.teaserTitle">✨ AI Roleplay</b>
-          <p data-i18n="roleplay.teaserSub">Free-form spoken conversation with an AI partner — a Max-only perk.</p>
-        </div>
-        <button class="btn-sm solid" id="roleplayUpgradeBtn" data-i18n="roleplay.upgradeBtn">Upgrade to Max</button>
-      </div>
-
       <div class="grid scroll-row reveal" id="lessonGrid"></div>
 
       <!-- Go Pro — consolidated upsell gallery. Replaces the 5 scattered
@@ -1264,13 +1305,14 @@
         </div>
       </div>
 
-      <div class="shadow-hero reveal" id="shadowSection">
-        <div class="section-header" style="margin-bottom:0">
-          <div>
-            <span class="sh-eyebrow" data-i18n="shadow.eyebrow">Immersive</span>
-            <h2 data-i18n-html="shadow.title">Shadow <em>Mode</em></h2>
-          </div>
-          <p class="section-desc" data-i18n="shadow.sub">Speak along WITH the recording, not after it — the fastest way to pick up native rhythm, linking, and reductions.</p>
+      <div class="mode-hero shadow-hero reveal" id="shadowSection">
+        <canvas id="shadowLetterCanvas" aria-hidden="true"></canvas>
+        <div class="sh-content">
+          <span class="sh-eyebrow" data-i18n="shadow.eyebrow">Immersive</span>
+          <h2 class="sh-title" data-i18n-html="shadow.title">Shadow <em>Mode</em></h2>
+          <p class="sh-promise" data-i18n="shadow.sub">Speak along WITH the recording, not after it — the fastest way to pick up native rhythm, linking, and reductions.</p>
+          <div class="sh-stat" id="shadowHeroStat"></div>
+          <button class="btn-gold sh-cta" id="shadowHeroCta" data-i18n="shadow.cta">Enter Shadow Mode</button>
         </div>
       </div>
 
@@ -1312,6 +1354,28 @@
             <span class="atc-sound" dir="ltr">Stress &amp; rhythm</span>
             <span class="atc-desc" data-i18n="arabicTips.stress">Arabic gives syllables fairly even weight; English leans hard on stressed ones and swallows the rest. That's exactly what "Stress &amp; Rhythm" below trains.</span>
           </div>
+        </div>
+      </div>
+
+      <!-- AI Roleplay — the newest "pillar" feature, same full-screen hero
+           treatment as Talk/Lessons/Shadow above (gold-tinted, since AI/Max
+           already uses gold for the nav badge/sparkle elsewhere). No card
+           grid to scroll to (it's one unified free-form chat, not a
+           catalog) so the CTA opens the flow directly for Max members, or
+           the paywall (Max tab preselected) for everyone else -- see
+           renderModeHeroes() for how the stat line + button text adapt. -->
+      <div class="mode-hero ai-hero reveal" id="aiHero">
+        <canvas id="aiLetterCanvas" aria-hidden="true"></canvas>
+        <div class="sh-content">
+          <span class="sh-eyebrow" data-i18n="roleplay.eyebrow">AI-powered</span>
+          <h2 class="sh-title" data-i18n-html="roleplay.heroTitleHtml">AI <em>Roleplay</em></h2>
+          <p class="sh-promise" data-i18n="roleplay.cardSub">Free-form spoken conversation with an AI partner — talk about anything.</p>
+          <div class="sh-stat" id="aiHeroStat"></div>
+          <!-- No data-i18n here on purpose -- its text depends on tier
+               (Start a conversation / Upgrade to Max), not just language,
+               so renderModeHeroStats() sets it via JS every render,
+               exactly like journalBtn's already-established pattern. -->
+          <button class="btn-gold sh-cta" id="aiHeroCta"></button>
         </div>
       </div>
     </div>
@@ -1880,7 +1944,7 @@ const T = {
     "auth.orDivider": "or",
     "nav.admin": "Admin", "nav.logout": "Log out", "nav.langToggle": "العربية",
     "nav.linkSprint": "Sprint", "nav.linkTalk": "Talk", "nav.linkLessons": "Lessons",
-    "nav.linkShadow": "Shadow", "nav.linkProgress": "Progress",
+    "nav.linkShadow": "Shadow", "nav.linkAi": "AI", "nav.linkProgress": "Progress",
     "nav.settings": "Settings",
     "nav.badgePro": "PRO", "nav.badgeMax": "MAX",
     "settings.title": "Account settings", "settings.sub": "Manage your profile, password, and plan.",
@@ -1936,6 +2000,8 @@ const T = {
     "talk.eyebrow": "Conversations",
     "talk.title": "Talk to <em>someone</em>",
     "talk.sub": "Real conversations with a goal. Speak or type — get your meaning across.",
+    "talk.heroStat": "{n} conversations to practice",
+    "talk.cta": "Start Talking",
     "aiOff.b": "AI conversations are switched off.",
     "drill.eyebrow": "Custom practice",
     "drill.title": "Drill any topic",
@@ -1946,6 +2012,8 @@ const T = {
     "lessons.eyebrow": "Your journey",
     "lessons.title": "Practice <em>lessons</em>",
     "lessons.sub": "Fixed phrases to warm up with. Pick a lesson, listen, then speak.",
+    "lessons.heroStat": "{n} lessons, 100+ phrases each",
+    "lessons.cta": "Browse Lessons",
     "stat.totalAttempts": "Total attempts", "stat.lessonsStarted": "Lessons started",
     "stat.bestScore": "Best score", "stat.xpEarned": "XP earned",
     "xp.badge": "⭐ {n} XP",
@@ -1996,6 +2064,8 @@ const T = {
     "shadow.eyebrow": "Immersive",
     "shadow.title": "Shadow <em>Mode</em>",
     "shadow.sub": "Speak along WITH the recording, not after it — the fastest way to pick up native rhythm, linking, and reductions.",
+    "shadow.heroStat": "{n} categories to shadow",
+    "shadow.cta": "Enter Shadow Mode",
     "arabicTips.title": "🇮🇶 Sounds Arabic Speakers Often Mix Up",
     "arabicTips.show": "Show tips", "arabicTips.hide": "Hide tips",
     "arabicTips.pb": "Arabic has no \"p\" sound, so it often comes out as \"b\" — \"pen\" sounds like \"Ben\". Keep your lips closed a beat longer and let a puff of air out for P.",
@@ -2116,6 +2186,10 @@ const T = {
     "roleplay.start": "Start a conversation",
     "roleplay.teaserTitle": "✨ AI Roleplay",
     "roleplay.teaserSub": "Free-form spoken conversation with an AI partner — a Max-only perk.",
+    "roleplay.eyebrow": "AI-powered",
+    "roleplay.heroTitleHtml": "AI <em>Roleplay</em>",
+    "roleplay.heroStatReady": "Available now — start anytime",
+    "roleplay.heroStatLocked": "A Max-exclusive perk",
     "roleplay.upgradeBtn": "Upgrade to Max",
     "roleplay.setupTitle": "What do you want to talk about?",
     "roleplay.setupSub": "Pick a quick topic or type your own — the AI stays in character and replies out loud.",
@@ -2193,7 +2267,7 @@ const T = {
     "auth.orDivider": "أو",
     "nav.admin": "الإدارة", "nav.logout": "تسجيل الخروج", "nav.langToggle": "English",
     "nav.linkSprint": "السبرنت", "nav.linkTalk": "التحدث", "nav.linkLessons": "الدروس",
-    "nav.linkShadow": "المحاكاة", "nav.linkProgress": "التقدم",
+    "nav.linkShadow": "المحاكاة", "nav.linkAi": "الذكاء الاصطناعي", "nav.linkProgress": "التقدم",
     "nav.settings": "الإعدادات",
     "nav.badgePro": "PRO", "nav.badgeMax": "MAX",
     "settings.title": "إعدادات الحساب", "settings.sub": "إدارة ملفك الشخصي وكلمة المرور والخطة.",
@@ -2249,6 +2323,8 @@ const T = {
     "talk.eyebrow": "محادثات",
     "talk.title": "تحدث مع <em>شخص</em>",
     "talk.sub": "محادثات حقيقية بهدف محدد. تحدث أو اكتب — أوصل معناك.",
+    "talk.heroStat": "{n} محادثة للتدرّب عليها",
+    "talk.cta": "ابدأ التحدث",
     "aiOff.b": "محادثات الذكاء الاصطناعي متوقفة.",
     "drill.eyebrow": "تدريب مخصص",
     "drill.title": "تدرّب على أي موضوع",
@@ -2259,6 +2335,8 @@ const T = {
     "lessons.eyebrow": "رحلتك",
     "lessons.title": "دروس <em>تدريبية</em>",
     "lessons.sub": "عبارات ثابتة للإحماء. اختر درساً، استمع، ثم تحدث.",
+    "lessons.heroStat": "{n} درساً، أكثر من 100 عبارة لكل درس",
+    "lessons.cta": "تصفّح الدروس",
     "stat.totalAttempts": "مجموع المحاولات", "stat.lessonsStarted": "الدروس التي بدأتها",
     "stat.bestScore": "أفضل نتيجة", "stat.xpEarned": "نقاط الخبرة",
     "xp.badge": "⭐ {n} XP",
@@ -2309,6 +2387,8 @@ const T = {
     "shadow.eyebrow": "غامر بالتجربة",
     "shadow.title": "وضع <em>المحاكاة</em>",
     "shadow.sub": "تحدث بالتزامن مع التسجيل، لا بعده — أسرع طريقة لاكتساب الإيقاع الطبيعي والربط والاختصارات الصوتية.",
+    "shadow.heroStat": "{n} فئات للمحاكاة",
+    "shadow.cta": "ادخل وضع المحاكاة",
     "arabicTips.title": "🇮🇶 أصوات يخلط بها المتحدثون بالعربية غالباً",
     "arabicTips.show": "إظهار النصائح", "arabicTips.hide": "إخفاء النصائح",
     "arabicTips.pb": "العربية ليس فيها صوت \"p\"، لذلك غالباً ما يتحول إلى \"b\" — كلمة \"pen\" تُنطق كأنها \"Ben\". أغلق شفتيك لحظة أطول ثم أطلق نفساً خفيفاً لحرف P.",
@@ -2430,6 +2510,10 @@ const T = {
     "roleplay.teaserTitle": "✨ محادثة حرة مع الذكاء الاصطناعي",
     "roleplay.teaserSub": "محادثة حرة مع شريك ذكاء اصطناعي — ميزة خاصة بخطة Max.",
     "roleplay.upgradeBtn": "الترقية إلى Max",
+    "roleplay.eyebrow": "مدعوم بالذكاء الاصطناعي",
+    "roleplay.heroTitleHtml": "محادثة <em>حرة</em> بالذكاء الاصطناعي",
+    "roleplay.heroStatReady": "متاح الآن — ابدأ في أي وقت",
+    "roleplay.heroStatLocked": "ميزة خاصة بخطة Max",
     "roleplay.setupTitle": "عن ماذا تريد أن تتحدث؟",
     "roleplay.setupSub": "اختر موضوعًا سريعًا أو اكتب موضوعك الخاص — سيبقى الذكاء الاصطناعي في الشخصية ويرد بصوت مسموع.",
     "roleplay.topicPh": "أو اكتب موضوعك الخاص…",
@@ -2915,7 +2999,7 @@ function renderStats(prog){
   loadNewPhrasesBanner();
   loadSpotlight();
   loadJournalCard();
-  loadRoleplayCard();
+  renderModeHeroStats();
   loadBizSprintCard();
   updateGoProSection();
 }
@@ -4718,6 +4802,114 @@ async function pollForProConfirmation(){
 })();
 
 // ============================================================
+//  Mode hero letter field -- the same mouse-reactive letter-scatter
+//  effect as heroLetterField() above, generalized into a reusable
+//  function so each of the Talk/Lessons/Shadow/AI Roleplay full-screen
+//  heroes can have its own instance. heroLetterField() above is left
+//  completely untouched (Sprint's effect already works, no reason to
+//  risk it) -- this is a separate, parametrized copy, called once per
+//  section further down.
+// ============================================================
+function attachModeHeroLetters(heroId, canvasId, letterRgbPrefix){
+  const canvas = document.getElementById(canvasId);
+  const hero = document.getElementById(heroId);
+  if (!canvas || !hero) return;
+  const ctx = canvas.getContext("2d");
+  const LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  const CELL = 30, RADIUS = 150;
+  let W = 0, H = 0, dpr = 1, raf = null, visible = true, cells = [];
+  let mouseX = -9999, mouseY = -9999, curX = -9999, curY = -9999;
+
+  function buildGrid(){
+    cells = [];
+    const startY = H * 0.5;   // leave the top half (badge/title/CTA) clear, same as the Sprint hero
+    for (let y = startY; y < H - 10; y += CELL){
+      for (let x = CELL / 2; x < W; x += CELL){
+        cells.push({ x, y, ch: LETTERS[(Math.random() * LETTERS.length) | 0] });
+      }
+    }
+  }
+
+  function resize(){
+    const rect = hero.getBoundingClientRect();
+    W = rect.width; H = rect.height;
+    if (W === 0 || H === 0) return false;
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    canvas.width = Math.round(W * dpr);
+    canvas.height = Math.round(H * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.font = "15px 'Space Grotesk', sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    buildGrid();
+    return true;
+  }
+
+  function frame(){
+    ctx.clearRect(0, 0, W, H);
+    for (let i = 0; i < cells.length; i++){
+      const c = cells[i];
+      const dx = curX - c.x, dy = curY - c.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      const t = Math.max(0, 1 - dist / RADIUS);
+      const opacity = 0.08 + t * 0.72;
+      const angle = Math.atan2(dy, dx) * t * 0.4;
+      const pull = (t * 6) / (dist || 1);
+      ctx.save();
+      ctx.translate(c.x + dx * pull, c.y + dy * pull);
+      ctx.rotate(angle);
+      ctx.fillStyle = `${letterRgbPrefix}${opacity.toFixed(3)})`;
+      ctx.fillText(c.ch, 0, 0);
+      ctx.restore();
+    }
+  }
+
+  function loop(){
+    if (visible){
+      curX += (mouseX - curX) * 0.15;
+      curY += (mouseY - curY) * 0.15;
+      frame();
+    }
+    raf = requestAnimationFrame(loop);
+  }
+
+  const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const canHover = window.matchMedia("(hover: hover) and (pointer: fine)").matches;
+  const staticOnly = reduced || !canHover;
+
+  function start(){
+    if (!resize()){ setTimeout(start, 120); return; }
+    if (staticOnly){ frame(); return; }
+    if (raf) cancelAnimationFrame(raf);
+    loop();
+  }
+  start();
+
+  if (!staticOnly){
+    hero.addEventListener("mousemove", (e) => {
+      const rect = hero.getBoundingClientRect();
+      mouseX = e.clientX - rect.left;
+      mouseY = e.clientY - rect.top;
+    });
+    hero.addEventListener("mouseleave", () => { mouseX = -9999; mouseY = -9999; });
+  }
+
+  let rtN = null;
+  window.addEventListener("resize", () => {
+    clearTimeout(rtN);
+    rtN = setTimeout(() => { if (resize() && staticOnly) frame(); }, 150);
+  });
+
+  const ioN = new IntersectionObserver((entries) => { visible = entries[0].isIntersecting; }, { threshold: 0.01 });
+  ioN.observe(hero);
+}
+// Dark letters for the light-background heroes, cream letters for Shadow's dark one.
+attachModeHeroLetters("talkHero", "talkLetterCanvas", "rgba(26,26,26,");
+attachModeHeroLetters("lessonsHero", "lessonsLetterCanvas", "rgba(26,26,26,");
+attachModeHeroLetters("shadowSection", "shadowLetterCanvas", "rgba(245,240,232,");
+attachModeHeroLetters("aiHero", "aiLetterCanvas", "rgba(26,26,26,");
+
+// ============================================================
 //  Click-and-drag scrolling for horizontal card rows (Go Pro,
 //  Talk, Lessons, Shadow). Lets a mouse user grab the row and
 //  drag it left/right instead of needing a trackpad or scrollbar.
@@ -4982,15 +5174,30 @@ function renderRoleplayChips(){
   });
 }
 
-// Called from renderStats() in loadDashboard() -- Max status comes straight
-// from currentUser, already loaded, so no extra network round-trip.
-function loadRoleplayCard(){
+// Called from renderStats() in loadDashboard() -- fills in the Talk/
+// Lessons/Shadow/AI Roleplay hero stat lines, and (for AI, the one whose
+// CTA depends on tier rather than just being a scroll target) adapts its
+// button text + behavior to whether the user is Max or not.
+function renderModeHeroStats(){
+  $("talkHeroStat").textContent = t("talk.heroStat", {n: scenarios.length});
+  $("lessonsHeroStat").textContent = t("lessons.heroStat", {n: lessons.length});
+  $("shadowHeroStat").textContent = t("shadow.heroStat", {n: shadowCats.length});
   const isMax = !!(currentUser && currentUser.is_premium && currentUser.plan_tier === "max");
-  $("roleplayCard").classList.toggle("hidden", !isMax);
-  $("roleplayTeaser").classList.toggle("hidden", isMax);
+  $("aiHeroStat").textContent = isMax ? t("roleplay.heroStatReady") : t("roleplay.heroStatLocked");
+  $("aiHeroCta").textContent = isMax ? t("roleplay.start") : t("roleplay.upgradeBtn");
 }
-$("roleplayBtn").onclick = () => openRoleplay();
-$("roleplayUpgradeBtn").onclick = () => { selectedBillingTier = "max"; show("paywallView"); };
+// Each hero's CTA moves the learner straight to its "catalog of cards" --
+// AI Roleplay has no grid (it's one unified free-form chat, not a list of
+// items), so its CTA opens the flow directly for Max members, or the
+// paywall (Max tab preselected) for everyone else.
+$("talkHeroCta").onclick = () => $("scenarioGrid").scrollIntoView({behavior: "smooth", block: "start"});
+$("lessonsHeroCta").onclick = () => $("lessonGrid").scrollIntoView({behavior: "smooth", block: "start"});
+$("shadowHeroCta").onclick = () => $("shadowGrid").scrollIntoView({behavior: "smooth", block: "start"});
+$("aiHeroCta").onclick = () => {
+  const isMax = !!(currentUser && currentUser.is_premium && currentUser.plan_tier === "max");
+  if (isMax) openRoleplay();
+  else { selectedBillingTier = "max"; show("paywallView"); }
+};
 $("backRoleplay").onclick = () => loadDashboard();
 
 async function openRoleplay(){
