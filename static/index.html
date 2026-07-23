@@ -228,7 +228,7 @@
   /* Top padding clears the now-fixed .topbar (which no longer occupies flow
      space) for every view except the dashboard's hero, which the nav floats
      over transparently instead. */
-  .container{max-width:940px;margin:0 auto;padding:90px 22px 60px}
+  .container{max-width:1400px;margin:0 auto;padding:90px 40px 60px}
   @media (max-width:640px){.container{padding:76px 22px 60px}}
 
   /* ---------- Dashboard ---------- */
@@ -243,8 +243,8 @@
      sections that mirror the mockup's own section-header layout. */
   .section-header{display:flex;justify-content:space-between;align-items:flex-end;
     gap:24px;margin-bottom:32px}
-  .section-header h2{margin-top:8px}
-  .section-desc{color:var(--muted);font-size:15px;line-height:1.7;max-width:340px;
+  .section-header h2{margin-top:8px;font-size:clamp(32px,5vw,56px);line-height:1.1}
+  .section-desc{color:var(--muted);font-size:16px;line-height:1.7;max-width:400px;
     text-align:right;flex-shrink:0}
   html[dir="rtl"] .section-header{flex-direction:row-reverse}
   html[dir="rtl"] .section-desc{text-align:left}
@@ -569,7 +569,7 @@
   .sh-content{position:relative;z-index:2;max-width:900px;display:flex;flex-direction:column;
     align-items:center}
   .sh-eyebrow{display:inline-flex;align-items:center;font-size:11px;font-weight:600;
-    letter-spacing:.14em;text-transform:uppercase;color:var(--brand);border:1px solid var(--line);
+    letter-spacing:3px;text-transform:uppercase;color:var(--brand);border:1px solid var(--line);
     background:rgba(255,255,255,.7);padding:7px 18px;border-radius:100px;margin-bottom:22px}
   .sh-title{font-size:clamp(48px,10vw,96px);line-height:1.05;margin-bottom:18px}
   .sh-title em{font-style:italic;color:var(--brand)}
@@ -603,12 +603,15 @@
 
   /* ---------- Drill any topic (dark bar, matches mockup's drill-section) ---------- */
   .drill-section{background:linear-gradient(150deg,var(--ink) 0%,#3D2B1F 60%,#7A4430 100%);
-    border-radius:24px;padding:34px;position:relative;overflow:hidden}
+    border-radius:24px;padding:56px 48px;position:relative;overflow:hidden}
   .drill-section::before{content:"";position:absolute;inset:0;pointer-events:none;
     background:radial-gradient(400px 200px at 15% 20%,rgba(199,91,57,.22),transparent 70%)}
   .drill-section .section-header{position:relative;z-index:1}
-  .drill-section .section-header h2{color:#fff;font-size:24px}
+  .drill-section .section-header h2{color:#fff}
+  .drill-section .section-header h2 .pro-pill{vertical-align:middle;margin-top:-6px;
+    display:inline-block}
   .drill-section .section-desc{color:#D9C7B8}
+  @media (max-width:640px){.drill-section{padding:36px 24px}}
   .drill-section .topic-bar{position:relative;z-index:1;margin-top:22px}
   .drill-section .topic-bar input,.drill-section .topic-bar select{
     background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.16);color:#fff}
@@ -1160,9 +1163,11 @@
       <!-- Go Pro — consolidated upsell gallery. Replaces the 5 scattered
            progress-teaser blocks above (those stay in the DOM, permanently
            hidden, so their button-click wiring elsewhere keeps working). -->
-      <div class="page-head reveal" style="margin-top:36px" id="goProSection">
-        <span class="sh-eyebrow" data-i18n="goPro.eyebrow">Unlock more</span>
-        <h2 data-i18n="goPro.title">Go Pro</h2>
+      <div class="section-header reveal" style="margin-top:36px" id="goProSection">
+        <div>
+          <span class="sh-eyebrow" data-i18n="goPro.eyebrow">Unlock more</span>
+          <h2 data-i18n="goPro.title">Go Pro</h2>
+        </div>
       </div>
       <div class="pro-scroll reveal" id="goProScroll">
         <div class="pro-card">
