@@ -1,5 +1,5 @@
 """
-SpeakUp — English speaking practice app (backend + serves the frontend)
+SpeakPort — English speaking practice app (backend + serves the frontend)
 
 One file so it's easy to read top to bottom.
 Sections:
@@ -84,7 +84,7 @@ SUPPORT_EMAIL = os.getenv("SUPPORT_EMAIL", "").strip() or (sorted(ADMIN_EMAILS)[
 #   SMTP_USERNAME=you@gmail.com
 #   SMTP_PASSWORD=your-16-char-app-password
 #   SMTP_FROM=you@gmail.com                 (optional, defaults to SMTP_USERNAME)
-# Until these are set, SpeakUp runs in DEMO MODE for password resets: instead
+# Until these are set, SpeakPort runs in DEMO MODE for password resets: instead
 # of emailing a link, /api/forgot-password hands the reset link straight back
 # in its response so you can still test (and use) the flow before setting up
 # real email sending.
@@ -150,7 +150,7 @@ PADDLE_PRICE_ID_MAX = os.getenv("PADDLE_PRICE_ID_MAX", "").strip()
 PADDLE_PRICE_ID_MAX_ANNUAL = os.getenv("PADDLE_PRICE_ID_MAX_ANNUAL", "").strip()
 PADDLE_ENV = os.getenv("PADDLE_ENV", "sandbox").strip()             # "sandbox" or "production"
 
-# All four must be set for real payments to be live. Until then, SpeakUp
+# All four must be set for real payments to be live. Until then, SpeakPort
 # stays in demo mode: /api/upgrade instantly grants Pro so you can test
 # everything locally without a Paddle account. The moment real credentials
 # are set (in production), that shortcut automatically closes — see /api/upgrade.
@@ -161,7 +161,7 @@ PADDLE_CONFIGURED = bool(PADDLE_API_KEY and PADDLE_WEBHOOK_SECRET
 # 1e. PAYMENTS — ZainCash (Iraq's mobile-wallet payment gateway)
 # ----------------------------------------------------------------------
 # Paddle/Stripe/Lemon Squeezy/Dodo all refuse to onboard sellers based in
-# Iraq, so ZainCash is the real payment path for SpeakUp. It settles in
+# Iraq, so ZainCash is the real payment path for SpeakPort. It settles in
 # Iraqi Dinar (IQD) only — the customer pays via their ZainCash mobile
 # wallet (phone number + OTP), no card required. The USD price is shown
 # for reference only; the real charge is always in IQD.
@@ -244,7 +244,7 @@ QICARD_CONFIGURED = bool(QICARD_TERMINAL_ID and QICARD_USERNAME and QICARD_PASSW
 # ----------------------------------------------------------------------
 # 1b. CONTENT CONFIG  (everything is offline — no API, no keys, no limits)
 # ----------------------------------------------------------------------
-# SpeakUp runs entirely on built-in content (see content.py). There are no
+# SpeakPort runs entirely on built-in content (see content.py). There are no
 # API keys, no rate limits, and no per-user cost. Practice sentences and
 # conversations are all pre-written and translated, so the app works the
 # same for one user or a million.
@@ -1532,11 +1532,11 @@ def send_password_reset_email(to_email: str, reset_link: str) -> None:
     EMAIL_CONFIGURED is True; callers should not call this otherwise.
     """
     msg = EmailMessage()
-    msg["Subject"] = "Reset your SpeakUp password"
+    msg["Subject"] = "Reset your SpeakPort password"
     msg["From"] = SMTP_FROM
     msg["To"] = to_email
     msg.set_content(
-        "We got a request to reset your SpeakUp password.\n\n"
+        "We got a request to reset your SpeakPort password.\n\n"
         f"Reset it here (valid for 1 hour): {reset_link}\n\n"
         "If you didn't request this, you can safely ignore this email — "
         "your password won't change."
@@ -1669,7 +1669,7 @@ class PracticeIn(BaseModel):
 # ----------------------------------------------------------------------
 # 7. ROUTES
 # ----------------------------------------------------------------------
-app = FastAPI(title="SpeakUp API")
+app = FastAPI(title="SpeakPort API")
 
 
 def is_admin_user(user: User) -> bool:
@@ -1851,7 +1851,7 @@ def auth_config():
 def auth_google(data: GoogleAuthIn, request: Request, session: Session = Depends(get_session)):
     """
     "Sign in with Google" — verifies the ID token Google's button handed the
-    frontend, then finds or creates a SpeakUp account for that email.
+    frontend, then finds or creates a SpeakPort account for that email.
 
     Verification checks three things a forged/replayed token can't fake:
       1. Signature matches one of Google's current public keys (fetched
@@ -2133,7 +2133,7 @@ GOAL_TAGS = {
 
 
 # ----------------------------------------------------------------------
-# 5c. SPEAKING LEAGUES — a Pro-exclusive, SpeakUp-specific twist on
+# 5c. SPEAKING LEAGUES — a Pro-exclusive, SpeakPort-specific twist on
 # Duolingo's tiered weekly leagues.
 # ----------------------------------------------------------------------
 # The flat /api/leaderboard above pits every Pro user on the platform
@@ -2900,7 +2900,7 @@ def progress(user: User = Depends(get_current_user),
 
     today = dt.date.today()
 
-    # Streak Shield — a Pro-exclusive, always-on perk (SpeakUp's take on
+    # Streak Shield — a Pro-exclusive, always-on perk (SpeakPort's take on
     # Duolingo's streak freeze). Free users' streaks are untouched below:
     # a single missed day just breaks the chain, same as always. Pro users
     # get exactly one missed day auto-protected whenever it happens (not a
@@ -4673,7 +4673,7 @@ def _startup_banner():
     fe_ok = index_file.exists() and "adminBtn" in index_file.read_text()
 
     print("\n" + "=" * 58)
-    print("  SpeakUp — starting up")
+    print("  SpeakPort — starting up")
     print("=" * 58)
     print(f"  .env file found      : {'YES' if env_found else 'NO  <-- create it: cp .env.example .env'}")
     if ADMIN_EMAILS:

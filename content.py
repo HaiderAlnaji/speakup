@@ -1,7 +1,7 @@
 # ======================================================================
 #  content.py — ALL practice content, baked in. NO API, ever.
 # ======================================================================
-# This is what makes SpeakUp work with zero keys, zero rate limits, and
+# This is what makes SpeakPort work with zero keys, zero rate limits, and
 # zero per-user cost. Everything a learner drills or says is in here.
 #
 # HOW TO ADD MORE (you'll want to, over time):

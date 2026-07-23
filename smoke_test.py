@@ -20,7 +20,7 @@ c.post("/api/register", json={"email":"owner@test.com","password":"strongpass123
 
 # frontend
 r = c.get("/")
-check("GET / serves frontend html", r.status_code == 200 and "SpeakUp" in r.text)
+check("GET / serves frontend html", r.status_code == 200 and "SpeakPort" in r.text)
 
 # register
 r = c.post("/api/register", json={"email":"Haider@Test.com","password":"strongpass123"})

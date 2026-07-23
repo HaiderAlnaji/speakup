@@ -1,6 +1,6 @@
 {
-  "name": "SpeakUp — Practice Speaking English",
-  "short_name": "SpeakUp",
+  "name": "SpeakPort — Practice Speaking English",
+  "short_name": "SpeakPort",
   "description": "Practice speaking English out loud with instant pronunciation scoring, no AI required.",
   "start_url": "/",
   "scope": "/",
