@@ -222,10 +222,13 @@ PRO_PLAN_DAYS = {"monthly": 30, "annual": 365}
 # integration in this file: until GEMINI_API_KEY is set, the AI Roleplay
 # screen tells the learner it isn't turned on yet instead of erroring.
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "").strip()
-# Overridable in case Google renames/retires this model later -- check
-# https://ai.google.dev/gemini-api/docs/models for the current cheapest
-# "Flash" model name if this one ever stops working.
-GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash").strip()
+# Google retires/restricts model names surprisingly often (gemini-2.5-flash
+# stopped accepting new API keys in July 2026, for example) -- if you ever
+# see a 404 "no longer available" error, check
+# https://ai.google.dev/gemini-api/docs/models for whatever the current
+# cheapest "Stable" Flash-Lite model is called and override it here without
+# touching any code.
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.1-flash-lite").strip()
 GEMINI_CONFIGURED = bool(GEMINI_API_KEY)
 
 
