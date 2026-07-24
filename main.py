@@ -232,15 +232,19 @@ GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.1-flash-lite").strip()
 GEMINI_CONFIGURED = bool(GEMINI_API_KEY)
 
 # ----------------------------------------------------------------------
-# 1e-3. SONGS: connected-speech breakdown (Gemini)
+# 1e-3. SONGS: connected-speech breakdown (Gemini) + real lyrics (LRCLIB)
 # ----------------------------------------------------------------------
 # Songs practices with a real track the learner picks (embedded straight
-# from YouTube -- no lyrics database, no licensing deal, nothing we host
-# ourselves). The learner types in whatever line they want to focus on,
-# and this is the one bit of Gemini help on top of that: breaking that
-# typed line down from careful textbook pronunciation into fast natural
-# speech. Gemini is never asked to produce or recall real song lyrics --
-# it only ever transforms text the learner already typed in.
+# from YouTube -- no licensing deal, nothing we host ourselves). The
+# learner can type in whatever line they want to focus on, OR search
+# LRCLIB (lrclib.net) -- a free, community-run lyrics database, not a
+# licensed source -- and tap a real line instead of typing from memory
+# (see call_lrclib_search/call_lrclib_get below; always shown with
+# attribution back to LRCLIB). Either way, this is the one bit of Gemini
+# help on top of that: breaking the line down from careful textbook
+# pronunciation into fast natural speech. Gemini is never asked to
+# produce or recall real song lyrics -- it only ever transforms text
+# that's already in front of the learner.
 BREAKDOWN_FIELDS = ("literal", "literal_ipa", "linking", "linking_ipa",
                     "reduced", "reduced_ipa", "fluent", "fluent_ipa")
 
@@ -4823,6 +4827,111 @@ def songs_word_lookup(data: WordLookupIn, request: Request, user: User = Depends
     return call_gemini_word_lookup(word)
 
 
+# ---- Real lyrics search (LRCLIB) -- a free, community-run lyrics
+# database (lrclib.net), not Gemini, not a licensed provider. Needs no
+# API key/account. Only ever used so the learner can tap a real line
+# instead of typing one from memory -- always returned with attribution,
+# never claimed as our own content. ----
+LRCLIB_API_BASE = "https://lrclib.net/api"
+LRCLIB_USER_AGENT = "SpeakPort/1.0 (+https://speakport.onrender.com)"
+
+
+def call_lrclib_search(track: str, artist: str) -> list[dict]:
+    params = {"track_name": track, "artist_name": artist} if (track and artist) else {"q": track or artist}
+    try:
+        resp = requests.get(f"{LRCLIB_API_BASE}/search", params=params,
+                             headers={"User-Agent": LRCLIB_USER_AGENT}, timeout=15)
+    except requests.RequestException:
+        raise HTTPException(502, "Couldn't reach LRCLIB right now. Try again in a moment.")
+    if not resp.ok:
+        raise HTTPException(502, f"LRCLIB search failed ({resp.status_code}).")
+    try:
+        results = resp.json()
+        if not isinstance(results, list):
+            raise ValueError("not a list")
+    except (ValueError, _json.JSONDecodeError):
+        raise HTTPException(502, "LRCLIB returned something unexpected.")
+    out = []
+    for item in results[:10]:
+        if not isinstance(item, dict):
+            continue
+        out.append({
+            "id": item.get("id"),
+            "track_name": str(item.get("trackName") or "")[:200],
+            "artist_name": str(item.get("artistName") or "")[:200],
+            "album_name": str(item.get("albumName") or "")[:200],
+            "duration": item.get("duration"),
+            "instrumental": bool(item.get("instrumental")),
+            "has_lyrics": bool(item.get("plainLyrics") or item.get("syncedLyrics")),
+        })
+    return out
+
+
+class LyricsSearchIn(BaseModel):
+    track: str = ""
+    artist: str = ""
+
+
+@app.post("/api/songs/lyrics-search")
+def songs_lyrics_search(data: LyricsSearchIn, request: Request, user: User = Depends(require_max)):
+    """
+    Searches LRCLIB (Max only) for songs matching a title/artist the
+    learner typed in. Returns candidate matches only -- the actual lines
+    are a separate call (songs_lyrics_get) so the learner can pick the
+    right version first.
+    """
+    rate_limit(request, "songs-lyrics-search", limit=20, window=300)
+    track = data.track.strip()[:200]
+    artist = data.artist.strip()[:200]
+    if not track and not artist:
+        raise HTTPException(400, "Type a song title (or artist) to search.")
+    return {"results": call_lrclib_search(track, artist)}
+
+
+class LyricsGetIn(BaseModel):
+    id: int
+
+
+@app.post("/api/songs/lyrics-get")
+def songs_lyrics_get(data: LyricsGetIn, request: Request, user: User = Depends(require_max)):
+    """
+    Fetches the lyrics text for one LRCLIB match (Max only), split into
+    lines the learner can tap to load into the practice box instead of
+    typing from memory. LRCLIB is a free, community-contributed database,
+    not a licensed lyrics provider -- always returned with attribution.
+    """
+    rate_limit(request, "songs-lyrics-get", limit=30, window=300)
+    try:
+        resp = requests.get(f"{LRCLIB_API_BASE}/get/{data.id}",
+                             headers={"User-Agent": LRCLIB_USER_AGENT}, timeout=15)
+    except requests.RequestException:
+        raise HTTPException(502, "Couldn't reach LRCLIB right now. Try again in a moment.")
+    if resp.status_code == 404:
+        raise HTTPException(404, "Couldn't find lyrics for that song.")
+    if not resp.ok:
+        raise HTTPException(502, f"LRCLIB lookup failed ({resp.status_code}).")
+    try:
+        item = resp.json()
+        if not isinstance(item, dict):
+            raise ValueError("not a dict")
+    except (ValueError, _json.JSONDecodeError):
+        raise HTTPException(502, "LRCLIB returned something unexpected.")
+    plain = str(item.get("plainLyrics") or "")
+    if not plain.strip():
+        # Some entries only carry timed (LRC) lyrics -- strip the
+        # [mm:ss.xx] timestamps off the front of each line as a fallback.
+        synced = str(item.get("syncedLyrics") or "")
+        plain = re.sub(r"\[\d{2}:\d{2}[.:]\d{2,3}\]\s*", "", synced)
+    lines = [ln.strip() for ln in plain.split("\n") if ln.strip()][:200]
+    return {
+        "track_name": str(item.get("trackName") or "")[:200],
+        "artist_name": str(item.get("artistName") or "")[:200],
+        "instrumental": bool(item.get("instrumental")),
+        "lines": lines,
+        "attribution": "Lyrics via LRCLIB (lrclib.net), a free community database.",
+    }
+
+
 # ----------------------------------------------------------------------
 # 7c. ADMIN ROUTES — manage users, and unlock the Sprint for testing
 # ----------------------------------------------------------------------
@@ -5060,6 +5169,7 @@ def _startup_banner():
     print(f"    practice sentences : {sum(len(v) for v in SENTENCE_BANK.values())} across "
           f"{len(SENTENCE_BANK)} levels")
     print(f"  Gemini AI (Max: Roleplay + speech breakdown + word lookup) : {'configured, model=' + GEMINI_MODEL if GEMINI_CONFIGURED else 'NOT configured  <-- add GEMINI_API_KEY to .env to turn it on'}")
+    print(f"  Real lyrics (Max)    : LRCLIB (lrclib.net) -- free, no key needed, always on")
     total_sprint_convs = sum(len(c) for c in SPRINT_CONVS_BY_SPRINT.values())
     print(f"    conversations      : {len(CONVERSATIONS)} scenarios + {total_sprint_convs} sprint days")
     print("=" * 58)

@@ -626,6 +626,18 @@
   .word-card-def{font-size:14.5px;color:var(--ink);margin-top:10px}
   #songsWordCard .listen{margin-top:16px}
 
+  /* ---------- Real lyrics search (LRCLIB, free community database) ---------- */
+  .song-lyrics-match{display:flex;justify-content:space-between;align-items:center;gap:10px;
+    padding:10px 14px;border:1.5px solid var(--line);border-radius:10px;margin-top:8px;
+    cursor:pointer;font-size:14px}
+  .song-lyrics-match:hover{border-color:var(--brand)}
+  .song-lyrics-match-meta{color:var(--muted);font-size:12.5px;white-space:nowrap}
+  .song-lyrics-lines{margin-top:14px}
+  .song-lyrics-line{padding:8px 12px;border-radius:8px;cursor:pointer;font-size:14.5px;color:var(--ink)}
+  .song-lyrics-line:hover{background:var(--surface-2);color:var(--brand)}
+  .song-lyrics-attribution{font-size:11.5px;color:var(--muted);margin-top:10px;text-align:right}
+  html[dir="rtl"] .song-lyrics-attribution{text-align:left}
+
   /* ---------- Sprint hero (full-bleed light splash, matches mockup) ----------
      Lives outside .container (see HTML) so it can span the full viewport
      instead of being boxed in at 940px with rounded corners. ---------- */
@@ -1927,11 +1939,12 @@
 
     <!-- Songs — Max only. Practices with a REAL song the learner picks by
          pasting its YouTube link; the page embeds YouTube's own player
-         (they hold the rights, nothing is downloaded or hosted here). No
-         lyrics database of any kind -- the learner types in whatever line
-         they want to focus on themselves, then listens, records their own
-         attempt for a pronunciation score, or asks Gemini for the
-         connected-speech breakdown of that one typed line. Stateless like
+         (they hold the rights, nothing is downloaded or hosted here). The
+         learner types in whatever line they want to focus on -- optionally
+         with help from a real-lyrics search (LRCLIB, a free community
+         database, tap-to-fill, always attributed) -- then listens, records
+         their own attempt for a pronunciation score, or asks Gemini for the
+         connected-speech breakdown of that one line. Stateless like
          Roleplay -- nothing is saved server-side, so there's no
          XP/streak tie-in for this one yet. -->
     <div id="songsView" class="hidden">
@@ -1982,11 +1995,33 @@
           <button class="speed-btn" id="songsSpeedFastBtn" data-i18n="speed.fast">🐇 Fast</button>
         </div>
 
-        <!-- No lyrics database -- the learner types in whatever line they
-             just heard themselves, then that typed line (never fetched
-             from anywhere) is what gets listened to, scored, and broken
-             down. Same similarity()/wordWeakPoints() scoring math every
-             other practice mode uses. -->
+        <!-- Optional: search LRCLIB (lrclib.net), a free community-run
+             lyrics database, and tap a real line instead of typing one
+             from memory. Not a licensed source, so it's shown collapsed,
+             opt-in, and always with attribution -- typing a line by ear
+             still works exactly as before. -->
+        <div class="song-batch" id="songsLyricsSection">
+          <button class="btn-ghost" id="songsLyricsToggleBtn" data-i18n="songs.lyricsToggle">🔍 Find the lyrics for this song</button>
+          <div id="songsLyricsPanel" class="hidden">
+            <p class="conv-setting" data-i18n="songs.lyricsPrompt">Search by song title and artist:</p>
+            <div class="topic-bar">
+              <input id="songsLyricsTrackInput" data-i18n-ph="songs.lyricsTrackPh" maxlength="200" dir="ltr">
+              <input id="songsLyricsArtistInput" data-i18n-ph="songs.lyricsArtistPh" maxlength="200" dir="ltr">
+              <button class="btn-sm solid" id="songsLyricsSearchBtn" data-i18n="songs.lyricsSearchBtn">🔍 Search</button>
+            </div>
+            <div id="songsLyricsMatches"></div>
+            <div id="songsLyricsLines" class="song-lyrics-lines hidden">
+              <p class="conv-setting" data-i18n="songs.lyricsTapHint">Tap any line to load it below:</p>
+              <div id="songsLyricsLinesList"></div>
+              <p class="song-lyrics-attribution" id="songsLyricsAttribution"></p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Typing a line by ear still works exactly as before -- that
+             typed (or tapped-from-LRCLIB) line is what gets listened to,
+             scored, and broken down. Same similarity()/wordWeakPoints()
+             scoring math every other practice mode uses. -->
         <div class="song-line-practice">
           <p class="conv-setting" data-i18n="songs.linePrompt">Type a line you just heard, then practice saying it:</p>
           <div class="topic-bar">
@@ -2467,6 +2502,16 @@ const T = {
     "songs.invalidLink": "That doesn't look like a YouTube link. Paste a full YouTube URL.",
     "songs.genericError": "Something went wrong. Try again.",
     "songs.newSong": "New song",
+    "songs.lyricsToggle": "🔍 Find the lyrics for this song",
+    "songs.lyricsPrompt": "Search by song title and artist:",
+    "songs.lyricsTrackPh": "Song title…",
+    "songs.lyricsArtistPh": "Artist (optional)…",
+    "songs.lyricsSearchBtn": "🔍 Search",
+    "songs.lyricsNeedQuery": "Type a song title first.",
+    "songs.lyricsNoMatches": "No matches found. Try a different title or artist.",
+    "songs.lyricsInstrumental": "Instrumental",
+    "songs.lyricsNoneFound": "No lyrics available for this one.",
+    "songs.lyricsTapHint": "Tap any line to load it below:",
     "songs.linePrompt": "Type a line you just heard, then practice saying it:",
     "songs.linePh": "Type the line here…",
     "songs.typeLineFirst": "Type a line first, then tap the mic.",
@@ -2824,6 +2869,16 @@ const T = {
     "songs.invalidLink": "هذا لا يبدو رابط يوتيوب. الصق رابط يوتيوب كاملاً.",
     "songs.genericError": "حدث خطأ ما. حاول مرة أخرى.",
     "songs.newSong": "أغنية جديدة",
+    "songs.lyricsToggle": "🔍 ابحث عن كلمات هذه الأغنية",
+    "songs.lyricsPrompt": "ابحث باسم الأغنية والفنان:",
+    "songs.lyricsTrackPh": "اسم الأغنية…",
+    "songs.lyricsArtistPh": "الفنان (اختياري)…",
+    "songs.lyricsSearchBtn": "🔍 بحث",
+    "songs.lyricsNeedQuery": "اكتب اسم الأغنية أولاً.",
+    "songs.lyricsNoMatches": "لا توجد نتائج. جرّب اسماً أو فناناً مختلفاً.",
+    "songs.lyricsInstrumental": "موسيقية بدون كلمات",
+    "songs.lyricsNoneFound": "لا توجد كلمات متاحة لهذه الأغنية.",
+    "songs.lyricsTapHint": "اضغط على أي سطر لتحميله أدناه:",
     "songs.linePrompt": "اكتب سطراً سمعته للتو، ثم تدرّب على نطقه:",
     "songs.linePh": "اكتب السطر هنا…",
     "songs.typeLineFirst": "اكتب سطراً أولاً، ثم اضغط على الميكروفون.",
@@ -5837,6 +5892,11 @@ $("songsLoadBtn").onclick = () => {
     $("songsWordInput").value = "";
     $("songsWordCard").classList.add("hidden");
     $("songsWordPanel").classList.add("hidden");
+    $("songsLyricsTrackInput").value = "";
+    $("songsLyricsArtistInput").value = "";
+    $("songsLyricsMatches").innerHTML = "";
+    $("songsLyricsLines").classList.add("hidden");
+    $("songsLyricsPanel").classList.add("hidden");
     $("songsPracticeWrap").classList.remove("hidden");
     if (songsYtPlayer && songsYtPlayer.loadVideoById){
       songsYtPlayer.loadVideoById(id);
@@ -6024,6 +6084,102 @@ $("songsWordListenBtn").onclick = () => {
   u.lang = "en-US"; u.rate = playbackRate;
   speechSynthesis.cancel(); speechSynthesis.speak(u);
 };
+
+// ---- Real lyrics search (LRCLIB, Max only) -- free community lyrics
+// database, not Gemini, not a licensed source. Search a title/artist,
+// then tap a real line to load it straight into the line-practice box
+// above instead of typing one from memory. Always shown with
+// attribution back to LRCLIB. ----
+$("songsLyricsToggleBtn").onclick = () => { $("songsLyricsPanel").classList.toggle("hidden"); };
+$("songsLyricsTrackInput").addEventListener("keydown", e => { if (e.key === "Enter") $("songsLyricsSearchBtn").click(); });
+$("songsLyricsArtistInput").addEventListener("keydown", e => { if (e.key === "Enter") $("songsLyricsSearchBtn").click(); });
+$("songsLyricsSearchBtn").onclick = async () => {
+  const track = $("songsLyricsTrackInput").value.trim();
+  const artist = $("songsLyricsArtistInput").value.trim();
+  $("songsError").classList.add("hidden");
+  if (!track && !artist){
+    $("songsError").textContent = t("songs.lyricsNeedQuery");
+    $("songsError").classList.remove("hidden");
+    return;
+  }
+  $("songsLyricsSearchBtn").disabled = true;
+  const prevLabel = $("songsLyricsSearchBtn").textContent;
+  $("songsLyricsSearchBtn").textContent = t("songs.bd.loading");
+  $("songsLyricsMatches").innerHTML = "";
+  $("songsLyricsLines").classList.add("hidden");
+  try {
+    const resp = await api("/api/songs/lyrics-search", "POST", {track, artist});
+    renderLyricsMatches(resp.results || []);
+  } catch(e){
+    $("songsError").textContent = e.message || t("songs.genericError");
+    $("songsError").classList.remove("hidden");
+  }
+  $("songsLyricsSearchBtn").disabled = false;
+  $("songsLyricsSearchBtn").textContent = prevLabel;
+};
+function renderLyricsMatches(results){
+  const box = $("songsLyricsMatches");
+  box.innerHTML = "";
+  if (!results.length){
+    const p = document.createElement("p");
+    p.className = "conv-setting";
+    p.textContent = t("songs.lyricsNoMatches");
+    box.appendChild(p);
+    return;
+  }
+  results.forEach(item => {
+    const row = document.createElement("div");
+    row.className = "song-lyrics-match";
+    row.dir = "ltr";
+    const left = document.createElement("span");
+    left.textContent = item.track_name + (item.artist_name ? " — " + item.artist_name : "");
+    const right = document.createElement("span");
+    right.className = "song-lyrics-match-meta";
+    right.textContent = item.instrumental ? t("songs.lyricsInstrumental")
+      : (!item.has_lyrics ? t("songs.lyricsNoneFound") : (item.album_name || ""));
+    row.appendChild(left); row.appendChild(right);
+    if (item.has_lyrics && !item.instrumental && item.id != null){
+      row.onclick = () => loadLyricsLines(item.id);
+    } else {
+      row.style.opacity = "0.55"; row.style.cursor = "default";
+    }
+    box.appendChild(row);
+  });
+}
+async function loadLyricsLines(id){
+  try {
+    const resp = await api("/api/songs/lyrics-get", "POST", {id});
+    const list = $("songsLyricsLinesList");
+    list.innerHTML = "";
+    if (!resp.lines || !resp.lines.length){
+      const p = document.createElement("p");
+      p.className = "conv-setting";
+      p.textContent = t("songs.lyricsNoneFound");
+      list.appendChild(p);
+    } else {
+      resp.lines.forEach(line => {
+        const row = document.createElement("div");
+        row.className = "song-lyrics-line";
+        row.dir = "ltr";
+        row.textContent = line;
+        row.onclick = () => {
+          $("songsLineInput").value = line;
+          $("songsResult").classList.remove("show");
+          $("songsBreakdownBox").classList.add("hidden");
+          $("songsLineInput").scrollIntoView({behavior: "smooth", block: "center"});
+          $("songsLineInput").focus();
+        };
+        list.appendChild(row);
+      });
+    }
+    $("songsLyricsAttribution").textContent = resp.attribution || "";
+    $("songsLyricsLines").classList.remove("hidden");
+  } catch(e){
+    $("songsError").textContent = e.message || t("songs.genericError");
+    $("songsError").classList.remove("hidden");
+  }
+}
+
 $("songsMicBtn").onclick = () => {
   const line = $("songsLineInput").value.trim();
   if (!line){ $("songsMicHint").textContent = t("songs.typeLineFirst"); return; }

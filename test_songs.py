@@ -1,16 +1,17 @@
-"""Tests for the Songs feature's Gemini-backed pronunciation tools (all
-Max-only): the connected-speech breakdown (now with an IPA transcription
-per layer), the batch version of it, and single-word lookup (stress, IPA,
-definition). Practicing with a real song itself (pasting a YouTube link,
-embedding YouTube's own player, typing a line to score) is 100%
-client-side -- no lyrics database, no server endpoint, nothing to test
-here with a backend test.
+"""Tests for the Songs feature's server-side helpers (all Max-only): the
+Gemini-backed pronunciation tools (connected-speech breakdown with an IPA
+transcription per layer, the batch version of it, and single-word lookup
+-- stress, IPA, definition) plus real lyrics search via LRCLIB
+(lrclib.net, a free community-run database, not Gemini, no API key
+needed). Practicing itself (pasting a YouTube link, embedding YouTube's
+own player, typing/tapping a line to score) is 100% client-side --
+nothing to test here with a backend test.
 
 Focus: require_max rejects free/Pro users before any external call is
-made; requests sent to Gemini have the right shape; the parsers handle
-realistic responses AND malformed ones without crashing. requests.post
-is faked throughout -- no real network call, no real API key needed to
-run this.
+made; requests sent to Gemini/LRCLIB have the right shape; the parsers
+handle realistic responses AND malformed ones without crashing.
+requests.post (Gemini) and requests.get (LRCLIB) are both faked
+throughout -- no real network call, no real API key needed to run this.
 
 Run: python test_songs.py
 """
@@ -217,6 +218,109 @@ def fake_post_word_error(url, **kwargs):
 main.requests.post = fake_post_word_error
 r = c.post("/api/songs/word-lookup", json={"word": "example"}, headers=max_auth)
 check("word-lookup: Gemini HTTP error -> 502 with detail", r.status_code == 502 and "429" in r.json()["detail"])
+
+# ============================================================
+#  /api/songs/lyrics-search + /api/songs/lyrics-get -- real lyrics via
+#  LRCLIB (a free, community-run database -- not Gemini, no API key).
+#  requests.get is faked throughout -- no real network call.
+# ============================================================
+def fake_lrclib_search_results():
+    return [
+        {"id": 101, "trackName": "Example Song", "artistName": "Example Artist",
+         "albumName": "Example Album", "duration": 210, "instrumental": False,
+         "plainLyrics": "line one\nline two", "syncedLyrics": "[00:01.00] line one"},
+        {"id": 102, "trackName": "Instrumental Track", "artistName": "Example Artist",
+         "albumName": "", "duration": 180, "instrumental": True,
+         "plainLyrics": "", "syncedLyrics": ""},
+    ]
+
+_last_lrclib_search = {}
+def fake_get_search(url, **kwargs):
+    _last_lrclib_search["url"] = url
+    _last_lrclib_search["params"] = kwargs.get("params")
+    _last_lrclib_search["headers"] = kwargs.get("headers")
+    return FakeResp(fake_lrclib_search_results())
+main.requests.get = fake_get_search
+
+r = c.post("/api/songs/lyrics-search", json={"track": "Example Song", "artist": ""})
+check("lyrics-search: no auth -> 401", r.status_code == 401)
+
+r = c.post("/api/songs/lyrics-search", json={"track": "Example Song"}, headers=free_auth)
+check("lyrics-search: free user -> 403 (Max only)", r.status_code == 403)
+
+r = c.post("/api/songs/lyrics-search", json={"track": "Example Song"}, headers=pro_auth)
+check("lyrics-search: pro (non-max) user -> 403 (Max only)", r.status_code == 403)
+
+r = c.post("/api/songs/lyrics-search", json={"track": "Example Song", "artist": "Example Artist"}, headers=max_auth)
+check("lyrics-search: max user -> 200", r.status_code == 200)
+results = r.json()["results"]
+check("lyrics-search: 2 results returned", len(results) == 2)
+check("lyrics-search: has_lyrics true for the real match", results[0]["has_lyrics"] is True)
+check("lyrics-search: instrumental flagged, has_lyrics false for it", results[1]["instrumental"] is True and results[1]["has_lyrics"] is False)
+check("lyrics-search: hits LRCLIB's real search endpoint", _last_lrclib_search["url"] == f"{main.LRCLIB_API_BASE}/search")
+check("lyrics-search: sends track_name+artist_name when both given", _last_lrclib_search["params"] == {"track_name": "Example Song", "artist_name": "Example Artist"})
+check("lyrics-search: sends a User-Agent header", bool((_last_lrclib_search["headers"] or {}).get("User-Agent")))
+
+r = c.post("/api/songs/lyrics-search", json={"track": "", "artist": ""}, headers=max_auth)
+check("lyrics-search: blank query -> 400", r.status_code == 400)
+
+def fake_get_search_bad(url, **kwargs):
+    return FakeResp({"not": "a list"})
+main.requests.get = fake_get_search_bad
+r = c.post("/api/songs/lyrics-search", json={"track": "x"}, headers=max_auth)
+check("lyrics-search: non-list response -> 502, not a 500", r.status_code == 502)
+
+def fake_get_search_error(url, **kwargs):
+    return FakeResp({}, ok=False, status_code=500, text="lrclib down")
+main.requests.get = fake_get_search_error
+r = c.post("/api/songs/lyrics-search", json={"track": "x"}, headers=max_auth)
+check("lyrics-search: LRCLIB HTTP error -> 502", r.status_code == 502)
+
+def fake_get_search_network_error(url, **kwargs):
+    raise main.requests.RequestException("connection failed")
+main.requests.get = fake_get_search_network_error
+r = c.post("/api/songs/lyrics-search", json={"track": "x"}, headers=max_auth)
+check("lyrics-search: network error -> 502, not a 500 crash", r.status_code == 502)
+
+# ---- /api/songs/lyrics-get ----
+_last_lrclib_get = {}
+def fake_get_lyrics(url, **kwargs):
+    _last_lrclib_get["url"] = url
+    return FakeResp({"trackName": "Example Song", "artistName": "Example Artist",
+                      "instrumental": False, "plainLyrics": "line one\nline two\n\nline three"})
+main.requests.get = fake_get_lyrics
+
+r = c.post("/api/songs/lyrics-get", json={"id": 101})
+check("lyrics-get: no auth -> 401", r.status_code == 401)
+
+r = c.post("/api/songs/lyrics-get", json={"id": 101}, headers=free_auth)
+check("lyrics-get: free user -> 403 (Max only)", r.status_code == 403)
+
+r = c.post("/api/songs/lyrics-get", json={"id": 101}, headers=max_auth)
+check("lyrics-get: max user -> 200", r.status_code == 200)
+body = r.json()
+check("lyrics-get: blank lines filtered, 3 lines returned", body["lines"] == ["line one", "line two", "line three"])
+check("lyrics-get: attribution mentions LRCLIB", "LRCLIB" in body["attribution"])
+check("lyrics-get: hits LRCLIB's real get-by-id endpoint", _last_lrclib_get["url"] == f"{main.LRCLIB_API_BASE}/get/101")
+
+def fake_get_lyrics_synced_fallback(url, **kwargs):
+    return FakeResp({"trackName": "X", "artistName": "Y", "instrumental": False,
+                      "plainLyrics": "", "syncedLyrics": "[00:01.50] first line\n[00:04.20] second line"})
+main.requests.get = fake_get_lyrics_synced_fallback
+r = c.post("/api/songs/lyrics-get", json={"id": 103}, headers=max_auth)
+check("lyrics-get: falls back to synced lyrics, timestamps stripped", r.json()["lines"] == ["first line", "second line"])
+
+def fake_get_lyrics_404(url, **kwargs):
+    return FakeResp({}, ok=False, status_code=404, text="not found")
+main.requests.get = fake_get_lyrics_404
+r = c.post("/api/songs/lyrics-get", json={"id": 999}, headers=max_auth)
+check("lyrics-get: not found -> 404", r.status_code == 404)
+
+def fake_get_lyrics_bad_json(url, **kwargs):
+    return FakeResp([1, 2, 3])  # not a dict
+main.requests.get = fake_get_lyrics_bad_json
+r = c.post("/api/songs/lyrics-get", json={"id": 101}, headers=max_auth)
+check("lyrics-get: non-dict response -> 502, not a 500", r.status_code == 502)
 
 print(f"\n{ok} passed, {fail} failed")
 if os.path.exists("app.db"):
