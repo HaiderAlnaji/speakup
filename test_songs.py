@@ -113,6 +113,53 @@ main.requests.post = fake_post_error
 r = c.post("/api/songs/breakdown", json={"text": "example line one"}, headers=max_auth)
 check("Gemini HTTP error -> 502 with detail", r.status_code == 502 and "429" in r.json()["detail"])
 
+# ============================================================
+#  /api/songs/breakdown-batch -- several typed-in lines at once (Max only).
+# ============================================================
+def fake_post_breakdown_batch(url, **kwargs):
+    bd = {"literal": "example line one", "linking": "example_line_one",
+          "reduced": "example line one", "fluent": "example line one"}
+    return FakeResp({"candidates": [{"content": {"parts": [{"text": main._json.dumps(bd)}]}}]})
+main.requests.post = fake_post_breakdown_batch
+
+r = c.post("/api/songs/breakdown-batch", json={"lines": ["example line one", "example line two"]})
+check("batch: no auth -> 401", r.status_code == 401)
+
+r = c.post("/api/songs/breakdown-batch", json={"lines": ["example line one"]}, headers=free_auth)
+check("batch: free user -> 403 (Max only)", r.status_code == 403)
+
+r = c.post("/api/songs/breakdown-batch", json={"lines": ["example line one", "example line two", ""]}, headers=max_auth)
+check("batch: max user -> 200", r.status_code == 200)
+body = r.json()
+check("batch: blank line filtered out, 2 lines returned", body["lines"] == ["example line one", "example line two"])
+check("batch: 2 results returned, both ok", len(body["results"]) == 2 and all(x["ok"] for x in body["results"]))
+check("batch: each result has all 4 layers", body["results"][0]["literal"] == "example line one")
+
+r = c.post("/api/songs/breakdown-batch", json={"lines": [f"line {i}" for i in range(20)]}, headers=max_auth)
+check("batch: capped at 8 lines even if more are sent", len(r.json()["lines"]) == 8)
+
+r = c.post("/api/songs/breakdown-batch", json={"lines": ["   ", ""]}, headers=max_auth)
+check("batch: all-blank lines -> 400", r.status_code == 400)
+
+r = c.post("/api/songs/breakdown-batch", json={"lines": []}, headers=max_auth)
+check("batch: empty list -> 400", r.status_code == 400)
+
+# ---- one bad line doesn't fail the whole batch ----
+_call_n = {"n": 0}
+def fake_post_batch_partial_fail(url, **kwargs):
+    _call_n["n"] += 1
+    if _call_n["n"] == 2:
+        return FakeResp({"candidates": [{"content": {"parts": [{"text": "not json"}]}}]})
+    bd = {"literal": "example line", "linking": "example_line",
+          "reduced": "example line", "fluent": "example line"}
+    return FakeResp({"candidates": [{"content": {"parts": [{"text": main._json.dumps(bd)}]}}]})
+main.requests.post = fake_post_batch_partial_fail
+r = c.post("/api/songs/breakdown-batch", json={"lines": ["line a", "line b", "line c"]}, headers=max_auth)
+check("batch: partial failure -> still 200 overall", r.status_code == 200)
+results = r.json()["results"]
+check("batch: line 1 ok, line 2 failed, line 3 ok", results[0]["ok"] is True and results[1]["ok"] is False and results[2]["ok"] is True)
+check("batch: failed line carries an error message", "error" in results[1])
+
 print(f"\n{ok} passed, {fail} failed")
 if os.path.exists("app.db"):
     os.remove("app.db")

@@ -602,6 +602,18 @@
   .sb-val{font-size:15.5px;color:var(--ink)}
   .sb-val.sb-highlight{color:var(--brand);font-weight:700}
 
+  /* ---------- Batch breakdown (several typed-in lines at once) ---------- */
+  .song-batch{margin-top:26px;padding-top:20px;border-top:1px solid var(--line)}
+  #songsBatchPanel{margin-top:14px}
+  #songsBatchInput{width:100%;padding:12px 14px;border:1.5px solid var(--line);
+    border-radius:10px;font-size:14.5px;font-family:inherit;resize:vertical}
+  #songsBatchInput:focus{outline:none;border-color:var(--brand)}
+  .song-batch-card{background:var(--surface-2);border-radius:var(--radius);
+    padding:16px 20px;margin-top:14px}
+  .song-batch-line{font-size:15.5px;font-weight:700;color:var(--ink);margin-bottom:10px}
+  .song-batch-card .song-breakdown{margin:0 0 12px 0}
+  .song-batch-error{font-size:13.5px;color:var(--danger)}
+
   /* ---------- Sprint hero (full-bleed light splash, matches mockup) ----------
      Lives outside .container (see HTML) so it can span the full viewport
      instead of being boxed in at 940px with rounded corners. ---------- */
@@ -2002,6 +2014,21 @@
               <button class="btn-sm solid" id="songsRetryBtn" data-i18n="result.tryAgain">Try again</button>
             </div>
           </div>
+
+          <!-- Batch breakdown: paste several lines at once (still typed in
+               by the learner, never fetched by us) and get the same
+               4-layer breakdown for each, instead of one line at a time. -->
+          <div class="song-batch">
+            <button class="btn-ghost" id="songsBatchToggleBtn" data-i18n="songs.batchToggle">📋 Break down several lines at once</button>
+            <div id="songsBatchPanel" class="hidden">
+              <p class="conv-setting" data-i18n="songs.batchPrompt">Paste a few lines you've heard (one per row), then break them all down together:</p>
+              <textarea id="songsBatchInput" rows="5" data-i18n-ph="songs.batchPh" dir="ltr"></textarea>
+              <div class="phrase-actions">
+                <button class="btn-sm solid" id="songsBatchBtn" data-i18n="songs.batchBtn">🔬 Break down all lines</button>
+              </div>
+              <div id="songsBatchResults"></div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -2410,6 +2437,11 @@ const T = {
     "songs.linePh": "Type the line here…",
     "songs.typeLineFirst": "Type a line first, then tap the mic.",
     "songs.breakdownBtn": "🔬 Show natural speech",
+    "songs.batchToggle": "📋 Break down several lines at once",
+    "songs.batchPrompt": "Paste a few lines you've heard (one per row), then break them all down together:",
+    "songs.batchPh": "One line per row…",
+    "songs.batchBtn": "🔬 Break down all lines",
+    "songs.batchPractice": "🎤 Practice this line",
     "songs.bd.loading": "Analyzing…",
     "songs.bd.literal": "No Rhythm",
     "songs.bd.linking": "Linking",
@@ -2757,6 +2789,11 @@ const T = {
     "songs.linePh": "اكتب السطر هنا…",
     "songs.typeLineFirst": "اكتب سطراً أولاً، ثم اضغط على الميكروفون.",
     "songs.breakdownBtn": "🔬 أظهر النطق الطبيعي",
+    "songs.batchToggle": "📋 حلّل عدة أسطر دفعة واحدة",
+    "songs.batchPrompt": "الصق بعض الأسطر التي سمعتها (سطر في كل صف)، ثم حلّلها كلها معاً:",
+    "songs.batchPh": "سطر واحد في كل صف…",
+    "songs.batchBtn": "🔬 حلّل كل الأسطر",
+    "songs.batchPractice": "🎤 تدرّب على هذا السطر",
     "songs.bd.loading": "جارٍ التحليل…",
     "songs.bd.literal": "بلا إيقاع",
     "songs.bd.linking": "الربط",
@@ -5655,6 +5692,9 @@ $("songsLoadBtn").onclick = () => {
     $("songsLineInput").value = "";
     $("songsResult").classList.remove("show");
     $("songsBreakdownBox").classList.add("hidden");
+    $("songsBatchInput").value = "";
+    $("songsBatchResults").innerHTML = "";
+    $("songsBatchPanel").classList.add("hidden");
     $("songsPracticeWrap").classList.remove("hidden");
     if (songsYtPlayer && songsYtPlayer.loadVideoById){
       songsYtPlayer.loadVideoById(id);
@@ -5721,6 +5761,75 @@ $("songsBreakdownBtn").onclick = async () => {
   $("songsBreakdownBtn").textContent = prevLabel;
 };
 $("songsRetryBtn").onclick = () => { $("songsResult").classList.remove("show"); $("songsBreakdownBox").classList.add("hidden"); };
+
+// ---- Batch breakdown: several typed-in lines at once (still typed in by
+// the learner, never fetched by us), so a whole verse can be broken down
+// in one go instead of line by line. ----
+$("songsBatchToggleBtn").onclick = () => { $("songsBatchPanel").classList.toggle("hidden"); };
+$("songsBatchBtn").onclick = async () => {
+  const raw = $("songsBatchInput").value;
+  const lines = raw.split("\n").map(l => l.trim()).filter(Boolean).slice(0, 8);
+  if (!lines.length) return;
+  $("songsBatchBtn").disabled = true;
+  const prevLabel = $("songsBatchBtn").textContent;
+  $("songsBatchBtn").textContent = t("songs.bd.loading");
+  $("songsBatchResults").innerHTML = "";
+  try {
+    const resp = await api("/api/songs/breakdown-batch", "POST", {lines});
+    renderBatchResults(resp.lines, resp.results);
+  } catch(e){
+    $("songsError").textContent = e.message || t("songs.genericError");
+    $("songsError").classList.remove("hidden");
+  }
+  $("songsBatchBtn").disabled = false;
+  $("songsBatchBtn").textContent = prevLabel;
+};
+function renderBatchResults(lines, results){
+  const box = $("songsBatchResults");
+  box.innerHTML = "";
+  lines.forEach((line, i) => {
+    const res = results[i] || {};
+    const card = document.createElement("div");
+    card.className = "song-batch-card";
+
+    const lineEl = document.createElement("div");
+    lineEl.className = "song-batch-line"; lineEl.dir = "ltr"; lineEl.textContent = line;
+    card.appendChild(lineEl);
+
+    if (res.ok){
+      const bd = document.createElement("div");
+      bd.className = "song-breakdown";
+      [["literal", "songs.bd.literal", false], ["linking", "songs.bd.linking", false],
+       ["reduced", "songs.bd.reduced", true], ["fluent", "songs.bd.fluent", true]].forEach(([field, key, highlight]) => {
+        const row = document.createElement("div"); row.className = "sb-row";
+        const label = document.createElement("span"); label.className = "sb-label"; label.textContent = t(key);
+        const val = document.createElement("span");
+        val.className = "sb-val" + (highlight ? " sb-highlight" : "");
+        val.dir = "ltr"; val.textContent = res[field] || "";
+        row.appendChild(label); row.appendChild(val);
+        bd.appendChild(row);
+      });
+      card.appendChild(bd);
+
+      const practiceBtn = document.createElement("button");
+      practiceBtn.className = "btn-sm outline"; practiceBtn.textContent = t("songs.batchPractice");
+      practiceBtn.onclick = () => {
+        $("songsLineInput").value = line;
+        $("songsResult").classList.remove("show");
+        $("songsBreakdownBox").classList.add("hidden");
+        $("songsLineInput").scrollIntoView({behavior: "smooth", block: "center"});
+        $("songsLineInput").focus();
+      };
+      card.appendChild(practiceBtn);
+    } else {
+      const err = document.createElement("div");
+      err.className = "song-batch-error"; err.textContent = res.error || t("songs.genericError");
+      card.appendChild(err);
+    }
+
+    box.appendChild(card);
+  });
+}
 $("songsMicBtn").onclick = () => {
   const line = $("songsLineInput").value.trim();
   if (!line){ $("songsMicHint").textContent = t("songs.typeLineFirst"); return; }

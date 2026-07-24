@@ -4688,6 +4688,36 @@ def songs_breakdown(data: BreakdownIn, request: Request, user: User = Depends(re
     return call_gemini_breakdown(text)
 
 
+class BreakdownBatchIn(BaseModel):
+    lines: list[str] = []
+
+
+@app.post("/api/songs/breakdown-batch")
+def songs_breakdown_batch(data: BreakdownBatchIn, request: Request, user: User = Depends(require_max)):
+    """
+    Same breakdown as /api/songs/breakdown, run for several typed-in lines
+    at once (e.g. a whole verse the learner transcribed by ear) instead of
+    one at a time. Still only ever transforms text the learner already
+    typed in -- never asked to produce or recall real song lyrics, and
+    nothing is persisted. Capped at 8 lines/request so one click can't
+    fan out into an unbounded number of Gemini calls; one bad line
+    doesn't fail the whole batch, it's just reported per-line.
+    """
+    rate_limit(request, "songs-breakdown-batch", limit=6, window=300)
+    if not GEMINI_CONFIGURED:
+        raise HTTPException(503, "This feature isn't configured on this server yet (missing GEMINI_API_KEY).")
+    lines = [ln.strip()[:200] for ln in data.lines if ln.strip()][:8]
+    if not lines:
+        raise HTTPException(400, "Nothing to break down.")
+    results = []
+    for ln in lines:
+        try:
+            results.append({"ok": True, **call_gemini_breakdown(ln)})
+        except HTTPException as e:
+            results.append({"ok": False, "error": e.detail})
+    return {"lines": lines, "results": results}
+
+
 # ----------------------------------------------------------------------
 # 7c. ADMIN ROUTES — manage users, and unlock the Sprint for testing
 # ----------------------------------------------------------------------
