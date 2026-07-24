@@ -5663,7 +5663,11 @@ $("songsLoadBtn").onclick = () => {
       songsYtPlayer = new YT.Player("songsYtPlayer", {
         videoId: id,
         width: "100%", height: "100%",
-        playerVars: {rel: 0},
+        // cc_load_policy forces YouTube's own captions on by default (if the
+        // video has any) -- that's YouTube rendering its own licensed/
+        // auto-generated captions inside its own player, not lyrics text we
+        // fetch, store, or display ourselves.
+        playerVars: {rel: 0, cc_load_policy: 1, cc_lang_pref: "en"},
         events: {
           onReady: (e) => {
             e.target.setPlaybackRate(playbackRate || 1);
