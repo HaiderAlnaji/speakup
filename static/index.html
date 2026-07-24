@@ -371,7 +371,7 @@
   .pc-trend{font-size:12px;font-weight:600;padding:4px 10px;border-radius:20px}
   .pc-trend.improving{background:#E7F7EE;color:#1B6B42}
   .pc-trend.declining{background:#FDECEC;color:#B4292E}
-  .pc-trend.steady{background:var(--surface-2);color:var(--muted)}
+  .pc-trend.steady{background:#EAF3FB;color:#3E6FA8}
   .pg-bar-wrap{display:flex;align-items:flex-end;gap:6px;height:120px}
   .pg-col{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;
     height:100%;gap:6px}
@@ -587,6 +587,13 @@
   .unsupported{background:#FFF7E6;border:1px solid #F5D98B;color:#7a5a12;
     font-size:13.5px;padding:12px 14px;border-radius:12px;margin-bottom:20px}
 
+  /* ---------- Songs (karaoke line list) ---------- */
+  .song-lines{background:var(--surface-2);border-radius:var(--radius);
+    padding:24px 28px;margin-bottom:18px;max-height:360px;overflow-y:auto}
+  .song-line{font-size:16px;line-height:2;color:var(--muted);
+    transition:color .2s var(--ease),font-weight .2s var(--ease)}
+  .song-line.active{color:var(--brand);font-weight:700}
+
   /* ---------- Sprint hero (full-bleed light splash, matches mockup) ----------
      Lives outside .container (see HTML) so it can span the full viewport
      instead of being boxed in at 940px with rounded corners. ---------- */
@@ -682,6 +689,10 @@
   .mode-hero.ai-hero .sh-eyebrow{color:#2E5FA0}
   .mode-hero.ai-hero .sh-title em{color:var(--gold)}
 
+  .mode-hero.songs-hero{background:#EAF6F6}
+  .mode-hero.songs-hero .sh-eyebrow{color:#1E8FA0}
+  .mode-hero.songs-hero .sh-title em{color:#1E8FA0}
+
   /* Shadow keeps its dark-ink identity (declared above) -- this resets the
      inset-card sizing to the shared full-bleed .mode-hero treatment and
      recolors the text for the dark background. Combined two-class
@@ -691,6 +702,7 @@
   .mode-hero.shadow-hero .sh-eyebrow{background:rgba(255,255,255,.08);
     border-color:rgba(255,255,255,.15);color:#8FC2E0}
   .mode-hero.shadow-hero .sh-title{color:#fff;font-size:clamp(48px,10vw,96px);margin-bottom:18px}
+  .mode-hero.shadow-hero .sh-title em{color:#5FB0E0}
   .mode-hero.shadow-hero .sh-promise{color:#B8CFE0}
   .mode-hero.shadow-hero .sh-stat{color:#A9C2D6}
   @media (max-width:640px){.mode-hero.shadow-hero{padding:48px 20px}}
@@ -983,10 +995,11 @@
     <div class="nav-group">
       <div class="nav-links" id="navLinks">
         <a href="#sprintHero" class="nav-link" data-i18n="nav.linkSprint">Sprint</a>
+        <a href="#aiHero" class="nav-link" data-i18n="nav.linkAi">AI</a>
+        <a href="#songsHero" class="nav-link" data-i18n="nav.linkSongs">Songs</a>
+        <a href="#shadowSection" class="nav-link" data-i18n="nav.linkShadow">Shadow</a>
         <a href="#talkHero" class="nav-link" data-i18n="nav.linkTalk">Talk</a>
         <a href="#lessonsHero" class="nav-link" data-i18n="nav.linkLessons">Lessons</a>
-        <a href="#shadowSection" class="nav-link" data-i18n="nav.linkShadow">Shadow</a>
-        <a href="#aiHero" class="nav-link" data-i18n="nav.linkAi">AI</a>
         <a href="#achievementsSection" class="nav-link" data-i18n="nav.linkProgress">Progress</a>
       </div>
       <div class="user">
@@ -1107,6 +1120,57 @@
           <p id="bizSprintDesc" data-i18n="bizSprint.desc">14 more days: meetings, emails, negotiations, and workplace small talk.</p>
         </div>
         <button class="btn-sm solid" id="bizSprintCta" data-i18n="bizSprint.cta">Start the Business Sprint</button>
+      </div>
+
+      <!-- AI Roleplay — same full-screen hero treatment as Talk/Lessons/
+           Shadow (gold-tinted, since AI/Max already uses gold for the nav
+           badge/sparkle elsewhere). No card grid to scroll to (it's one
+           unified free-form chat, not a catalog) so the CTA opens the flow
+           directly for Max members, or the paywall (Max tab preselected)
+           for everyone else -- see renderModeHeroStats() for how the stat
+           line + button text adapt. Ordered right after Sprint, ahead of
+           Talk/Lessons/Shadow, since it's the flagship Max feature. -->
+      <div class="mode-hero ai-hero reveal" id="aiHero">
+        <canvas id="aiLetterCanvas" aria-hidden="true"></canvas>
+        <div class="sh-content">
+          <span class="sh-eyebrow" data-i18n="roleplay.eyebrow">AI-powered</span>
+          <h2 class="sh-title" data-i18n-html="roleplay.heroTitleHtml">AI <em>Roleplay</em></h2>
+          <p class="sh-promise" data-i18n="roleplay.cardSub">Free-form spoken conversation with an AI partner — talk about anything.</p>
+          <div class="sh-stat" id="aiHeroStat"></div>
+          <!-- No data-i18n here on purpose -- its text depends on tier
+               (Start a conversation / Upgrade to Max), not just language,
+               so renderModeHeroStats() sets it via JS every render,
+               exactly like journalBtn's already-established pattern. -->
+          <button class="btn-gold sh-cta" id="aiHeroCta"></button>
+        </div>
+      </div>
+
+      <!-- Songs — Max only. Gemini writes a short, wholly original
+           practice song (never real/copyrighted lyrics -- no
+           music-licensing deal exists here), then the learner either
+           shadows it line-by-line for a score or follows along
+           karaoke-style. -->
+      <div class="mode-hero songs-hero reveal" id="songsHero">
+        <canvas id="songsLetterCanvas" aria-hidden="true"></canvas>
+        <div class="sh-content">
+          <span class="sh-eyebrow" data-i18n="songs.eyebrow">AI-powered</span>
+          <h2 class="sh-title" data-i18n-html="songs.heroTitleHtml">Sing to <em>learn</em></h2>
+          <p class="sh-promise" data-i18n="songs.cardSub">An original AI-written song at your level — shadow it line by line or follow along karaoke-style.</p>
+          <div class="sh-stat" id="songsHeroStat"></div>
+          <!-- No data-i18n on purpose -- depends on tier, same pattern as aiHeroCta. -->
+          <button class="btn-gold sh-cta" id="songsHeroCta"></button>
+        </div>
+      </div>
+
+      <div class="mode-hero shadow-hero reveal" id="shadowSection">
+        <canvas id="shadowLetterCanvas" aria-hidden="true"></canvas>
+        <div class="sh-content">
+          <span class="sh-eyebrow" data-i18n="shadow.eyebrow">Immersive</span>
+          <h2 class="sh-title" data-i18n-html="shadow.title">Shadow <em>Mode</em></h2>
+          <p class="sh-promise" data-i18n="shadow.sub">Speak along WITH the recording, not after it — the fastest way to pick up native rhythm, linking, and reductions.</p>
+          <div class="sh-stat" id="shadowHeroStat"></div>
+          <button class="btn-gold sh-cta" id="shadowHeroCta" data-i18n="shadow.cta">Enter Shadow Mode</button>
+        </div>
       </div>
 
       <div class="mode-hero talk-hero reveal" id="talkHero">
@@ -1298,38 +1362,6 @@
         </div>
       </div>
 
-      <div class="mode-hero shadow-hero reveal" id="shadowSection">
-        <canvas id="shadowLetterCanvas" aria-hidden="true"></canvas>
-        <div class="sh-content">
-          <span class="sh-eyebrow" data-i18n="shadow.eyebrow">Immersive</span>
-          <h2 class="sh-title" data-i18n-html="shadow.title">Shadow <em>Mode</em></h2>
-          <p class="sh-promise" data-i18n="shadow.sub">Speak along WITH the recording, not after it — the fastest way to pick up native rhythm, linking, and reductions.</p>
-          <div class="sh-stat" id="shadowHeroStat"></div>
-          <button class="btn-gold sh-cta" id="shadowHeroCta" data-i18n="shadow.cta">Enter Shadow Mode</button>
-        </div>
-      </div>
-
-      <!-- AI Roleplay — the newest "pillar" feature, same full-screen hero
-           treatment as Talk/Lessons/Shadow above (gold-tinted, since AI/Max
-           already uses gold for the nav badge/sparkle elsewhere). No card
-           grid to scroll to (it's one unified free-form chat, not a
-           catalog) so the CTA opens the flow directly for Max members, or
-           the paywall (Max tab preselected) for everyone else -- see
-           renderModeHeroes() for how the stat line + button text adapt. -->
-      <div class="mode-hero ai-hero reveal" id="aiHero">
-        <canvas id="aiLetterCanvas" aria-hidden="true"></canvas>
-        <div class="sh-content">
-          <span class="sh-eyebrow" data-i18n="roleplay.eyebrow">AI-powered</span>
-          <h2 class="sh-title" data-i18n-html="roleplay.heroTitleHtml">AI <em>Roleplay</em></h2>
-          <p class="sh-promise" data-i18n="roleplay.cardSub">Free-form spoken conversation with an AI partner — talk about anything.</p>
-          <div class="sh-stat" id="aiHeroStat"></div>
-          <!-- No data-i18n here on purpose -- its text depends on tier
-               (Start a conversation / Upgrade to Max), not just language,
-               so renderModeHeroStats() sets it via JS every render,
-               exactly like journalBtn's already-established pattern. -->
-          <button class="btn-gold sh-cta" id="aiHeroCta"></button>
-        </div>
-      </div>
     </div>
 
     <!-- Talk catalog — the scenario cards, now their own page (was inline
@@ -1860,6 +1892,105 @@
       </div>
     </div>
 
+    <!-- Songs — Max only. Gemini writes a short, wholly original practice
+         song (never real/copyrighted lyrics), then the learner either
+         shadows it line-by-line for a score or follows along
+         karaoke-style. Stateless like Roleplay -- nothing is saved
+         server-side, so there's no XP/streak tie-in for this one yet. -->
+    <div id="songsView" class="hidden">
+      <button class="back" id="backSongs" data-i18n="back.home">← Home</button>
+
+      <div id="songsSetup">
+        <div class="conv-head">
+          <div>
+            <div class="conv-emoji">🎵</div>
+            <h2 data-i18n="songs.setupTitle">What should your song be about?</h2>
+            <p class="conv-setting" data-i18n="songs.setupSub">Gemini writes a short, original practice song at your level — never a real song's lyrics.</p>
+          </div>
+        </div>
+        <div class="topic-bar" style="margin-top:14px">
+          <input id="songsThemeInput" data-i18n-ph="songs.themePh" maxlength="80">
+          <select id="songsLevel">
+            <option value="Beginner" data-i18n="level.beginner">Beginner</option><option value="Intermediate" data-i18n="level.intermediate">Intermediate</option><option value="Advanced" data-i18n="level.advanced">Advanced</option>
+          </select>
+          <button class="btn-sm solid" id="songsGenerateBtn" data-i18n="songs.generateBtn">Write my song</button>
+        </div>
+        <div id="songsOff" class="unsupported hidden">
+          <b data-i18n="songs.off.b">Songs isn't turned on yet.</b>
+          <span data-i18n="songs.off.sub">The site owner needs to add a Gemini API key.</span>
+        </div>
+        <div id="songsError" class="unsupported hidden"></div>
+      </div>
+
+      <div id="songsLoading" class="hidden" style="text-align:center;padding:48px 0">
+        <div class="wave"><span></span><span></span><span></span><span></span><span></span></div>
+        <p style="margin-top:14px;color:var(--muted)" data-i18n="songs.writing">Writing your song…</p>
+      </div>
+
+      <div id="songsPracticeWrap" class="hidden">
+        <div class="conv-head">
+          <div>
+            <div class="conv-emoji">🎵</div>
+            <h2 id="songsTitle" dir="ltr"></h2>
+          </div>
+          <div class="conv-actions">
+            <button class="btn-ghost" id="songsNewBtn" data-i18n="songs.newSong">New song</button>
+          </div>
+        </div>
+
+        <div class="speed-row" id="songsSpeedRow">
+          <span class="speed-label" data-i18n="speed.label">Speed</span>
+          <button class="speed-btn" id="songsSpeedSlowBtn" data-i18n="speed.slow">🐢 Slow</button>
+          <button class="speed-btn" id="songsSpeedNormalBtn" data-i18n="speed.normal">Normal</button>
+          <button class="speed-btn" id="songsSpeedFastBtn" data-i18n="speed.fast">🐇 Fast</button>
+        </div>
+
+        <div class="mode-toggle" id="songsModeToggle" style="display:flex;gap:8px;margin-bottom:20px">
+          <button class="goal-btn active" id="songsKaraokeBtn" data-i18n="songs.karaoke">🎧 Karaoke</button>
+          <button class="goal-btn" id="songsScoredBtn" data-i18n="songs.scored">🎤 Practice (scored)</button>
+        </div>
+
+        <!-- Karaoke: plays every line in sequence via TTS, highlighting
+             whichever line is currently speaking, no mic/score involved. -->
+        <div id="songsKaraokeZone">
+          <div class="song-lines" id="songsLinesBox"></div>
+          <div class="phrase-actions" style="justify-content:center">
+            <button class="listen" id="songsPlayBtn" data-i18n="songs.play">▶ Play song</button>
+            <button class="listen hidden" id="songsStopBtn" data-i18n="songs.stop">⏹ Stop</button>
+          </div>
+        </div>
+
+        <!-- Scored: one line at a time, mic input, same similarity()/
+             wordWeakPoints() scoring math every other practice mode uses. -->
+        <div id="songsScoredZone" class="hidden">
+          <div class="phrase-label" id="songsLineLabel"></div>
+          <div class="phrase" id="songsPhraseText" dir="ltr"></div>
+          <div class="phrase-actions">
+            <button class="listen" id="songsListenBtn" data-i18n="phrase.listen">🔊 Listen</button>
+          </div>
+          <div class="mic-zone">
+            <button class="mic" id="songsMicBtn" aria-label="Start recording">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round">
+                <rect x="9" y="2" width="6" height="12" rx="3"></rect>
+                <path d="M5 10a7 7 0 0 0 14 0"></path><line x1="12" y1="19" x2="12" y2="22"></line>
+              </svg>
+            </button>
+            <div class="mic-hint" id="songsMicHint" data-i18n="mic.hintDefault">Tap the mic and say the sentence</div>
+          </div>
+          <div class="result" id="songsResult">
+            <div class="score-num" id="songsScoreNum">0</div>
+            <div class="score-msg" id="songsScoreMsg"></div>
+            <div class="heard" id="songsHeard" dir="ltr"></div>
+            <div class="result-actions">
+              <button class="btn-sm outline" id="songsRetryBtn" data-i18n="result.tryAgain">Try again</button>
+              <button class="btn-sm solid" id="songsNextBtn" data-i18n="result.nextPhrase">Next phrase →</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Paywall -->
     <div id="paywallView" class="hidden">
       <button class="back" id="backBtn2" data-i18n="back.allLessons">← All lessons</button>
@@ -1886,6 +2017,7 @@
           <li data-i18n="paywall.perk7">A daily Spotlight phrase, hand-picked each day</li>
           <li data-i18n="paywall.perk8">Voice Journal — a daily 60-second speaking prompt with its own streak</li>
           <li class="max-only hidden" id="perkAiRoleplay" data-i18n="paywall.perkAiRoleplay">✨ AI Roleplay — free-form spoken conversation with an AI partner</li>
+          <li class="max-only hidden" id="perkSongs" data-i18n="paywall.perkSongs">🎵 Songs — an original AI-written practice song, karaoke or scored</li>
         </ul>
         <button class="btn-gold" id="upgradeBtn" data-i18n="paywall.upgradeBtn">Upgrade to Pro</button>
         <div class="upgrade-options hidden" id="upgradeOptions"></div>
@@ -1981,7 +2113,7 @@ const T = {
     "auth.orDivider": "or",
     "nav.admin": "Admin", "nav.logout": "Log out", "nav.langToggle": "العربية",
     "nav.linkSprint": "Sprint", "nav.linkTalk": "Talk", "nav.linkLessons": "Lessons",
-    "nav.linkShadow": "Shadow", "nav.linkAi": "AI", "nav.linkProgress": "Progress",
+    "nav.linkShadow": "Shadow", "nav.linkAi": "AI", "nav.linkSongs": "Songs", "nav.linkProgress": "Progress",
     "nav.settings": "Settings",
     "nav.badgePro": "PRO", "nav.badgeMax": "MAX",
     "settings.title": "Account settings", "settings.sub": "Manage your profile, password, and plan.",
@@ -2245,6 +2377,27 @@ const T = {
     "roleplay.topic.movie": "🎬 Talking about a movie",
     "roleplay.topic.debate": "🗣️ A friendly debate",
     "roleplay.topic.anything": "🎲 Anything — you choose",
+    "songs.eyebrow": "AI-powered",
+    "songs.heroTitleHtml": "Sing to <em>learn</em>",
+    "songs.cardSub": "An original AI-written song at your level — shadow it line by line or follow along karaoke-style.",
+    "songs.heroStatReady": "Available now — write your first song",
+    "songs.heroStatLocked": "A Max-exclusive perk",
+    "songs.start": "Write a song",
+    "songs.setupTitle": "What should your song be about?",
+    "songs.setupSub": "Gemini writes a short, original practice song at your level — never a real song's lyrics.",
+    "songs.themePh": "e.g. friendship, rainy days, monday morning…",
+    "songs.generateBtn": "Write my song",
+    "songs.writing": "Writing your song…",
+    "songs.off.b": "Songs isn't turned on yet.",
+    "songs.off.sub": "The site owner needs to add a Gemini API key.",
+    "songs.genericError": "Couldn't write a song just now. Try again.",
+    "songs.newSong": "New song",
+    "songs.karaoke": "🎧 Karaoke",
+    "songs.scored": "🎤 Practice (scored)",
+    "songs.play": "▶ Play song",
+    "songs.stop": "⏹ Stop",
+    "songs.lineOf": "Line {n} of {total}",
+    "songs.restart": "Start over ↺",
     "paywall.title": "Unlock SpeakPort Pro",
     "paywall.sub": "Get the 14-Day Speaking Sprint — plus every lesson and level.",
     "paywall.perMonth": " / month",
@@ -2262,6 +2415,7 @@ const T = {
     "paywall.perk7": "A daily Spotlight phrase, hand-picked each day",
     "paywall.perk8": "Voice Journal — a daily 60-second speaking prompt with its own streak",
     "paywall.perkAiRoleplay": "✨ AI Roleplay — free-form spoken conversation with an AI partner",
+    "paywall.perkSongs": "🎵 Songs — an original AI-written practice song, karaoke or scored",
     "paywall.upgradeBtn": "Upgrade to Pro", "paywall.loading": "Loading…",
     "paywall.demoMode": "Demo mode: this unlocks instantly.",
     "billing.oneTimeNote": "This is a one-time 30-day pass, not a subscription — it won't auto-renew or charge you again. Come back and pay once more anytime you want to keep going.",
@@ -2304,7 +2458,7 @@ const T = {
     "auth.orDivider": "أو",
     "nav.admin": "الإدارة", "nav.logout": "تسجيل الخروج", "nav.langToggle": "English",
     "nav.linkSprint": "السبرنت", "nav.linkTalk": "التحدث", "nav.linkLessons": "الدروس",
-    "nav.linkShadow": "المحاكاة", "nav.linkAi": "الذكاء الاصطناعي", "nav.linkProgress": "التقدم",
+    "nav.linkShadow": "المحاكاة", "nav.linkAi": "الذكاء الاصطناعي", "nav.linkSongs": "الأغاني", "nav.linkProgress": "التقدم",
     "nav.settings": "الإعدادات",
     "nav.badgePro": "PRO", "nav.badgeMax": "MAX",
     "settings.title": "إعدادات الحساب", "settings.sub": "إدارة ملفك الشخصي وكلمة المرور والخطة.",
@@ -2568,6 +2722,27 @@ const T = {
     "roleplay.topic.movie": "🎬 الحديث عن فيلم",
     "roleplay.topic.debate": "🗣️ نقاش ودّي",
     "roleplay.topic.anything": "🎲 أي شيء — اخترت أنت",
+    "songs.eyebrow": "مدعوم بالذكاء الاصطناعي",
+    "songs.heroTitleHtml": "غنِّ <em>لتتعلّم</em>",
+    "songs.cardSub": "أغنية أصلية كتبها الذكاء الاصطناعي بمستواك — قلّدها سطراً بسطر أو تابعها على طريقة الكاريوكي.",
+    "songs.heroStatReady": "متاح الآن — اكتب أغنيتك الأولى",
+    "songs.heroStatLocked": "ميزة خاصة بخطة Max",
+    "songs.start": "اكتب أغنية",
+    "songs.setupTitle": "عن ماذا تريد أن تكون أغنيتك؟",
+    "songs.setupSub": "يكتب Gemini أغنية تدريب قصيرة وأصلية بمستواك — وليست كلمات أغنية حقيقية أبداً.",
+    "songs.themePh": "مثال: الصداقة، يوم ممطر، صباح الاثنين…",
+    "songs.generateBtn": "اكتب أغنيتي",
+    "songs.writing": "جارٍ كتابة أغنيتك…",
+    "songs.off.b": "ميزة الأغاني غير مفعّلة بعد.",
+    "songs.off.sub": "يحتاج مالك الموقع إلى إضافة مفتاح Gemini API.",
+    "songs.genericError": "تعذّرت كتابة أغنية الآن. حاول مرة أخرى.",
+    "songs.newSong": "أغنية جديدة",
+    "songs.karaoke": "🎧 كاريوكي",
+    "songs.scored": "🎤 تدريب (بتقييم)",
+    "songs.play": "▶ تشغيل الأغنية",
+    "songs.stop": "⏹ إيقاف",
+    "songs.lineOf": "السطر {n} من {total}",
+    "songs.restart": "البدء من جديد ↺",
     "paywall.title": "افتح SpeakPort Pro",
     "paywall.sub": "احصل على سبرنت التحدث لمدة 14 يوماً — وكل الدروس والمستويات.",
     "paywall.perMonth": " / شهرياً",
@@ -2585,6 +2760,7 @@ const T = {
     "paywall.perk7": "عبارة يومية مميزة، مختارة كل يوم",
     "paywall.perk8": "اليوميات الصوتية — تمرين تحدث يومي لمدة 60 ثانية بسلسلة أيام خاصة به",
     "paywall.perkAiRoleplay": "✨ محادثة حرة مع الذكاء الاصطناعي — تدرّب بالتحدث بحرية مع شريك ذكاء اصطناعي",
+    "paywall.perkSongs": "🎵 الأغاني — أغنية تدريب أصلية كتبها الذكاء الاصطناعي، كاريوكي أو بتقييم",
     "paywall.upgradeBtn": "الترقية إلى Pro", "paywall.loading": "جارٍ التحميل…",
     "paywall.demoMode": "وضع تجريبي: يتم الفتح فوراً.",
     "billing.oneTimeNote": "هذه بطاقة دخول لمرة واحدة لمدة 30 يوماً، وليست اشتراكاً — لن تتجدد تلقائياً ولن تُخصم منك مرة أخرى. عد وادفع مرة أخرى في أي وقت تريد المتابعة فيه.",
@@ -2665,7 +2841,7 @@ async function api(path, method = "GET", body = null){
 }
 function show(view){
   ["dashboard","practiceView","paywallView","sprintView","certView","adminView","convView","settingsView","journalView","roleplayView",
-   "talkCatalogView","lessonsCatalogView","shadowCatalogView"]
+   "talkCatalogView","lessonsCatalogView","shadowCatalogView","songsView"]
     .forEach(v => $(v).classList.add("hidden"));
   // #sprintHero lives outside #dashboard now (so it can go full-bleed), so
   // its visibility is tied to the dashboard view explicitly here.
@@ -3675,7 +3851,8 @@ let playbackRate = parseFloat(localStorage.getItem("speakport_rate")) || 0.9;
 // AI Roleplay's roleplaySpeedRow) -- all of them just call this and it
 // keeps every visible speed-row in sync, wherever the learner changed it.
 const SPEED_BTN_IDS = ["speedSlowBtn","speedNormalBtn","speedFastBtn",
-                       "roleplaySpeedSlowBtn","roleplaySpeedNormalBtn","roleplaySpeedFastBtn"];
+                       "roleplaySpeedSlowBtn","roleplaySpeedNormalBtn","roleplaySpeedFastBtn",
+                       "songsSpeedSlowBtn","songsSpeedNormalBtn","songsSpeedFastBtn"];
 function setPlaybackRate(rate, btnId){
   playbackRate = rate;
   localStorage.setItem("speakport_rate", String(rate));
@@ -3688,9 +3865,14 @@ $("speedFastBtn").onclick = () => setPlaybackRate(1.15, "speedFastBtn");
 $("roleplaySpeedSlowBtn").onclick = () => setPlaybackRate(0.65, "roleplaySpeedSlowBtn");
 $("roleplaySpeedNormalBtn").onclick = () => setPlaybackRate(0.9, "roleplaySpeedNormalBtn");
 $("roleplaySpeedFastBtn").onclick = () => setPlaybackRate(1.15, "roleplaySpeedFastBtn");
+$("songsSpeedSlowBtn").onclick = () => setPlaybackRate(0.65, "songsSpeedSlowBtn");
+$("songsSpeedNormalBtn").onclick = () => setPlaybackRate(0.9, "songsSpeedNormalBtn");
+$("songsSpeedFastBtn").onclick = () => setPlaybackRate(1.15, "songsSpeedFastBtn");
 (function initSpeedButtons(){
-  const map = {0.65: ["speedSlowBtn","roleplaySpeedSlowBtn"], 0.9: ["speedNormalBtn","roleplaySpeedNormalBtn"], 1.15: ["speedFastBtn","roleplaySpeedFastBtn"]};
-  const ids = map[playbackRate] || ["speedNormalBtn","roleplaySpeedNormalBtn"];
+  const map = {0.65: ["speedSlowBtn","roleplaySpeedSlowBtn","songsSpeedSlowBtn"],
+               0.9: ["speedNormalBtn","roleplaySpeedNormalBtn","songsSpeedNormalBtn"],
+               1.15: ["speedFastBtn","roleplaySpeedFastBtn","songsSpeedFastBtn"]};
+  const ids = map[playbackRate] || ["speedNormalBtn","roleplaySpeedNormalBtn","songsSpeedNormalBtn"];
   SPEED_BTN_IDS.forEach(x => { const el = $(x); if (el) el.classList.remove("active"); });
   ids.forEach(id => { const el = $(id); if (el) el.classList.add("active"); });
 })();
@@ -4477,6 +4659,7 @@ async function refreshPriceDisplay(){
     $("tierMaxBtn").classList.toggle("active", selectedBillingTier === "max");
     const isMax = selectedBillingTier === "max";
     $("perkAiRoleplay").classList.toggle("hidden", !isMax);
+    $("perkSongs").classList.toggle("hidden", !isMax);
 
     // Same idea for annual, but checked against whichever tier is currently
     // selected (Paddle needs a separate annual Price per tier).
@@ -4946,6 +5129,7 @@ attachModeHeroLetters("talkHero", "talkLetterCanvas", "rgba(26,26,26,");
 attachModeHeroLetters("lessonsHero", "lessonsLetterCanvas", "rgba(26,26,26,");
 attachModeHeroLetters("shadowSection", "shadowLetterCanvas", "rgba(245,240,232,");
 attachModeHeroLetters("aiHero", "aiLetterCanvas", "rgba(26,26,26,");
+attachModeHeroLetters("songsHero", "songsLetterCanvas", "rgba(26,26,26,");
 
 // ============================================================
 //  Click-and-drag scrolling for horizontal card rows (Go Pro,
@@ -5223,6 +5407,8 @@ function renderModeHeroStats(){
   const isMax = !!(currentUser && currentUser.is_premium && currentUser.plan_tier === "max");
   $("aiHeroStat").textContent = isMax ? t("roleplay.heroStatReady") : t("roleplay.heroStatLocked");
   $("aiHeroCta").textContent = isMax ? t("roleplay.start") : t("roleplay.upgradeBtn");
+  $("songsHeroStat").textContent = isMax ? t("songs.heroStatReady") : t("songs.heroStatLocked");
+  $("songsHeroCta").textContent = isMax ? t("songs.start") : t("roleplay.upgradeBtn");
 }
 // Each hero's CTA moves the learner straight to its "catalog of cards" --
 // AI Roleplay has no grid (it's one unified free-form chat, not a list of
@@ -5240,6 +5426,12 @@ $("aiHeroCta").onclick = () => {
   else { selectedBillingTier = "max"; show("paywallView"); }
 };
 $("backRoleplay").onclick = () => loadDashboard();
+$("songsHeroCta").onclick = () => {
+  const isMax = !!(currentUser && currentUser.is_premium && currentUser.plan_tier === "max");
+  if (isMax) openSongs();
+  else { selectedBillingTier = "max"; show("paywallView"); }
+};
+$("backSongs").onclick = () => loadDashboard();
 
 async function openRoleplay(){
   show("roleplayView");
@@ -5368,6 +5560,191 @@ $("roleplayMicBtn").onclick = () => {
   roleplayRec.onerror = () => { $("roleplayHint").textContent = t("conv.didntCatch"); };
   roleplayRec.onend = () => { $("roleplayMicBtn").classList.remove("rec"); roleplayRec = null; };
 };
+
+
+// ---- SONGS: Gemini writes a short, wholly original practice song (Max
+// only, never real/copyrighted lyrics -- see call_gemini_song on the
+// server). Karaoke mode plays every line in sequence via TTS, highlighting
+// whichever line is currently speaking. Scored mode reuses the exact same
+// similarity()/wordWeakPoints() math every other practice screen uses, just
+// with its own local state instead of the shared `current` object -- an
+// AI-generated song has no lesson_id, so nothing is saved server-side
+// (stateless, like AI Roleplay).
+let songsGeminiReady = null;
+let songsLines = [];
+let songsIndex = 0;
+let songsKaraokePlaying = false;
+let songsRec = null;
+
+async function openSongs(){
+  show("songsView");
+  $("songsThemeInput").value = "";
+  $("songsError").classList.add("hidden");
+  $("songsSetup").classList.remove("hidden");
+  $("songsLoading").classList.add("hidden");
+  $("songsPracticeWrap").classList.add("hidden");
+  if (songsGeminiReady === null){
+    try { songsGeminiReady = (await api("/api/ai/status")).ready; }
+    catch(e){ songsGeminiReady = true; }   // don't block the UI on a status-check hiccup
+  }
+  $("songsOff").classList.toggle("hidden", songsGeminiReady);
+  $("songsGenerateBtn").disabled = !songsGeminiReady;
+}
+$("backSongs").onclick = () => loadDashboard();
+
+$("songsGenerateBtn").onclick = async () => {
+  const theme = $("songsThemeInput").value.trim();
+  const level = $("songsLevel").value;
+  $("songsError").classList.add("hidden");
+  $("songsSetup").classList.add("hidden");
+  $("songsLoading").classList.remove("hidden");
+  try {
+    const song = await api("/api/songs/generate", "POST", {theme, level});
+    $("songsLoading").classList.add("hidden");
+    renderSongPractice(song);
+  } catch(e){
+    $("songsLoading").classList.add("hidden");
+    $("songsSetup").classList.remove("hidden");
+    $("songsError").textContent = e.message || t("songs.genericError");
+    $("songsError").classList.remove("hidden");
+  }
+};
+$("songsThemeInput").addEventListener("keydown", e => { if (e.key === "Enter") $("songsGenerateBtn").click(); });
+
+function renderSongPractice(song){
+  songsLines = (song.lines || []).filter(Boolean);
+  $("songsTitle").textContent = song.title || "";
+  $("songsPracticeWrap").classList.remove("hidden");
+  const box = $("songsLinesBox");
+  box.innerHTML = "";
+  songsLines.forEach((ln, i) => {
+    const d = document.createElement("div");
+    d.className = "song-line"; d.dir = "ltr"; d.textContent = ln; d.id = "songsLine" + i;
+    box.appendChild(d);
+  });
+  setSongsMode("karaoke");
+  loadScoredLine(0);
+}
+
+function setSongsMode(mode){
+  stopKaraoke();
+  $("songsKaraokeBtn").classList.toggle("active", mode === "karaoke");
+  $("songsScoredBtn").classList.toggle("active", mode === "scored");
+  $("songsKaraokeZone").classList.toggle("hidden", mode !== "karaoke");
+  $("songsScoredZone").classList.toggle("hidden", mode !== "scored");
+}
+$("songsKaraokeBtn").onclick = () => setSongsMode("karaoke");
+$("songsScoredBtn").onclick = () => setSongsMode("scored");
+$("songsNewBtn").onclick = () => {
+  stopKaraoke();
+  $("songsPracticeWrap").classList.add("hidden");
+  $("songsSetup").classList.remove("hidden");
+};
+
+// ---- Karaoke ----
+function stopKaraoke(){
+  songsKaraokePlaying = false;
+  speechSynthesis.cancel();
+  songsLines.forEach((_, i) => { const el = $("songsLine" + i); if (el) el.classList.remove("active"); });
+  $("songsPlayBtn").classList.remove("hidden");
+  $("songsStopBtn").classList.add("hidden");
+}
+$("songsPlayBtn").onclick = () => {
+  if (!songsLines.length) return;
+  songsKaraokePlaying = true;
+  $("songsPlayBtn").classList.add("hidden");
+  $("songsStopBtn").classList.remove("hidden");
+  playKaraokeLine(0);
+};
+$("songsStopBtn").onclick = () => stopKaraoke();
+function playKaraokeLine(i){
+  if (!songsKaraokePlaying) return;
+  if (i >= songsLines.length){ stopKaraoke(); return; }
+  songsLines.forEach((_, j) => { const el = $("songsLine" + j); if (el) el.classList.toggle("active", j === i); });
+  const el = $("songsLine" + i);
+  if (el) el.scrollIntoView({block: "center", behavior: "smooth"});
+  const u = new SpeechSynthesisUtterance(songsLines[i]);
+  u.lang = "en-US"; u.rate = playbackRate;
+  u.onend = () => { if (songsKaraokePlaying) playKaraokeLine(i + 1); };
+  speechSynthesis.speak(u);
+}
+
+// ---- Scored ----
+function loadScoredLine(i){
+  songsIndex = i;
+  $("songsResult").classList.remove("show");
+  $("songsLineLabel").textContent = t("songs.lineOf", {n: i + 1, total: songsLines.length});
+  $("songsPhraseText").textContent = songsLines[i] || "";
+  $("songsNextBtn").textContent = (i + 1 < songsLines.length) ? t("result.nextPhrase") : t("songs.restart");
+}
+$("songsListenBtn").onclick = () => {
+  const u = new SpeechSynthesisUtterance(songsLines[songsIndex] || "");
+  u.lang = "en-US"; u.rate = playbackRate;
+  speechSynthesis.cancel(); speechSynthesis.speak(u);
+};
+$("songsRetryBtn").onclick = () => loadScoredLine(songsIndex);
+$("songsNextBtn").onclick = () => {
+  const next = songsIndex + 1 < songsLines.length ? songsIndex + 1 : 0;
+  loadScoredLine(next);
+};
+$("songsMicBtn").onclick = () => {
+  if (!SR){ $("songsMicHint").textContent = t("mic.noSupport"); return; }
+  if (songsRec) return;
+  songsRec = new SR();
+  songsRec.lang = "en-US"; songsRec.interimResults = false; songsRec.maxAlternatives = 4;
+  $("songsMicBtn").classList.add("recording");
+  $("songsMicHint").textContent = t("mic.listening");
+  songsRec.start();
+  songsRec.onresult = (ev) => {
+    const alts = Array.from(ev.results[0]).map(a => a.transcript);
+    gradeSongLine(alts);
+  };
+  songsRec.onerror = (ev) => { $("songsMicHint").textContent = ev.error === "no-speech" ? t("mic.noSpeech") : t("mic.error") + ev.error; };
+  songsRec.onend = () => { songsRec = null; $("songsMicBtn").classList.remove("recording"); $("songsMicHint").textContent = t("mic.hintDefault"); };
+};
+function gradeSongLine(alternatives){
+  const target = songsLines[songsIndex] || "";
+  let best = 0, bestText = alternatives[0] || "";
+  alternatives.forEach(alt => { const sc = similarity(target, alt); if (sc > best){ best = sc; bestText = alt; } });
+
+  $("songsScoreNum").textContent = best;
+  const msgEl = $("songsScoreMsg");
+  if (best >= 85){ msgEl.textContent = t("score.excellent"); msgEl.style.color = "var(--good)"; }
+  else if (best >= 65){ msgEl.textContent = t("score.good"); msgEl.style.color = "var(--brand)"; }
+  else { msgEl.textContent = t("score.keepPracticing"); msgEl.style.color = "var(--danger)"; }
+
+  // Songs is Max-only, so every learner who can reach this screen already
+  // gets the full Pronunciation Focus word-by-word breakdown (the Pro/Max
+  // perk the main practice screen gates behind currentUser.is_premium).
+  const heardEl = $("songsHeard");
+  heardEl.innerHTML = "";
+  const weak = wordWeakPoints(target, bestText);
+  const label = document.createElement("div");
+  label.className = "heard-label"; label.textContent = t("heard.label");
+  heardEl.appendChild(label);
+  const row = document.createElement("div");
+  row.className = "word-row"; row.dir = "ltr";
+  weak.forEach(w => {
+    const span = document.createElement("span");
+    span.className = "word-chip" + (w.weak ? " weak" : " ok");
+    span.textContent = w.word;
+    row.appendChild(span);
+  });
+  heardEl.appendChild(row);
+  const weakWords = weak.filter(w => w.weak).map(w => w.word);
+  if (weakWords.length){
+    const tip = document.createElement("div");
+    tip.className = "word-tip"; tip.dir = "ltr";
+    tip.textContent = t("heard.focus") + weakWords.join(", ");
+    heardEl.appendChild(tip);
+  }
+  const heardLine = document.createElement("div");
+  heardLine.className = "heard-said"; heardLine.dir = "ltr";
+  heardLine.innerHTML = t("heard.weHeard") + "<b>" + (bestText || "—") + "</b>";
+  heardEl.appendChild(heardLine);
+
+  $("songsResult").classList.add("show");
+}
 
 
 // ---- unlimited sentences on any topic — launches a real timed session ----

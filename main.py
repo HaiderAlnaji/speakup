@@ -311,6 +311,71 @@ def call_gemini_translate(text: str) -> str:
         return ""
 
 
+def call_gemini_song(theme: str, level: str) -> dict:
+    """
+    Writes a short, wholly ORIGINAL practice "song" for the Songs feature
+    (Max only). Deliberately never touches real/copyrighted lyrics -- there's
+    no music-licensing deal here, so every song is a brand-new creation,
+    generated fresh and never stored. Returns {"title": str, "lines": [str]}.
+    """
+    theme_clause = f'about "{theme.strip()}"' if theme.strip() else "about an everyday topic a language learner would enjoy"
+    system_prompt = (
+        "You write short, wholly ORIGINAL practice songs for English language "
+        "learners. Never reuse, quote, or closely imitate any real, existing "
+        "song's lyrics, title, or artist -- everything you write must be your "
+        "own brand-new creation. "
+        f"Write a simple, singable original song {theme_clause}, using "
+        f"vocabulary and sentence length appropriate for a {level} English "
+        "learner. Include a simple repeated chorus line so it's easy to "
+        "practice. Reply with ONLY valid JSON matching this exact shape: "
+        '{"title": "...", "lines": ["...", "..."]}. '
+        "8 to 14 short lines total, each short enough to say in a single "
+        "breath (roughly 4-9 words). No markdown, no commentary -- JSON only."
+    )
+    resp = requests.post(
+        f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent",
+        params={"key": GEMINI_API_KEY},
+        json={
+            "system_instruction": {"parts": [{"text": system_prompt}]},
+            "contents": [{"role": "user", "parts": [{"text": "Write the song now."}]}],
+            "generationConfig": {
+                "maxOutputTokens": 500, "temperature": 0.9,
+                "responseMimeType": "application/json",
+                "responseSchema": {
+                    "type": "OBJECT",
+                    "properties": {
+                        "title": {"type": "STRING"},
+                        "lines": {"type": "ARRAY", "items": {"type": "STRING"}},
+                    },
+                    "required": ["title", "lines"],
+                },
+            },
+        },
+        timeout=25,
+    )
+    if not resp.ok:
+        raise HTTPException(502, f"Gemini rejected the request ({resp.status_code}): {resp.text[:500]}")
+    body = resp.json()
+    try:
+        raw = body["candidates"][0]["content"]["parts"][0]["text"].strip()
+    except (KeyError, IndexError, TypeError):
+        reason = (body.get("candidates") or [{}])[0].get("finishReason", "unknown")
+        raise HTTPException(502, f"Gemini didn't return a song (reason: {reason}).")
+
+    # responseSchema makes this reliable, but defensively strip a markdown
+    # fence in case one ever slips through anyway.
+    raw = re.sub(r"^```(?:json)?\s*|\s*```$", "", raw.strip())
+    try:
+        data = _json.loads(raw)
+        title = str(data["title"]).strip()
+        lines = [str(ln).strip() for ln in data["lines"] if str(ln).strip()]
+        if not title or not lines:
+            raise ValueError("empty title or lines")
+    except (_json.JSONDecodeError, KeyError, ValueError, TypeError):
+        raise HTTPException(502, "Gemini returned a song in an unexpected format. Try again.")
+    return {"title": title, "lines": lines[:16]}
+
+
 # ----------------------------------------------------------------------
 # 1f. PAYMENTS — QiCard / "Pay with SuperQi" (a second, separate Iraqi
 # payment rail alongside ZainCash — reaches customers who hold a Qi Card
@@ -2021,7 +2086,7 @@ def require_admin(user: User = Depends(get_current_user)) -> User:
 
 def require_max(user: User = Depends(get_current_user)) -> User:
     if not (user.is_premium and user.plan_tier == "max"):
-        raise HTTPException(403, "AI Roleplay is a Max-only feature.")
+        raise HTTPException(403, "This feature is available on the Max plan.")
     return user
 
 
@@ -4596,6 +4661,29 @@ def roleplay_reply(data: RoleplayTurnIn, request: Request, user: User = Depends(
     return {"reply": reply}
 
 
+SONG_LEVELS = {"Beginner", "Intermediate", "Advanced"}
+
+
+class SongGenerateIn(BaseModel):
+    theme: str = ""
+    level: str = "Beginner"
+
+
+@app.post("/api/songs/generate")
+def songs_generate(data: SongGenerateIn, request: Request, user: User = Depends(require_max)):
+    """
+    Generates one short, wholly original practice song (Max only). Nothing
+    is persisted -- same stateless, ephemeral pattern as AI Roleplay, just a
+    single request/response instead of a back-and-forth conversation.
+    """
+    rate_limit(request, "songs-generate", limit=12, window=300)
+    if not GEMINI_CONFIGURED:
+        raise HTTPException(503, "Songs isn't configured on this server yet (missing GEMINI_API_KEY).")
+    theme = data.theme.strip()[:80]
+    level = data.level.strip() if data.level.strip() in SONG_LEVELS else "Beginner"
+    song = call_gemini_song(theme, level)
+    return song
+
 
 # ----------------------------------------------------------------------
 # 7c. ADMIN ROUTES — manage users, and unlock the Sprint for testing
@@ -4833,7 +4921,7 @@ def _startup_banner():
     print(f"  Content              : OFFLINE (no API, no keys, no limits)")
     print(f"    practice sentences : {sum(len(v) for v in SENTENCE_BANK.values())} across "
           f"{len(SENTENCE_BANK)} levels")
-    print(f"  AI Roleplay (Max)    : {'configured, model=' + GEMINI_MODEL if GEMINI_CONFIGURED else 'NOT configured  <-- add GEMINI_API_KEY to .env to turn it on'}")
+    print(f"  Gemini AI (Max: Roleplay + Songs) : {'configured, model=' + GEMINI_MODEL if GEMINI_CONFIGURED else 'NOT configured  <-- add GEMINI_API_KEY to .env to turn it on'}")
     total_sprint_convs = sum(len(c) for c in SPRINT_CONVS_BY_SPRINT.values())
     print(f"    conversations      : {len(CONVERSATIONS)} scenarios + {total_sprint_convs} sprint days")
     print("=" * 58)
