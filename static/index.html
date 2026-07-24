@@ -1913,46 +1913,21 @@
         <div class="conv-head">
           <div>
             <div class="conv-emoji">🎵</div>
-            <h2 data-i18n="songs.setupTitle">Practice with a song</h2>
-            <p class="conv-setting" data-i18n="songs.setupSub">Search a real song, or have AI write an original one — either way you can shadow it, follow karaoke-style, or break down its natural pronunciation.</p>
+            <h2 data-i18n="songs.setupTitle">What should your song be about?</h2>
+            <p class="conv-setting" data-i18n="songs.setupSub">Gemini writes a short, original practice song at your level, then you can shadow it, follow karaoke-style, or break down its natural pronunciation.</p>
           </div>
         </div>
-
-        <div style="display:flex;gap:8px;margin-bottom:18px">
-          <button class="goal-btn active" id="songsSourceRealBtn" data-i18n="songs.sourceReal">🎤 Real song</button>
-          <button class="goal-btn" id="songsSourceAiBtn" data-i18n="songs.sourceAi">✨ AI original</button>
+        <div class="topic-bar" style="margin-top:14px">
+          <input id="songsThemeInput" data-i18n-ph="songs.themePh" maxlength="80">
+          <select id="songsLevel">
+            <option value="Beginner" data-i18n="level.beginner">Beginner</option><option value="Intermediate" data-i18n="level.intermediate">Intermediate</option><option value="Advanced" data-i18n="level.advanced">Advanced</option>
+          </select>
+          <button class="btn-sm solid" id="songsGenerateBtn" data-i18n="songs.generateBtn">Write my song</button>
         </div>
-
-        <!-- Real song: fuzzy-matched via Musixmatch (see call_musixmatch_lyrics
-             on the server -- Gemini is never the lyrics source). -->
-        <div id="songsRealPanel">
-          <div class="topic-bar" style="margin-top:0">
-            <input id="songsTrackInput" data-i18n-ph="songs.trackPh" maxlength="120">
-            <input id="songsArtistInput" data-i18n-ph="songs.artistPh" maxlength="120">
-            <button class="btn-sm solid" id="songsSearchBtn" data-i18n="songs.searchBtn">Find lyrics</button>
-          </div>
-          <p class="conv-setting" style="margin-top:10px" data-i18n="songs.realNote">Real lyrics, via Musixmatch. A free Musixmatch key only unlocks a short preview of each song — the site owner needs a paid Musixmatch plan for full songs.</p>
-          <div id="songsRealOff" class="unsupported hidden">
-            <b data-i18n="songs.realOff.b">Real-song search isn't turned on yet.</b>
-            <span data-i18n="songs.realOff.sub">The site owner needs to add a Musixmatch API key.</span>
-          </div>
+        <div id="songsOff" class="unsupported hidden">
+          <b data-i18n="songs.off.b">Songs isn't turned on yet.</b>
+          <span data-i18n="songs.off.sub">The site owner needs to add a Gemini API key.</span>
         </div>
-
-        <!-- AI original: Gemini writes a wholly new practice song. -->
-        <div id="songsAiPanel" class="hidden">
-          <div class="topic-bar" style="margin-top:0">
-            <input id="songsThemeInput" data-i18n-ph="songs.themePh" maxlength="80">
-            <select id="songsLevel">
-              <option value="Beginner" data-i18n="level.beginner">Beginner</option><option value="Intermediate" data-i18n="level.intermediate">Intermediate</option><option value="Advanced" data-i18n="level.advanced">Advanced</option>
-            </select>
-            <button class="btn-sm solid" id="songsGenerateBtn" data-i18n="songs.generateBtn">Write my song</button>
-          </div>
-          <div id="songsOff" class="unsupported hidden">
-            <b data-i18n="songs.off.b">Songs isn't turned on yet.</b>
-            <span data-i18n="songs.off.sub">The site owner needs to add a Gemini API key.</span>
-          </div>
-        </div>
-
         <div id="songsError" class="unsupported hidden"></div>
       </div>
 
@@ -1966,7 +1941,6 @@
           <div>
             <div class="conv-emoji">🎵</div>
             <h2 id="songsTitle" dir="ltr"></h2>
-            <p class="conv-setting hidden" id="songsAttribution" dir="ltr"></p>
           </div>
           <div class="conv-actions">
             <button class="btn-ghost" id="songsNewBtn" data-i18n="songs.newSong">New song</button>
@@ -2428,25 +2402,15 @@ const T = {
     "songs.cardSub": "An original AI-written song at your level — shadow it line by line or follow along karaoke-style.",
     "songs.heroStatReady": "Available now — write your first song",
     "songs.heroStatLocked": "A Max-exclusive perk",
-    "songs.start": "Practice with a song",
-    "songs.setupTitle": "Practice with a song",
-    "songs.setupSub": "Search a real song, or have AI write an original one — either way you can shadow it, follow karaoke-style, or break down its natural pronunciation.",
-    "songs.sourceReal": "🎤 Real song",
-    "songs.sourceAi": "✨ AI original",
-    "songs.trackPh": "Song title…",
-    "songs.artistPh": "Artist (optional)…",
-    "songs.searchBtn": "Find lyrics",
-    "songs.realNote": "Real lyrics, via Musixmatch. A free Musixmatch key only unlocks a short preview of each song — the site owner needs a paid Musixmatch plan for full songs.",
-    "songs.realOff.b": "Real-song search isn't turned on yet.",
-    "songs.realOff.sub": "The site owner needs to add a Musixmatch API key.",
-    "songs.previewNotice": "Preview only — this API key only unlocks a short snippet of the full song.",
-    "songs.musixmatchCredit": "Lyrics powered by Musixmatch",
+    "songs.start": "Write a song",
+    "songs.setupTitle": "What should your song be about?",
+    "songs.setupSub": "Gemini writes a short, original practice song at your level, then you can shadow it, follow karaoke-style, or break down its natural pronunciation.",
     "songs.themePh": "e.g. friendship, rainy days, monday morning…",
     "songs.generateBtn": "Write my song",
     "songs.writing": "Writing your song…",
-    "songs.off.b": "AI-original songs isn't turned on yet.",
+    "songs.off.b": "Songs isn't turned on yet.",
     "songs.off.sub": "The site owner needs to add a Gemini API key.",
-    "songs.genericError": "Couldn't load a song just now. Try again.",
+    "songs.genericError": "Couldn't write a song just now. Try again.",
     "songs.newSong": "New song",
     "songs.karaoke": "🎧 Karaoke",
     "songs.scored": "🎤 Practice (scored)",
@@ -2789,23 +2753,13 @@ const T = {
     "songs.cardSub": "أغنية أصلية كتبها الذكاء الاصطناعي بمستواك — قلّدها سطراً بسطر أو تابعها على طريقة الكاريوكي.",
     "songs.heroStatReady": "متاح الآن — اكتب أغنيتك الأولى",
     "songs.heroStatLocked": "ميزة خاصة بخطة Max",
-    "songs.start": "تدرّب بأغنية",
-    "songs.setupTitle": "تدرّب بأغنية",
-    "songs.setupSub": "ابحث عن أغنية حقيقية، أو اجعل الذكاء الاصطناعي يكتب أغنية أصلية — في الحالتين يمكنك تقليدها أو متابعتها بطريقة الكاريوكي أو تحليل نطقها الطبيعي.",
-    "songs.sourceReal": "🎤 أغنية حقيقية",
-    "songs.sourceAi": "✨ أغنية أصلية بالذكاء الاصطناعي",
-    "songs.trackPh": "اسم الأغنية…",
-    "songs.artistPh": "الفنان (اختياري)…",
-    "songs.searchBtn": "ابحث عن الكلمات",
-    "songs.realNote": "كلمات حقيقية، عبر Musixmatch. مفتاح Musixmatch المجاني يتيح فقط مقطعاً قصيراً من كل أغنية — يحتاج مالك الموقع إلى خطة Musixmatch مدفوعة للحصول على الأغاني كاملة.",
-    "songs.realOff.b": "البحث عن أغاني حقيقية غير مفعّل بعد.",
-    "songs.realOff.sub": "يحتاج مالك الموقع إلى إضافة مفتاح Musixmatch API.",
-    "songs.previewNotice": "معاينة فقط — هذا المفتاح يتيح مقطعاً قصيراً فقط من الأغنية كاملة.",
-    "songs.musixmatchCredit": "الكلمات مقدَّمة عبر Musixmatch",
+    "songs.start": "اكتب أغنية",
+    "songs.setupTitle": "عن ماذا تريد أن تكون أغنيتك؟",
+    "songs.setupSub": "يكتب Gemini أغنية تدريب قصيرة وأصلية بمستواك، ثم يمكنك تقليدها أو متابعتها بطريقة الكاريوكي أو تحليل نطقها الطبيعي.",
     "songs.themePh": "مثال: الصداقة، يوم ممطر، صباح الاثنين…",
     "songs.generateBtn": "اكتب أغنيتي",
     "songs.writing": "جارٍ كتابة أغنيتك…",
-    "songs.off.b": "الأغاني الأصلية بالذكاء الاصطناعي غير مفعّلة بعد.",
+    "songs.off.b": "ميزة الأغاني غير مفعّلة بعد.",
     "songs.off.sub": "يحتاج مالك الموقع إلى إضافة مفتاح Gemini API.",
     "songs.genericError": "تعذّر تحميل الأغنية الآن. حاول مرة أخرى.",
     "songs.newSong": "أغنية جديدة",
@@ -5654,42 +5608,21 @@ let songsIndex = 0;
 let songsKaraokePlaying = false;
 let songsRec = null;
 
-let songsMusixmatchReady = null;
-
 async function openSongs(){
   show("songsView");
   $("songsThemeInput").value = "";
-  $("songsTrackInput").value = "";
-  $("songsArtistInput").value = "";
   $("songsError").classList.add("hidden");
   $("songsSetup").classList.remove("hidden");
   $("songsLoading").classList.add("hidden");
   $("songsPracticeWrap").classList.add("hidden");
-  setSongsSource("real");
-  if (songsGeminiReady === null || songsMusixmatchReady === null){
-    try {
-      const status = await api("/api/ai/status");
-      songsGeminiReady = status.ready;
-      songsMusixmatchReady = status.musixmatch_ready;
-    } catch(e){ songsGeminiReady = true; songsMusixmatchReady = true; }   // don't block the UI on a status-check hiccup
+  if (songsGeminiReady === null){
+    try { songsGeminiReady = (await api("/api/ai/status")).ready; }
+    catch(e){ songsGeminiReady = true; }   // don't block the UI on a status-check hiccup
   }
   $("songsOff").classList.toggle("hidden", songsGeminiReady);
   $("songsGenerateBtn").disabled = !songsGeminiReady;
-  $("songsRealOff").classList.toggle("hidden", songsMusixmatchReady);
-  $("songsSearchBtn").disabled = !songsMusixmatchReady;
 }
 $("backSongs").onclick = () => loadDashboard();
-
-// ---- Source toggle: real song (Musixmatch) vs AI-original (Gemini) ----
-function setSongsSource(source){
-  $("songsSourceRealBtn").classList.toggle("active", source === "real");
-  $("songsSourceAiBtn").classList.toggle("active", source === "ai");
-  $("songsRealPanel").classList.toggle("hidden", source !== "real");
-  $("songsAiPanel").classList.toggle("hidden", source !== "ai");
-  $("songsError").classList.add("hidden");
-}
-$("songsSourceRealBtn").onclick = () => setSongsSource("real");
-$("songsSourceAiBtn").onclick = () => setSongsSource("ai");
 
 $("songsGenerateBtn").onclick = async () => {
   const theme = $("songsThemeInput").value.trim();
@@ -5700,7 +5633,7 @@ $("songsGenerateBtn").onclick = async () => {
   try {
     const song = await api("/api/songs/generate", "POST", {theme, level});
     $("songsLoading").classList.add("hidden");
-    renderSongPractice(song, {source: "ai"});
+    renderSongPractice(song);
   } catch(e){
     $("songsLoading").classList.add("hidden");
     $("songsSetup").classList.remove("hidden");
@@ -5710,38 +5643,9 @@ $("songsGenerateBtn").onclick = async () => {
 };
 $("songsThemeInput").addEventListener("keydown", e => { if (e.key === "Enter") $("songsGenerateBtn").click(); });
 
-$("songsSearchBtn").onclick = async () => {
-  const track = $("songsTrackInput").value.trim();
-  const artist = $("songsArtistInput").value.trim();
-  if (!track){ $("songsTrackInput").focus(); return; }
-  $("songsError").classList.add("hidden");
-  $("songsSetup").classList.add("hidden");
-  $("songsLoading").classList.remove("hidden");
-  try {
-    const song = await api("/api/songs/search-real", "POST", {track, artist});
-    $("songsLoading").classList.add("hidden");
-    renderSongPractice(song, {source: "real", restricted: song.restricted, copyright: song.copyright});
-  } catch(e){
-    $("songsLoading").classList.add("hidden");
-    $("songsSetup").classList.remove("hidden");
-    $("songsError").textContent = e.message || t("songs.genericError");
-    $("songsError").classList.remove("hidden");
-  }
-};
-$("songsTrackInput").addEventListener("keydown", e => { if (e.key === "Enter") $("songsSearchBtn").click(); });
-$("songsArtistInput").addEventListener("keydown", e => { if (e.key === "Enter") $("songsSearchBtn").click(); });
-
-function renderSongPractice(song, meta){
-  meta = meta || {};
+function renderSongPractice(song){
   songsLines = (song.lines || []).filter(Boolean);
   $("songsTitle").textContent = song.title || "";
-  const attrEl = $("songsAttribution");
-  if (meta.source === "real"){
-    attrEl.textContent = meta.restricted ? t("songs.previewNotice") : t("songs.musixmatchCredit");
-    attrEl.classList.remove("hidden");
-  } else {
-    attrEl.classList.add("hidden");
-  }
   $("songsPracticeWrap").classList.remove("hidden");
   const box = $("songsLinesBox");
   box.innerHTML = "";

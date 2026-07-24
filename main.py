@@ -232,77 +232,13 @@ GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.1-flash-lite").strip()
 GEMINI_CONFIGURED = bool(GEMINI_API_KEY)
 
 # ----------------------------------------------------------------------
-# 1e-3. SONGS: real lyrics (Musixmatch) + connected-speech breakdown (Gemini)
+# 1e-3. SONGS: connected-speech breakdown (Gemini)
 # ----------------------------------------------------------------------
-# Gemini itself is NOT a lyrics source: like every major LLM it has
-# guardrails against reproducing copyrighted song lyrics verbatim (so it
-# unreliably refuses/paraphrases), and even when it complied, displaying
-# real lyrics without a license is real legal exposure. Musixmatch is an
-# actual licensed lyrics database -- sign up free at
-# https://developer.musixmatch.com/signup, grab your key from
-# https://developer.musixmatch.com/admin/applications. IMPORTANT: the free
-# developer tier only returns a short PREVIEW snippet of each song (their
-# terms restrict full lyrics to a paid commercial license) -- this code
-# surfaces that honestly (see `restricted` in call_musixmatch_lyrics)
-# rather than pretending a snippet is the whole song.
-MUSIXMATCH_API_KEY = os.getenv("MUSIXMATCH_API_KEY", "").strip()
-MUSIXMATCH_CONFIGURED = bool(MUSIXMATCH_API_KEY)
-
-
-def call_musixmatch_lyrics(track: str, artist: str) -> dict:
-    """
-    Looks up a real song's lyrics via Musixmatch's matcher.lyrics.get (fuzzy-
-    matches track+artist to their catalog in one call). Returns
-    {"title", "artist", "lines": [str], "restricted": bool, "copyright": str}.
-    `restricted` is True when Musixmatch only returned a preview snippet
-    (the free tier's behavior) rather than the complete lyrics.
-    """
-    resp = requests.get(
-        "https://api.musixmatch.com/ws/1.1/matcher.lyrics.get",
-        params={"q_track": track, "q_artist": artist, "apikey": MUSIXMATCH_API_KEY, "format": "json"},
-        timeout=15,
-    )
-    if not resp.ok:
-        raise HTTPException(502, f"Musixmatch rejected the request ({resp.status_code}).")
-    try:
-        body = resp.json()
-        header = body["message"]["header"]
-        status_code = header["status_code"]
-    except (KeyError, TypeError, ValueError):
-        raise HTTPException(502, "Musixmatch returned an unexpected response.")
-
-    if status_code == 404:
-        raise HTTPException(404, "Couldn't find that song. Try checking the spelling, or add the artist name.")
-    if status_code == 401:
-        raise HTTPException(502, "Musixmatch rejected the API key. Check MUSIXMATCH_API_KEY.")
-    if status_code == 402:
-        raise HTTPException(502, "Musixmatch's usage limit for this key has been reached for now.")
-    if status_code != 200:
-        raise HTTPException(502, f"Musixmatch error (status {status_code}).")
-
-    try:
-        lyrics = body["message"]["body"]["lyrics"]
-        raw = str(lyrics["lyrics_body"]).strip()
-        copyright_str = str(lyrics.get("lyrics_copyright", "")).strip()
-    except (KeyError, TypeError):
-        raise HTTPException(502, "Musixmatch didn't return any lyrics for that match.")
-
-    # The free/dev tier appends a boilerplate notice instead of the rest of
-    # the song -- strip it from what's shown/practiced, but remember it
-    # happened so the UI can tell the learner this is a preview, not the
-    # full song.
-    restricted = "commercial use" in raw.lower() or bool(lyrics.get("restricted"))
-    raw = re.split(r"\*{3,}|\.{3,}\s*$", raw)[0].strip()
-    lines = [ln.strip() for ln in raw.splitlines() if ln.strip()]
-    if not lines:
-        raise HTTPException(502, "Musixmatch didn't return any usable lyrics lines for that match.")
-
-    return {
-        "title": track.strip(), "artist": artist.strip(),
-        "lines": lines, "restricted": restricted, "copyright": copyright_str,
-    }
-
-
+# Real licensed lyrics (Musixmatch) were considered and built, then dropped
+# -- their commercial plan (needed for full songs, not just preview
+# snippets) runs $49-199/month, too expensive to justify here. Songs stays
+# 100% AI-original (call_gemini_song above); Gemini is still never asked to
+# reproduce real copyrighted lyrics.
 def call_gemini_breakdown(text: str) -> dict:
     """
     The "connected speech breakdown" technique: shows one line transforming
@@ -4765,11 +4701,11 @@ def get_conversation(conv_id: str, user: User = Depends(get_current_user),
 
 @app.get("/api/ai/status")
 def ai_status(user: User = Depends(get_current_user)):
-    # Reports whether the server owner has actually set GEMINI_API_KEY (and,
-    # separately, MUSIXMATCH_API_KEY) yet -- used by AI Roleplay and Songs
-    # to show "not turned on yet" instead of a raw error. Scripted
-    # conversations never call this; they're fully offline and don't need it.
-    return {"ready": GEMINI_CONFIGURED, "musixmatch_ready": MUSIXMATCH_CONFIGURED}
+    # Reports whether the server owner has actually set GEMINI_API_KEY yet --
+    # used by AI Roleplay and Songs to show "not turned on yet" instead of a
+    # raw error. Scripted conversations never call this; they're fully
+    # offline and don't need it.
+    return {"ready": GEMINI_CONFIGURED}
 
 
 class RoleplayTurnIn(BaseModel):
@@ -4818,28 +4754,6 @@ def songs_generate(data: SongGenerateIn, request: Request, user: User = Depends(
     level = data.level.strip() if data.level.strip() in SONG_LEVELS else "Beginner"
     song = call_gemini_song(theme, level)
     return song
-
-
-class SongSearchIn(BaseModel):
-    track: str
-    artist: str = ""
-
-
-@app.post("/api/songs/search-real")
-def songs_search_real(data: SongSearchIn, request: Request, user: User = Depends(require_max)):
-    """
-    Looks up a REAL song's lyrics via Musixmatch (Max only) -- see
-    call_musixmatch_lyrics for why Gemini itself is never used as the
-    lyrics source. Nothing is persisted.
-    """
-    rate_limit(request, "songs-search-real", limit=20, window=300)
-    if not MUSIXMATCH_CONFIGURED:
-        raise HTTPException(503, "Real-song lookup isn't configured on this server yet (missing MUSIXMATCH_API_KEY).")
-    track = data.track.strip()[:120]
-    artist = data.artist.strip()[:120]
-    if not track:
-        raise HTTPException(400, "Enter a song title first.")
-    return call_musixmatch_lyrics(track, artist)
 
 
 class BreakdownIn(BaseModel):
@@ -5098,7 +5012,6 @@ def _startup_banner():
     print(f"    practice sentences : {sum(len(v) for v in SENTENCE_BANK.values())} across "
           f"{len(SENTENCE_BANK)} levels")
     print(f"  Gemini AI (Max: Roleplay + Songs) : {'configured, model=' + GEMINI_MODEL if GEMINI_CONFIGURED else 'NOT configured  <-- add GEMINI_API_KEY to .env to turn it on'}")
-    print(f"  Real-song lyrics (Max: Songs) : {'configured' if MUSIXMATCH_CONFIGURED else 'NOT configured  <-- add MUSIXMATCH_API_KEY to .env to turn it on (free tier = preview only)'}")
     total_sprint_convs = sum(len(c) for c in SPRINT_CONVS_BY_SPRINT.values())
     print(f"    conversations      : {len(CONVERSATIONS)} scenarios + {total_sprint_convs} sprint days")
     print("=" * 58)
