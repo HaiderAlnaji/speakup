@@ -3517,10 +3517,26 @@ async function loadSpotlight(){
     $("spotlightBanner").classList.remove("hidden");
   } catch(e){ $("spotlightBanner").classList.add("hidden"); }
 }
+// Bug fix: this used to scrollIntoView() the Lessons/Shadow grid directly,
+// left over from before those grids moved into their own hidden catalog
+// views (#lessonsCatalogView/#shadowCatalogView) -- scrolling to an
+// element inside a "hidden" container does nothing visible, so the button
+// silently did nothing. Now it jumps straight into practicing the actual
+// spotlighted phrase instead of just scrolling to a list of units.
 $("spotlightBtn").onclick = () => {
   if (!spotlightUnitInfo) return;
-  const grid = spotlightUnitInfo.kind === "lesson" ? $("lessonGrid") : $("shadowGrid");
-  if (grid) grid.scrollIntoView({behavior: "smooth", block: "start"});
+  const list = spotlightUnitInfo.kind === "lesson" ? lessons : shadowCats;
+  const unit = list.find(u => u.id === spotlightUnitInfo.unit_id);
+  if (!unit || unit.locked){
+    show(spotlightUnitInfo.kind === "lesson" ? "lessonsCatalogView" : "shadowCatalogView");
+    return;
+  }
+  if (spotlightUnitInfo.kind === "lesson") startLesson(unit); else startShadow(unit);
+  const idx = spotlightUnitInfo.phrase_index;
+  if (typeof idx === "number" && idx >= 0 && current.phrases && idx < current.phrases.length){
+    current.index = idx;
+    renderPhrase();
+  }
 };
 
 // The second Sprint. Shown to every Pro user (so there's something visibly
