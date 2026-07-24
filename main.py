@@ -234,11 +234,13 @@ GEMINI_CONFIGURED = bool(GEMINI_API_KEY)
 # ----------------------------------------------------------------------
 # 1e-3. SONGS: connected-speech breakdown (Gemini)
 # ----------------------------------------------------------------------
-# Real licensed lyrics (Musixmatch) were considered and built, then dropped
-# -- their commercial plan (needed for full songs, not just preview
-# snippets) runs $49-199/month, too expensive to justify here. Songs stays
-# 100% AI-original (call_gemini_song above); Gemini is still never asked to
-# reproduce real copyrighted lyrics.
+# Songs practices with a real track the learner picks (embedded straight
+# from YouTube -- no lyrics database, no licensing deal, nothing we host
+# ourselves). The learner types in whatever line they want to focus on,
+# and this is the one bit of Gemini help on top of that: breaking that
+# typed line down from careful textbook pronunciation into fast natural
+# speech. Gemini is never asked to produce or recall real song lyrics --
+# it only ever transforms text the learner already typed in.
 def call_gemini_breakdown(text: str) -> dict:
     """
     The "connected speech breakdown" technique: shows one line transforming
@@ -380,71 +382,6 @@ def call_gemini_translate(text: str) -> str:
         return body["candidates"][0]["content"]["parts"][0]["text"].strip()
     except (KeyError, IndexError, TypeError):
         return ""
-
-
-def call_gemini_song(theme: str, level: str) -> dict:
-    """
-    Writes a short, wholly ORIGINAL practice "song" for the Songs feature
-    (Max only). Deliberately never touches real/copyrighted lyrics -- there's
-    no music-licensing deal here, so every song is a brand-new creation,
-    generated fresh and never stored. Returns {"title": str, "lines": [str]}.
-    """
-    theme_clause = f'about "{theme.strip()}"' if theme.strip() else "about an everyday topic a language learner would enjoy"
-    system_prompt = (
-        "You write short, wholly ORIGINAL practice songs for English language "
-        "learners. Never reuse, quote, or closely imitate any real, existing "
-        "song's lyrics, title, or artist -- everything you write must be your "
-        "own brand-new creation. "
-        f"Write a simple, singable original song {theme_clause}, using "
-        f"vocabulary and sentence length appropriate for a {level} English "
-        "learner. Include a simple repeated chorus line so it's easy to "
-        "practice. Reply with ONLY valid JSON matching this exact shape: "
-        '{"title": "...", "lines": ["...", "..."]}. '
-        "8 to 14 short lines total, each short enough to say in a single "
-        "breath (roughly 4-9 words). No markdown, no commentary -- JSON only."
-    )
-    resp = requests.post(
-        f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent",
-        params={"key": GEMINI_API_KEY},
-        json={
-            "system_instruction": {"parts": [{"text": system_prompt}]},
-            "contents": [{"role": "user", "parts": [{"text": "Write the song now."}]}],
-            "generationConfig": {
-                "maxOutputTokens": 500, "temperature": 0.9,
-                "responseMimeType": "application/json",
-                "responseSchema": {
-                    "type": "OBJECT",
-                    "properties": {
-                        "title": {"type": "STRING"},
-                        "lines": {"type": "ARRAY", "items": {"type": "STRING"}},
-                    },
-                    "required": ["title", "lines"],
-                },
-            },
-        },
-        timeout=25,
-    )
-    if not resp.ok:
-        raise HTTPException(502, f"Gemini rejected the request ({resp.status_code}): {resp.text[:500]}")
-    body = resp.json()
-    try:
-        raw = body["candidates"][0]["content"]["parts"][0]["text"].strip()
-    except (KeyError, IndexError, TypeError):
-        reason = (body.get("candidates") or [{}])[0].get("finishReason", "unknown")
-        raise HTTPException(502, f"Gemini didn't return a song (reason: {reason}).")
-
-    # responseSchema makes this reliable, but defensively strip a markdown
-    # fence in case one ever slips through anyway.
-    raw = re.sub(r"^```(?:json)?\s*|\s*```$", "", raw.strip())
-    try:
-        data = _json.loads(raw)
-        title = str(data["title"]).strip()
-        lines = [str(ln).strip() for ln in data["lines"] if str(ln).strip()]
-        if not title or not lines:
-            raise ValueError("empty title or lines")
-    except (_json.JSONDecodeError, KeyError, ValueError, TypeError):
-        raise HTTPException(502, "Gemini returned a song in an unexpected format. Try again.")
-    return {"title": title, "lines": lines[:16]}
 
 
 # ----------------------------------------------------------------------
@@ -4732,30 +4669,6 @@ def roleplay_reply(data: RoleplayTurnIn, request: Request, user: User = Depends(
     return {"reply": reply}
 
 
-SONG_LEVELS = {"Beginner", "Intermediate", "Advanced"}
-
-
-class SongGenerateIn(BaseModel):
-    theme: str = ""
-    level: str = "Beginner"
-
-
-@app.post("/api/songs/generate")
-def songs_generate(data: SongGenerateIn, request: Request, user: User = Depends(require_max)):
-    """
-    Generates one short, wholly original practice song (Max only). Nothing
-    is persisted -- same stateless, ephemeral pattern as AI Roleplay, just a
-    single request/response instead of a back-and-forth conversation.
-    """
-    rate_limit(request, "songs-generate", limit=12, window=300)
-    if not GEMINI_CONFIGURED:
-        raise HTTPException(503, "Songs isn't configured on this server yet (missing GEMINI_API_KEY).")
-    theme = data.theme.strip()[:80]
-    level = data.level.strip() if data.level.strip() in SONG_LEVELS else "Beginner"
-    song = call_gemini_song(theme, level)
-    return song
-
-
 class BreakdownIn(BaseModel):
     text: str
 
@@ -4763,8 +4676,8 @@ class BreakdownIn(BaseModel):
 @app.post("/api/songs/breakdown")
 def songs_breakdown(data: BreakdownIn, request: Request, user: User = Depends(require_max)):
     """
-    The connected-speech breakdown for one line (Max only) -- works on real
-    or AI-generated lyrics alike. Nothing is persisted.
+    The connected-speech breakdown for one line the learner typed in while
+    practicing with a real song (Max only). Nothing is persisted.
     """
     rate_limit(request, "songs-breakdown", limit=40, window=300)
     if not GEMINI_CONFIGURED:
@@ -5011,7 +4924,7 @@ def _startup_banner():
     print(f"  Content              : OFFLINE (no API, no keys, no limits)")
     print(f"    practice sentences : {sum(len(v) for v in SENTENCE_BANK.values())} across "
           f"{len(SENTENCE_BANK)} levels")
-    print(f"  Gemini AI (Max: Roleplay + Songs) : {'configured, model=' + GEMINI_MODEL if GEMINI_CONFIGURED else 'NOT configured  <-- add GEMINI_API_KEY to .env to turn it on'}")
+    print(f"  Gemini AI (Max: Roleplay + speech breakdown) : {'configured, model=' + GEMINI_MODEL if GEMINI_CONFIGURED else 'NOT configured  <-- add GEMINI_API_KEY to .env to turn it on'}")
     total_sprint_convs = sum(len(c) for c in SPRINT_CONVS_BY_SPRINT.values())
     print(f"    conversations      : {len(CONVERSATIONS)} scenarios + {total_sprint_convs} sprint days")
     print("=" * 58)

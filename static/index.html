@@ -587,12 +587,11 @@
   .unsupported{background:#FFF7E6;border:1px solid #F5D98B;color:#7a5a12;
     font-size:13.5px;padding:12px 14px;border-radius:12px;margin-bottom:20px}
 
-  /* ---------- Songs (karaoke line list) ---------- */
-  .song-lines{background:var(--surface-2);border-radius:var(--radius);
-    padding:24px 28px;margin-bottom:18px;max-height:360px;overflow-y:auto}
-  .song-line{font-size:16px;line-height:2;color:var(--muted);
-    transition:color .2s var(--ease),font-weight .2s var(--ease)}
-  .song-line.active{color:var(--brand);font-weight:700}
+  /* ---------- Songs (real YouTube track, embedded) ---------- */
+  .song-player-box{position:relative;width:100%;padding-top:56.25%;height:0;
+    border-radius:var(--radius);overflow:hidden;background:#000;margin-bottom:18px}
+  .song-player-box iframe{position:absolute;top:0;left:0;width:100%;height:100%;border:0}
+  .song-line-practice{margin-top:8px}
 
   /* ---------- Connected-speech breakdown (No Rhythm/Linking/Reduced/Fluency) ---------- */
   .song-breakdown{background:var(--surface-2);border-radius:var(--radius);
@@ -1154,17 +1153,18 @@
         </div>
       </div>
 
-      <!-- Songs — Max only. Gemini writes a short, wholly original
-           practice song (never real/copyrighted lyrics -- no
-           music-licensing deal exists here), then the learner either
-           shadows it line-by-line for a score or follows along
-           karaoke-style. -->
+      <!-- Songs — Max only. Practices with a REAL song the learner picks,
+           embedded straight from YouTube (YouTube holds the rights and
+           serves the video; nothing is downloaded or hosted here). The
+           learner types in whatever line they want to focus on, then
+           listens, scores their own attempt, or asks for the
+           connected-speech breakdown of that line. -->
       <div class="mode-hero songs-hero reveal" id="songsHero">
         <canvas id="songsLetterCanvas" aria-hidden="true"></canvas>
         <div class="sh-content">
-          <span class="sh-eyebrow" data-i18n="songs.eyebrow">AI-powered</span>
+          <span class="sh-eyebrow" data-i18n="songs.eyebrow">Real music</span>
           <h2 class="sh-title" data-i18n-html="songs.heroTitleHtml">Sing to <em>learn</em></h2>
-          <p class="sh-promise" data-i18n="songs.cardSub">An original AI-written song at your level — shadow it line by line or follow along karaoke-style.</p>
+          <p class="sh-promise" data-i18n="songs.cardSub">Paste any real song from YouTube, slow it down, and practice the lines you love.</p>
           <div class="sh-stat" id="songsHeroStat"></div>
           <!-- No data-i18n on purpose -- depends on tier, same pattern as aiHeroCta. -->
           <button class="btn-gold sh-cta" id="songsHeroCta"></button>
@@ -1901,11 +1901,15 @@
       </div>
     </div>
 
-    <!-- Songs — Max only. Gemini writes a short, wholly original practice
-         song (never real/copyrighted lyrics), then the learner either
-         shadows it line-by-line for a score or follows along
-         karaoke-style. Stateless like Roleplay -- nothing is saved
-         server-side, so there's no XP/streak tie-in for this one yet. -->
+    <!-- Songs — Max only. Practices with a REAL song the learner picks by
+         pasting its YouTube link; the page embeds YouTube's own player
+         (they hold the rights, nothing is downloaded or hosted here). No
+         lyrics database of any kind -- the learner types in whatever line
+         they want to focus on themselves, then listens, records their own
+         attempt for a pronunciation score, or asks Gemini for the
+         connected-speech breakdown of that one typed line. Stateless like
+         Roleplay -- nothing is saved server-side, so there's no
+         XP/streak tie-in for this one yet. -->
     <div id="songsView" class="hidden">
       <button class="back" id="backSongs" data-i18n="back.home">← Home</button>
 
@@ -1913,27 +1917,20 @@
         <div class="conv-head">
           <div>
             <div class="conv-emoji">🎵</div>
-            <h2 data-i18n="songs.setupTitle">What should your song be about?</h2>
-            <p class="conv-setting" data-i18n="songs.setupSub">Gemini writes a short, original practice song at your level, then you can shadow it, follow karaoke-style, or break down its natural pronunciation.</p>
+            <h2 data-i18n="songs.setupTitle">Practice with a real song</h2>
+            <p class="conv-setting" data-i18n="songs.setupSub">Paste a link to any song on YouTube. It plays right here — slow it down, break down a tricky line, and practice saying it back.</p>
           </div>
         </div>
         <div class="topic-bar" style="margin-top:14px">
-          <input id="songsThemeInput" data-i18n-ph="songs.themePh" maxlength="80">
-          <select id="songsLevel">
-            <option value="Beginner" data-i18n="level.beginner">Beginner</option><option value="Intermediate" data-i18n="level.intermediate">Intermediate</option><option value="Advanced" data-i18n="level.advanced">Advanced</option>
-          </select>
-          <button class="btn-sm solid" id="songsGenerateBtn" data-i18n="songs.generateBtn">Write my song</button>
-        </div>
-        <div id="songsOff" class="unsupported hidden">
-          <b data-i18n="songs.off.b">Songs isn't turned on yet.</b>
-          <span data-i18n="songs.off.sub">The site owner needs to add a Gemini API key.</span>
+          <input id="songsYtInput" data-i18n-ph="songs.ytPh" maxlength="200">
+          <button class="btn-sm solid" id="songsLoadBtn" data-i18n="songs.loadBtn">Load song</button>
         </div>
         <div id="songsError" class="unsupported hidden"></div>
       </div>
 
       <div id="songsLoading" class="hidden" style="text-align:center;padding:48px 0">
         <div class="wave"><span></span><span></span><span></span><span></span><span></span></div>
-        <p style="margin-top:14px;color:var(--muted)" data-i18n="songs.writing">Writing your song…</p>
+        <p style="margin-top:14px;color:var(--muted)" data-i18n="songs.loadingMsg">Loading your song…</p>
       </div>
 
       <div id="songsPracticeWrap" class="hidden">
@@ -1947,6 +1944,13 @@
           </div>
         </div>
 
+        <!-- The real track, embedded straight from YouTube -- YouTube
+             serves the video and holds the rights, nothing is downloaded
+             or hosted here. -->
+        <div class="song-player-box">
+          <div id="songsYtPlayer"></div>
+        </div>
+
         <div class="speed-row" id="songsSpeedRow">
           <span class="speed-label" data-i18n="speed.label">Speed</span>
           <button class="speed-btn" id="songsSpeedSlowBtn" data-i18n="speed.slow">🐢 Slow</button>
@@ -1954,34 +1958,26 @@
           <button class="speed-btn" id="songsSpeedFastBtn" data-i18n="speed.fast">🐇 Fast</button>
         </div>
 
-        <div class="mode-toggle" id="songsModeToggle" style="display:flex;gap:8px;margin-bottom:20px">
-          <button class="goal-btn active" id="songsKaraokeBtn" data-i18n="songs.karaoke">🎧 Karaoke</button>
-          <button class="goal-btn" id="songsScoredBtn" data-i18n="songs.scored">🎤 Practice (scored)</button>
-        </div>
-
-        <!-- Karaoke: plays every line in sequence via TTS, highlighting
-             whichever line is currently speaking, no mic/score involved. -->
-        <div id="songsKaraokeZone">
-          <div class="song-lines" id="songsLinesBox"></div>
-          <div class="phrase-actions" style="justify-content:center">
-            <button class="listen" id="songsPlayBtn" data-i18n="songs.play">▶ Play song</button>
-            <button class="listen hidden" id="songsStopBtn" data-i18n="songs.stop">⏹ Stop</button>
+        <!-- No lyrics database -- the learner types in whatever line they
+             just heard themselves, then that typed line (never fetched
+             from anywhere) is what gets listened to, scored, and broken
+             down. Same similarity()/wordWeakPoints() scoring math every
+             other practice mode uses. -->
+        <div class="song-line-practice">
+          <p class="conv-setting" data-i18n="songs.linePrompt">Type a line you just heard, then practice saying it:</p>
+          <div class="topic-bar">
+            <input id="songsLineInput" data-i18n-ph="songs.linePh" maxlength="200" dir="ltr">
           </div>
-        </div>
-
-        <!-- Scored: one line at a time, mic input, same similarity()/
-             wordWeakPoints() scoring math every other practice mode uses. -->
-        <div id="songsScoredZone" class="hidden">
-          <div class="phrase-label" id="songsLineLabel"></div>
-          <div class="phrase" id="songsPhraseText" dir="ltr"></div>
           <div class="phrase-actions">
             <button class="listen" id="songsListenBtn" data-i18n="phrase.listen">🔊 Listen</button>
             <button class="listen" id="songsBreakdownBtn" data-i18n="songs.breakdownBtn">🔬 Show natural speech</button>
           </div>
           <!-- Connected-speech breakdown (No Rhythm -> Linking -> Reduced ->
                Fluency) -- the technique from the reference videos, works on
-               any line regardless of whether it's a real or AI-generated
-               lyric. Fetched on demand per line, not persisted. -->
+               any line the learner types in. Fetched on demand, not
+               persisted, and Gemini only ever transforms text the learner
+               already typed -- it's never asked to produce or recall real
+               song lyrics. -->
           <div class="song-breakdown hidden" id="songsBreakdownBox">
             <div class="sb-row"><span class="sb-label" data-i18n="songs.bd.literal">No Rhythm</span><span class="sb-val" id="sbLiteral" dir="ltr"></span></div>
             <div class="sb-row"><span class="sb-label" data-i18n="songs.bd.linking">Linking</span><span class="sb-val" id="sbLinking" dir="ltr"></span></div>
@@ -2003,8 +1999,7 @@
             <div class="score-msg" id="songsScoreMsg"></div>
             <div class="heard" id="songsHeard" dir="ltr"></div>
             <div class="result-actions">
-              <button class="btn-sm outline" id="songsRetryBtn" data-i18n="result.tryAgain">Try again</button>
-              <button class="btn-sm solid" id="songsNextBtn" data-i18n="result.nextPhrase">Next phrase →</button>
+              <button class="btn-sm solid" id="songsRetryBtn" data-i18n="result.tryAgain">Try again</button>
             </div>
           </div>
         </div>
@@ -2037,7 +2032,7 @@
           <li data-i18n="paywall.perk7">A daily Spotlight phrase, hand-picked each day</li>
           <li data-i18n="paywall.perk8">Voice Journal — a daily 60-second speaking prompt with its own streak</li>
           <li class="max-only hidden" id="perkAiRoleplay" data-i18n="paywall.perkAiRoleplay">✨ AI Roleplay — free-form spoken conversation with an AI partner</li>
-          <li class="max-only hidden" id="perkSongs" data-i18n="paywall.perkSongs">🎵 Songs — an original AI-written practice song, karaoke or scored</li>
+          <li class="max-only hidden" id="perkSongs" data-i18n="paywall.perkSongs">🎵 Songs — practice with any real song from YouTube, slowed down and broken down</li>
         </ul>
         <button class="btn-gold" id="upgradeBtn" data-i18n="paywall.upgradeBtn">Upgrade to Pro</button>
         <div class="upgrade-options hidden" id="upgradeOptions"></div>
@@ -2397,27 +2392,23 @@ const T = {
     "roleplay.topic.movie": "🎬 Talking about a movie",
     "roleplay.topic.debate": "🗣️ A friendly debate",
     "roleplay.topic.anything": "🎲 Anything — you choose",
-    "songs.eyebrow": "AI-powered",
+    "songs.eyebrow": "Real music",
     "songs.heroTitleHtml": "Sing to <em>learn</em>",
-    "songs.cardSub": "An original AI-written song at your level — shadow it line by line or follow along karaoke-style.",
-    "songs.heroStatReady": "Available now — write your first song",
+    "songs.cardSub": "Paste any real song from YouTube, slow it down, and practice the lines you love.",
+    "songs.heroStatReady": "Available now — paste any song",
     "songs.heroStatLocked": "A Max-exclusive perk",
-    "songs.start": "Write a song",
-    "songs.setupTitle": "What should your song be about?",
-    "songs.setupSub": "Gemini writes a short, original practice song at your level, then you can shadow it, follow karaoke-style, or break down its natural pronunciation.",
-    "songs.themePh": "e.g. friendship, rainy days, monday morning…",
-    "songs.generateBtn": "Write my song",
-    "songs.writing": "Writing your song…",
-    "songs.off.b": "Songs isn't turned on yet.",
-    "songs.off.sub": "The site owner needs to add a Gemini API key.",
-    "songs.genericError": "Couldn't write a song just now. Try again.",
+    "songs.start": "Practice a song",
+    "songs.setupTitle": "Practice with a real song",
+    "songs.setupSub": "Paste a link to any song on YouTube. It plays right here — slow it down, break down a tricky line, and practice saying it back.",
+    "songs.ytPh": "Paste a YouTube link…",
+    "songs.loadBtn": "Load song",
+    "songs.loadingMsg": "Loading your song…",
+    "songs.invalidLink": "That doesn't look like a YouTube link. Paste a full YouTube URL.",
+    "songs.genericError": "Something went wrong. Try again.",
     "songs.newSong": "New song",
-    "songs.karaoke": "🎧 Karaoke",
-    "songs.scored": "🎤 Practice (scored)",
-    "songs.play": "▶ Play song",
-    "songs.stop": "⏹ Stop",
-    "songs.lineOf": "Line {n} of {total}",
-    "songs.restart": "Start over ↺",
+    "songs.linePrompt": "Type a line you just heard, then practice saying it:",
+    "songs.linePh": "Type the line here…",
+    "songs.typeLineFirst": "Type a line first, then tap the mic.",
     "songs.breakdownBtn": "🔬 Show natural speech",
     "songs.bd.loading": "Analyzing…",
     "songs.bd.literal": "No Rhythm",
@@ -2748,27 +2739,23 @@ const T = {
     "roleplay.topic.movie": "🎬 الحديث عن فيلم",
     "roleplay.topic.debate": "🗣️ نقاش ودّي",
     "roleplay.topic.anything": "🎲 أي شيء — اخترت أنت",
-    "songs.eyebrow": "مدعوم بالذكاء الاصطناعي",
+    "songs.eyebrow": "موسيقى حقيقية",
     "songs.heroTitleHtml": "غنِّ <em>لتتعلّم</em>",
-    "songs.cardSub": "أغنية أصلية كتبها الذكاء الاصطناعي بمستواك — قلّدها سطراً بسطر أو تابعها على طريقة الكاريوكي.",
-    "songs.heroStatReady": "متاح الآن — اكتب أغنيتك الأولى",
+    "songs.cardSub": "الصق رابط أي أغنية حقيقية من يوتيوب، أبطئها، وتدرّب على الأسطر التي تحبها.",
+    "songs.heroStatReady": "متاح الآن — الصق أي أغنية",
     "songs.heroStatLocked": "ميزة خاصة بخطة Max",
-    "songs.start": "اكتب أغنية",
-    "songs.setupTitle": "عن ماذا تريد أن تكون أغنيتك؟",
-    "songs.setupSub": "يكتب Gemini أغنية تدريب قصيرة وأصلية بمستواك، ثم يمكنك تقليدها أو متابعتها بطريقة الكاريوكي أو تحليل نطقها الطبيعي.",
-    "songs.themePh": "مثال: الصداقة، يوم ممطر، صباح الاثنين…",
-    "songs.generateBtn": "اكتب أغنيتي",
-    "songs.writing": "جارٍ كتابة أغنيتك…",
-    "songs.off.b": "ميزة الأغاني غير مفعّلة بعد.",
-    "songs.off.sub": "يحتاج مالك الموقع إلى إضافة مفتاح Gemini API.",
-    "songs.genericError": "تعذّر تحميل الأغنية الآن. حاول مرة أخرى.",
+    "songs.start": "تدرّب بأغنية",
+    "songs.setupTitle": "تدرّب بأغنية حقيقية",
+    "songs.setupSub": "الصق رابط أي أغنية من يوتيوب. ستُشغَّل هنا مباشرة — أبطئها، حلّل سطراً صعباً، وتدرّب على نطقه.",
+    "songs.ytPh": "الصق رابط يوتيوب…",
+    "songs.loadBtn": "تحميل الأغنية",
+    "songs.loadingMsg": "جارٍ تحميل الأغنية…",
+    "songs.invalidLink": "هذا لا يبدو رابط يوتيوب. الصق رابط يوتيوب كاملاً.",
+    "songs.genericError": "حدث خطأ ما. حاول مرة أخرى.",
     "songs.newSong": "أغنية جديدة",
-    "songs.karaoke": "🎧 كاريوكي",
-    "songs.scored": "🎤 تدريب (بتقييم)",
-    "songs.play": "▶ تشغيل الأغنية",
-    "songs.stop": "⏹ إيقاف",
-    "songs.lineOf": "السطر {n} من {total}",
-    "songs.restart": "البدء من جديد ↺",
+    "songs.linePrompt": "اكتب سطراً سمعته للتو، ثم تدرّب على نطقه:",
+    "songs.linePh": "اكتب السطر هنا…",
+    "songs.typeLineFirst": "اكتب سطراً أولاً، ثم اضغط على الميكروفون.",
     "songs.breakdownBtn": "🔬 أظهر النطق الطبيعي",
     "songs.bd.loading": "جارٍ التحليل…",
     "songs.bd.literal": "بلا إيقاع",
@@ -2792,7 +2779,7 @@ const T = {
     "paywall.perk7": "عبارة يومية مميزة، مختارة كل يوم",
     "paywall.perk8": "اليوميات الصوتية — تمرين تحدث يومي لمدة 60 ثانية بسلسلة أيام خاصة به",
     "paywall.perkAiRoleplay": "✨ محادثة حرة مع الذكاء الاصطناعي — تدرّب بالتحدث بحرية مع شريك ذكاء اصطناعي",
-    "paywall.perkSongs": "🎵 الأغاني — أغنية تدريب أصلية كتبها الذكاء الاصطناعي، كاريوكي أو بتقييم",
+    "paywall.perkSongs": "🎵 الأغاني — تدرّب بأي أغنية حقيقية من يوتيوب، مع إبطاء وتحليل النطق",
     "paywall.upgradeBtn": "الترقية إلى Pro", "paywall.loading": "جارٍ التحميل…",
     "paywall.demoMode": "وضع تجريبي: يتم الفتح فوراً.",
     "billing.oneTimeNote": "هذه بطاقة دخول لمرة واحدة لمدة 30 يوماً، وليست اشتراكاً — لن تتجدد تلقائياً ولن تُخصم منك مرة أخرى. عد وادفع مرة أخرى في أي وقت تريد المتابعة فيه.",
@@ -3890,6 +3877,11 @@ function setPlaybackRate(rate, btnId){
   localStorage.setItem("speakport_rate", String(rate));
   SPEED_BTN_IDS.forEach(id => { const el = $(id); if (el) el.classList.remove("active"); });
   const active = $(btnId); if (active) active.classList.add("active");
+  // Songs' real YouTube track uses a different speed API than the
+  // <audio>/TTS rate this function otherwise controls -- keep it in sync.
+  if (typeof songsYtPlayer !== "undefined" && songsYtPlayer && songsYtPlayer.setPlaybackRate){
+    songsYtPlayer.setPlaybackRate(rate);
+  }
 }
 $("speedSlowBtn").onclick = () => setPlaybackRate(0.65, "speedSlowBtn");
 $("speedNormalBtn").onclick = () => setPlaybackRate(0.9, "speedNormalBtn");
@@ -5602,123 +5594,110 @@ $("roleplayMicBtn").onclick = () => {
 // with its own local state instead of the shared `current` object -- an
 // AI-generated song has no lesson_id, so nothing is saved server-side
 // (stateless, like AI Roleplay).
-let songsGeminiReady = null;
-let songsLines = [];
-let songsIndex = 0;
-let songsKaraokePlaying = false;
 let songsRec = null;
+let songsYtPlayer = null;
+let songsYtApiReady = false;
+let songsYtApiLoading = false;
+let songsYtApiCallbacks = [];
+
+// YouTube's IFrame Player API is loaded on demand (only once Songs is
+// actually opened) rather than on every page load. onYouTubeIframeAPIReady
+// is a name YouTube's own script looks for on `window` and calls itself --
+// it's not something we invented.
+function loadYouTubeApi(cb){
+  if (songsYtApiReady){ cb(); return; }
+  songsYtApiCallbacks.push(cb);
+  if (songsYtApiLoading) return;
+  songsYtApiLoading = true;
+  const tag = document.createElement("script");
+  tag.src = "https://www.youtube.com/iframe_api";
+  document.head.appendChild(tag);
+}
+window.onYouTubeIframeAPIReady = function(){
+  songsYtApiReady = true;
+  songsYtApiCallbacks.forEach(cb => cb());
+  songsYtApiCallbacks = [];
+};
+
+// Accepts a full YouTube URL (watch/youtu.be/embed/shorts, any subdomain)
+// or a bare 11-character video ID pasted directly.
+function extractYouTubeId(url){
+  url = (url || "").trim();
+  if (!url) return null;
+  if (/^[a-zA-Z0-9_-]{11}$/.test(url)) return url;
+  const m = url.match(/(?:youtube\.com\/watch\?v=|youtube\.com\/embed\/|youtube\.com\/shorts\/|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+  return m ? m[1] : null;
+}
 
 async function openSongs(){
   show("songsView");
-  $("songsThemeInput").value = "";
+  $("songsYtInput").value = "";
   $("songsError").classList.add("hidden");
   $("songsSetup").classList.remove("hidden");
   $("songsLoading").classList.add("hidden");
   $("songsPracticeWrap").classList.add("hidden");
-  if (songsGeminiReady === null){
-    try { songsGeminiReady = (await api("/api/ai/status")).ready; }
-    catch(e){ songsGeminiReady = true; }   // don't block the UI on a status-check hiccup
-  }
-  $("songsOff").classList.toggle("hidden", songsGeminiReady);
-  $("songsGenerateBtn").disabled = !songsGeminiReady;
 }
 $("backSongs").onclick = () => loadDashboard();
 
-$("songsGenerateBtn").onclick = async () => {
-  const theme = $("songsThemeInput").value.trim();
-  const level = $("songsLevel").value;
+$("songsLoadBtn").onclick = () => {
+  const id = extractYouTubeId($("songsYtInput").value);
   $("songsError").classList.add("hidden");
+  if (!id){
+    $("songsError").textContent = t("songs.invalidLink");
+    $("songsError").classList.remove("hidden");
+    return;
+  }
   $("songsSetup").classList.add("hidden");
   $("songsLoading").classList.remove("hidden");
-  try {
-    const song = await api("/api/songs/generate", "POST", {theme, level});
+  loadYouTubeApi(() => {
     $("songsLoading").classList.add("hidden");
-    renderSongPractice(song);
-  } catch(e){
-    $("songsLoading").classList.add("hidden");
-    $("songsSetup").classList.remove("hidden");
-    $("songsError").textContent = e.message || t("songs.genericError");
-    $("songsError").classList.remove("hidden");
-  }
-};
-$("songsThemeInput").addEventListener("keydown", e => { if (e.key === "Enter") $("songsGenerateBtn").click(); });
-
-function renderSongPractice(song){
-  songsLines = (song.lines || []).filter(Boolean);
-  $("songsTitle").textContent = song.title || "";
-  $("songsPracticeWrap").classList.remove("hidden");
-  const box = $("songsLinesBox");
-  box.innerHTML = "";
-  songsLines.forEach((ln, i) => {
-    const d = document.createElement("div");
-    d.className = "song-line"; d.dir = "ltr"; d.textContent = ln; d.id = "songsLine" + i;
-    box.appendChild(d);
+    $("songsTitle").textContent = "";
+    $("songsLineInput").value = "";
+    $("songsResult").classList.remove("show");
+    $("songsBreakdownBox").classList.add("hidden");
+    $("songsPracticeWrap").classList.remove("hidden");
+    if (songsYtPlayer && songsYtPlayer.loadVideoById){
+      songsYtPlayer.loadVideoById(id);
+      songsYtPlayer.setPlaybackRate(playbackRate);
+    } else {
+      songsYtPlayer = new YT.Player("songsYtPlayer", {
+        videoId: id,
+        width: "100%", height: "100%",
+        playerVars: {rel: 0},
+        events: {
+          onReady: (e) => {
+            e.target.setPlaybackRate(playbackRate || 1);
+            try { $("songsTitle").textContent = e.target.getVideoData().title || ""; } catch(_){}
+          }
+        }
+      });
+    }
   });
-  setSongsMode("karaoke");
-  loadScoredLine(0);
-}
-
-function setSongsMode(mode){
-  stopKaraoke();
-  $("songsKaraokeBtn").classList.toggle("active", mode === "karaoke");
-  $("songsScoredBtn").classList.toggle("active", mode === "scored");
-  $("songsKaraokeZone").classList.toggle("hidden", mode !== "karaoke");
-  $("songsScoredZone").classList.toggle("hidden", mode !== "scored");
-}
-$("songsKaraokeBtn").onclick = () => setSongsMode("karaoke");
-$("songsScoredBtn").onclick = () => setSongsMode("scored");
+};
+$("songsYtInput").addEventListener("keydown", e => { if (e.key === "Enter") $("songsLoadBtn").click(); });
 $("songsNewBtn").onclick = () => {
-  stopKaraoke();
   $("songsPracticeWrap").classList.add("hidden");
   $("songsSetup").classList.remove("hidden");
 };
 
-// ---- Karaoke ----
-function stopKaraoke(){
-  songsKaraokePlaying = false;
-  speechSynthesis.cancel();
-  songsLines.forEach((_, i) => { const el = $("songsLine" + i); if (el) el.classList.remove("active"); });
-  $("songsPlayBtn").classList.remove("hidden");
-  $("songsStopBtn").classList.add("hidden");
-}
-$("songsPlayBtn").onclick = () => {
-  if (!songsLines.length) return;
-  songsKaraokePlaying = true;
-  $("songsPlayBtn").classList.add("hidden");
-  $("songsStopBtn").classList.remove("hidden");
-  playKaraokeLine(0);
-};
-$("songsStopBtn").onclick = () => stopKaraoke();
-function playKaraokeLine(i){
-  if (!songsKaraokePlaying) return;
-  if (i >= songsLines.length){ stopKaraoke(); return; }
-  songsLines.forEach((_, j) => { const el = $("songsLine" + j); if (el) el.classList.toggle("active", j === i); });
-  const el = $("songsLine" + i);
-  if (el) el.scrollIntoView({block: "center", behavior: "smooth"});
-  const u = new SpeechSynthesisUtterance(songsLines[i]);
-  u.lang = "en-US"; u.rate = playbackRate;
-  u.onend = () => { if (songsKaraokePlaying) playKaraokeLine(i + 1); };
-  speechSynthesis.speak(u);
-}
-
-// ---- Scored ----
-function loadScoredLine(i){
-  songsIndex = i;
+// ---- Practice a typed line (no lyrics database -- the learner types in
+// whatever line they just heard) ----
+$("songsLineInput").addEventListener("input", () => {
   $("songsResult").classList.remove("show");
   $("songsBreakdownBox").classList.add("hidden");
-  $("songsLineLabel").textContent = t("songs.lineOf", {n: i + 1, total: songsLines.length});
-  $("songsPhraseText").textContent = songsLines[i] || "";
-  $("songsNextBtn").textContent = (i + 1 < songsLines.length) ? t("result.nextPhrase") : t("songs.restart");
-}
+});
 $("songsListenBtn").onclick = () => {
-  const u = new SpeechSynthesisUtterance(songsLines[songsIndex] || "");
+  const line = $("songsLineInput").value.trim();
+  if (!line) return;
+  const u = new SpeechSynthesisUtterance(line);
   u.lang = "en-US"; u.rate = playbackRate;
   speechSynthesis.cancel(); speechSynthesis.speak(u);
 };
-// ---- Connected-speech breakdown: fetched on demand for whichever line is
-// currently showing, works the same regardless of lyrics source. ----
+// ---- Connected-speech breakdown: fetched on demand for whatever line is
+// currently typed in. Gemini only ever transforms text the learner typed
+// -- it's never asked to produce or recall real song lyrics. ----
 $("songsBreakdownBtn").onclick = async () => {
-  const line = songsLines[songsIndex] || "";
+  const line = $("songsLineInput").value.trim();
   if (!line) return;
   $("songsBreakdownBtn").disabled = true;
   const prevLabel = $("songsBreakdownBtn").textContent;
@@ -5737,12 +5716,10 @@ $("songsBreakdownBtn").onclick = async () => {
   $("songsBreakdownBtn").disabled = false;
   $("songsBreakdownBtn").textContent = prevLabel;
 };
-$("songsRetryBtn").onclick = () => loadScoredLine(songsIndex);
-$("songsNextBtn").onclick = () => {
-  const next = songsIndex + 1 < songsLines.length ? songsIndex + 1 : 0;
-  loadScoredLine(next);
-};
+$("songsRetryBtn").onclick = () => { $("songsResult").classList.remove("show"); $("songsBreakdownBox").classList.add("hidden"); };
 $("songsMicBtn").onclick = () => {
+  const line = $("songsLineInput").value.trim();
+  if (!line){ $("songsMicHint").textContent = t("songs.typeLineFirst"); return; }
   if (!SR){ $("songsMicHint").textContent = t("mic.noSupport"); return; }
   if (songsRec) return;
   songsRec = new SR();
@@ -5758,7 +5735,7 @@ $("songsMicBtn").onclick = () => {
   songsRec.onend = () => { songsRec = null; $("songsMicBtn").classList.remove("recording"); $("songsMicHint").textContent = t("mic.hintDefault"); };
 };
 function gradeSongLine(alternatives){
-  const target = songsLines[songsIndex] || "";
+  const target = $("songsLineInput").value.trim();
   let best = 0, bestText = alternatives[0] || "";
   alternatives.forEach(alt => { const sc = similarity(target, alt); if (sc > best){ best = sc; bestText = alt; } });
 
