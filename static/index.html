@@ -4340,49 +4340,61 @@ let shadowBlobUrl = null;
 let shadowRec = null;   // the SpeechRecognition instance for this take
 
 // ---- Mic-level meter (independent of SpeechRecognition) ----
-// Bug fix: Shadow Mode plays the native audio through the speakers WHILE
-// the mic is listening (that's the whole point of "shadowing"). Without
-// headphones, the speakers can leak straight back into the mic, and
-// SpeechRecognition then "hears" the native audio itself and grades it
-// as a perfect match -- so clicking the button and staying silent could
-// score 100. This meter reads the actual mic input level (Web Audio
-// API, not speech-to-text) throughout the take; if it never rises above
-// a bare-ambient-noise floor, we know nothing was really said into the
-// mic and skip grading rather than trust a spurious transcript.
-const SHADOW_SILENCE_THRESHOLD = 8;   // 0-128 peak deviation from silence; a rough
+// Bug fix, round 2: Shadow Mode plays the native audio through the
+// speakers WHILE the mic is listening (that's the whole point of
+// "shadowing"). Without headphones, the speakers can leak straight back
+// into the mic, and SpeechRecognition then "hears" the native audio
+// itself and grades it as a perfect match -- so clicking the button and
+// staying silent could score 100. Two layers of defense now:
+//   1. getUserMedia asks for echoCancellation -- the standard browser
+//      feature for exactly this "own speaker leaking into own mic"
+//      problem (the same thing video-call apps rely on).
+//   2. A mic-level meter (Web Audio, not speech-to-text) independently
+//      measures real input volume through the take; if it never rises
+//      above a bare-ambient-noise floor, the transcript is untrusted.
+// Round 1 kept this state in shared module-level variables, which had a
+// bug of its own: a late-firing callback from a PREVIOUS take (e.g. a
+// slow SpeechRecognition that hadn't reported back yet when "Shadow it
+// again" was clicked) could read/overwrite the NEXT take's numbers, so
+// take 2+ sometimes scored on stale data instead of its own. Every
+// take now gets its own private state object plus a generation number
+// (shadowAttemptId); any callback from an older take is a guaranteed
+// no-op the moment a newer take has started, no shared globals involved.
+const SHADOW_SILENCE_THRESHOLD = 10;   // 0-128 peak deviation from silence; a rough
                                         // heuristic -- raise it if quiet speakers get
                                         // incorrectly skipped, lower it if leaked
                                         // audio still slips through
-let shadowAudioCtx = null, shadowAnalyser = null, shadowLevelRAF = null;
-let shadowMaxLevel = 0, shadowLevelMeterOk = false;
-function startShadowLevelMeter(stream){
-  shadowMaxLevel = 0; shadowLevelMeterOk = false;
+let shadowAttemptId = 0;
+function startShadowLevelMeter(stream, attemptId){
+  const meter = {maxLevel: 0, ok: false, raf: null, ctx: null};
   try {
-    shadowAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    const source = shadowAudioCtx.createMediaStreamSource(stream);
-    shadowAnalyser = shadowAudioCtx.createAnalyser();
-    shadowAnalyser.fftSize = 512;
-    source.connect(shadowAnalyser);
-    const data = new Uint8Array(shadowAnalyser.fftSize);
-    shadowLevelMeterOk = true;
+    meter.ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const source = meter.ctx.createMediaStreamSource(stream);
+    const analyser = meter.ctx.createAnalyser();
+    analyser.fftSize = 512;
+    source.connect(analyser);
+    const data = new Uint8Array(analyser.fftSize);
+    meter.ok = true;
     const sample = () => {
-      shadowAnalyser.getByteTimeDomainData(data);
+      if (attemptId !== shadowAttemptId) return;   // a newer take has started; stop touching anything
+      analyser.getByteTimeDomainData(data);
       let peak = 0;
       for (let i = 0; i < data.length; i++){
         const dev = Math.abs(data[i] - 128);
         if (dev > peak) peak = dev;
       }
-      if (peak > shadowMaxLevel) shadowMaxLevel = peak;
-      shadowLevelRAF = requestAnimationFrame(sample);
+      if (peak > meter.maxLevel) meter.maxLevel = peak;
+      meter.raf = requestAnimationFrame(sample);
     };
     sample();
-  } catch(e){ shadowLevelMeterOk = false; }   // Web Audio unsupported -- falls back to trusting SpeechRecognition, same as before this fix
+  } catch(e){ meter.ok = false; }   // Web Audio unsupported -- falls back to trusting SpeechRecognition, same as before this fix
+  return meter;
 }
-function stopShadowLevelMeter(){
-  if (shadowLevelRAF) cancelAnimationFrame(shadowLevelRAF);
-  shadowLevelRAF = null;
-  if (shadowAudioCtx){ try { shadowAudioCtx.close(); } catch(e){} shadowAudioCtx = null; }
-  shadowAnalyser = null;
+function stopShadowLevelMeter(meter){
+  if (!meter) return;
+  if (meter.raf) cancelAnimationFrame(meter.raf);
+  meter.raf = null;
+  if (meter.ctx){ try { meter.ctx.close(); } catch(e){} meter.ctx = null; }
 }
 // Shown instead of a score when we can't trust the take (silence, or a
 // SpeechRecognition error) -- a quick label swap on the button itself,
@@ -4395,9 +4407,9 @@ function shadowNoSpeechFeedback(){
 }
 
 function resetShadowUI(){
+  shadowAttemptId++;   // invalidate any in-flight take so its callbacks become no-ops
   if (shadowRecorder && shadowRecorder.state === "recording") shadowRecorder.stop();
   if (shadowRec){ try { shadowRec.abort(); } catch(e){} shadowRec = null; }
-  stopShadowLevelMeter();
   speechSynthesis.cancel();
   if (shadowBlobUrl){ URL.revokeObjectURL(shadowBlobUrl); shadowBlobUrl = null; }
   $("shadowPlayback").classList.add("hidden");
@@ -4410,15 +4422,20 @@ $("shadowRecordBtn").onclick = async () => {
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
     alert(t("shadow.noRecording")); return;
   }
+  const myAttempt = ++shadowAttemptId;   // bump the generation counter for this take
   try {
-    const stream = await navigator.mediaDevices.getUserMedia({audio: true});
-    startShadowLevelMeter(stream);
+    const stream = await navigator.mediaDevices.getUserMedia({
+      audio: {echoCancellation: true, noiseSuppression: true, autoGainControl: true},
+    });
+    if (myAttempt !== shadowAttemptId){ stream.getTracks().forEach(tr => tr.stop()); return; }   // superseded while awaiting mic permission
+    const levelMeter = startShadowLevelMeter(stream, myAttempt);
     const chunks = [];
     shadowRecorder = new MediaRecorder(stream);
     shadowRecorder.ondataavailable = (e) => { if (e.data.size) chunks.push(e.data); };
     shadowRecorder.onstop = () => {
       stream.getTracks().forEach(t => t.stop());
-      stopShadowLevelMeter();
+      stopShadowLevelMeter(levelMeter);
+      if (myAttempt !== shadowAttemptId) return;   // a newer take already reset the UI; don't stomp on it
       if (shadowBlobUrl) URL.revokeObjectURL(shadowBlobUrl);
       shadowBlobUrl = URL.createObjectURL(new Blob(chunks, {type: "audio/webm"}));
       $("shadowPlayback").classList.remove("hidden");
@@ -4440,14 +4457,15 @@ $("shadowRecordBtn").onclick = async () => {
       shadowRec = new SR();
       shadowRec.lang = "en-US"; shadowRec.interimResults = false; shadowRec.maxAlternatives = 4;
       shadowRec.onresult = (ev) => {
-        if (shadowLevelMeterOk && shadowMaxLevel < SHADOW_SILENCE_THRESHOLD){
+        if (myAttempt !== shadowAttemptId) return;   // stale result from an old take -- ignore
+        if (levelMeter.ok && levelMeter.maxLevel < SHADOW_SILENCE_THRESHOLD){
           shadowNoSpeechFeedback();   // mic picked up ~nothing -- don't trust this transcript
           return;
         }
         const alts = Array.from(ev.results[0]).map(a => a.transcript);
         grade(alts);
       };
-      shadowRec.onerror = () => { shadowNoSpeechFeedback(); };
+      shadowRec.onerror = () => { if (myAttempt === shadowAttemptId) shadowNoSpeechFeedback(); };
       try { shadowRec.start(); } catch(e){ shadowRec = null; }
     }
 
