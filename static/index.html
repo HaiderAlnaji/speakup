@@ -596,11 +596,13 @@
   /* ---------- Connected-speech breakdown (No Rhythm/Linking/Reduced/Fluency) ---------- */
   .song-breakdown{background:var(--surface-2);border-radius:var(--radius);
     padding:16px 20px;margin:14px 0;display:flex;flex-direction:column;gap:10px}
-  .sb-row{display:flex;align-items:baseline;gap:14px}
+  .sb-row{display:flex;align-items:flex-start;gap:14px}
   .sb-label{flex:0 0 90px;font-size:11px;font-weight:700;letter-spacing:.05em;
-    text-transform:uppercase;color:var(--muted)}
+    text-transform:uppercase;color:var(--muted);padding-top:2px}
+  .sb-col{display:flex;flex-direction:column;gap:2px}
   .sb-val{font-size:15.5px;color:var(--ink)}
   .sb-val.sb-highlight{color:var(--brand);font-weight:700}
+  .sb-ipa{font-size:12.5px;color:var(--muted);font-style:italic}
 
   /* ---------- Batch breakdown (several typed-in lines at once) ---------- */
   .song-batch{margin-top:26px;padding-top:20px;border-top:1px solid var(--line)}
@@ -613,6 +615,16 @@
   .song-batch-line{font-size:15.5px;font-weight:700;color:var(--ink);margin-bottom:10px}
   .song-batch-card .song-breakdown{margin:0 0 12px 0}
   .song-batch-error{font-size:13.5px;color:var(--danger)}
+
+  /* ---------- Word-pronunciation lookup (stress + IPA + definition) ---------- */
+  .word-card{background:var(--surface-2);border-radius:var(--radius);
+    padding:22px 24px;margin-top:16px;text-align:center}
+  .word-card-word{font-size:27px;font-weight:800;letter-spacing:.01em}
+  .word-syl{color:var(--muted)}
+  .word-syl-stressed{color:var(--brand);font-weight:800}
+  .word-card-ipa{font-size:15px;color:var(--muted);font-style:italic;margin-top:8px}
+  .word-card-def{font-size:14.5px;color:var(--ink);margin-top:10px}
+  #songsWordCard .listen{margin-top:16px}
 
   /* ---------- Sprint hero (full-bleed light splash, matches mockup) ----------
      Lives outside .container (see HTML) so it can span the full viewport
@@ -1991,10 +2003,10 @@
                already typed -- it's never asked to produce or recall real
                song lyrics. -->
           <div class="song-breakdown hidden" id="songsBreakdownBox">
-            <div class="sb-row"><span class="sb-label" data-i18n="songs.bd.literal">No Rhythm</span><span class="sb-val" id="sbLiteral" dir="ltr"></span></div>
-            <div class="sb-row"><span class="sb-label" data-i18n="songs.bd.linking">Linking</span><span class="sb-val" id="sbLinking" dir="ltr"></span></div>
-            <div class="sb-row"><span class="sb-label" data-i18n="songs.bd.reduced">Reduced</span><span class="sb-val sb-highlight" id="sbReduced" dir="ltr"></span></div>
-            <div class="sb-row"><span class="sb-label" data-i18n="songs.bd.fluent">Fluency</span><span class="sb-val sb-highlight" id="sbFluent" dir="ltr"></span></div>
+            <div class="sb-row"><span class="sb-label" data-i18n="songs.bd.literal">No Rhythm</span><span class="sb-col"><span class="sb-val" id="sbLiteral" dir="ltr"></span><span class="sb-ipa" id="sbLiteralIpa" dir="ltr"></span></span></div>
+            <div class="sb-row"><span class="sb-label" data-i18n="songs.bd.linking">Linking</span><span class="sb-col"><span class="sb-val" id="sbLinking" dir="ltr"></span><span class="sb-ipa" id="sbLinkingIpa" dir="ltr"></span></span></div>
+            <div class="sb-row"><span class="sb-label" data-i18n="songs.bd.reduced">Reduced</span><span class="sb-col"><span class="sb-val sb-highlight" id="sbReduced" dir="ltr"></span><span class="sb-ipa" id="sbReducedIpa" dir="ltr"></span></span></div>
+            <div class="sb-row"><span class="sb-label" data-i18n="songs.bd.fluent">Fluency</span><span class="sb-col"><span class="sb-val sb-highlight" id="sbFluent" dir="ltr"></span><span class="sb-ipa" id="sbFluentIpa" dir="ltr"></span></span></div>
           </div>
           <div class="mic-zone">
             <button class="mic" id="songsMicBtn" aria-label="Start recording">
@@ -2027,6 +2039,27 @@
                 <button class="btn-sm solid" id="songsBatchBtn" data-i18n="songs.batchBtn">🔬 Break down all lines</button>
               </div>
               <div id="songsBatchResults"></div>
+            </div>
+          </div>
+
+          <!-- Word-pronunciation lookup: type any word, see its stressed
+               syllable highlighted, its IPA transcription, and a short
+               definition -- generic dictionary-style reference content,
+               never tied to any specific copyrighted source. -->
+          <div class="song-batch">
+            <button class="btn-ghost" id="songsWordToggleBtn" data-i18n="songs.wordToggle">🔎 Look up a word</button>
+            <div id="songsWordPanel" class="hidden">
+              <p class="conv-setting" data-i18n="songs.wordPrompt">Type any English word to see its stress, IPA, and meaning:</p>
+              <div class="topic-bar">
+                <input id="songsWordInput" data-i18n-ph="songs.wordPh" maxlength="40" dir="ltr">
+                <button class="btn-sm solid" id="songsWordBtn" data-i18n="songs.wordBtn">🔎 Look up</button>
+              </div>
+              <div class="word-card hidden" id="songsWordCard">
+                <div class="word-card-word" id="songsWordSyllables" dir="ltr"></div>
+                <div class="word-card-ipa" id="songsWordIpa" dir="ltr"></div>
+                <div class="word-card-def" id="songsWordDef" dir="ltr"></div>
+                <button class="listen" id="songsWordListenBtn" data-i18n="phrase.listen">🔊 Listen</button>
+              </div>
             </div>
           </div>
         </div>
@@ -2442,6 +2475,10 @@ const T = {
     "songs.batchPh": "One line per row…",
     "songs.batchBtn": "🔬 Break down all lines",
     "songs.batchPractice": "🎤 Practice this line",
+    "songs.wordToggle": "🔎 Look up a word",
+    "songs.wordPrompt": "Type any English word to see its stress, IPA, and meaning:",
+    "songs.wordPh": "Type a word…",
+    "songs.wordBtn": "🔎 Look up",
     "songs.bd.loading": "Analyzing…",
     "songs.bd.literal": "No Rhythm",
     "songs.bd.linking": "Linking",
@@ -2794,6 +2831,10 @@ const T = {
     "songs.batchPh": "سطر واحد في كل صف…",
     "songs.batchBtn": "🔬 حلّل كل الأسطر",
     "songs.batchPractice": "🎤 تدرّب على هذا السطر",
+    "songs.wordToggle": "🔎 ابحث عن كلمة",
+    "songs.wordPrompt": "اكتب أي كلمة إنجليزية لترى نبرها ونطقها الصوتي ومعناها:",
+    "songs.wordPh": "اكتب كلمة…",
+    "songs.wordBtn": "🔎 ابحث",
     "songs.bd.loading": "جارٍ التحليل…",
     "songs.bd.literal": "بلا إيقاع",
     "songs.bd.linking": "الربط",
@@ -5695,6 +5736,9 @@ $("songsLoadBtn").onclick = () => {
     $("songsBatchInput").value = "";
     $("songsBatchResults").innerHTML = "";
     $("songsBatchPanel").classList.add("hidden");
+    $("songsWordInput").value = "";
+    $("songsWordCard").classList.add("hidden");
+    $("songsWordPanel").classList.add("hidden");
     $("songsPracticeWrap").classList.remove("hidden");
     if (songsYtPlayer && songsYtPlayer.loadVideoById){
       songsYtPlayer.loadVideoById(id);
@@ -5749,9 +5793,13 @@ $("songsBreakdownBtn").onclick = async () => {
   try {
     const bd = await api("/api/songs/breakdown", "POST", {text: line});
     $("sbLiteral").textContent = bd.literal;
+    $("sbLiteralIpa").textContent = bd.literal_ipa || "";
     $("sbLinking").textContent = bd.linking;
+    $("sbLinkingIpa").textContent = bd.linking_ipa || "";
     $("sbReduced").textContent = bd.reduced;
+    $("sbReducedIpa").textContent = bd.reduced_ipa || "";
     $("sbFluent").textContent = bd.fluent;
+    $("sbFluentIpa").textContent = bd.fluent_ipa || "";
     $("songsBreakdownBox").classList.remove("hidden");
   } catch(e){
     $("songsError").textContent = e.message || t("songs.genericError");
@@ -5803,10 +5851,14 @@ function renderBatchResults(lines, results){
        ["reduced", "songs.bd.reduced", true], ["fluent", "songs.bd.fluent", true]].forEach(([field, key, highlight]) => {
         const row = document.createElement("div"); row.className = "sb-row";
         const label = document.createElement("span"); label.className = "sb-label"; label.textContent = t(key);
+        const col = document.createElement("span"); col.className = "sb-col";
         const val = document.createElement("span");
         val.className = "sb-val" + (highlight ? " sb-highlight" : "");
         val.dir = "ltr"; val.textContent = res[field] || "";
-        row.appendChild(label); row.appendChild(val);
+        const ipa = document.createElement("span");
+        ipa.className = "sb-ipa"; ipa.dir = "ltr"; ipa.textContent = res[field + "_ipa"] || "";
+        col.appendChild(val); col.appendChild(ipa);
+        row.appendChild(label); row.appendChild(col);
         bd.appendChild(row);
       });
       card.appendChild(bd);
@@ -5830,6 +5882,50 @@ function renderBatchResults(lines, results){
     box.appendChild(card);
   });
 }
+
+// ---- Word-pronunciation lookup: type any word (never fetched from a
+// lyrics source) and see its stress, IPA, and a short definition. ----
+$("songsWordToggleBtn").onclick = () => { $("songsWordPanel").classList.toggle("hidden"); };
+$("songsWordInput").addEventListener("keydown", e => { if (e.key === "Enter") $("songsWordBtn").click(); });
+let songsWordLastText = "";
+$("songsWordBtn").onclick = async () => {
+  const word = $("songsWordInput").value.trim();
+  if (!word) return;
+  $("songsWordBtn").disabled = true;
+  const prevLabel = $("songsWordBtn").textContent;
+  $("songsWordBtn").textContent = t("songs.bd.loading");
+  try {
+    const data = await api("/api/songs/word-lookup", "POST", {word});
+    renderWordCard(data);
+  } catch(e){
+    $("songsError").textContent = e.message || t("songs.genericError");
+    $("songsError").classList.remove("hidden");
+  }
+  $("songsWordBtn").disabled = false;
+  $("songsWordBtn").textContent = prevLabel;
+};
+function renderWordCard(data){
+  songsWordLastText = data.word || "";
+  const wordEl = $("songsWordSyllables");
+  wordEl.innerHTML = "";
+  const syllables = data.syllables || [];
+  syllables.forEach((syl, i) => {
+    const span = document.createElement("span");
+    span.className = "word-syl" + (i === data.stressed_index ? " word-syl-stressed" : "");
+    span.textContent = syl;
+    wordEl.appendChild(span);
+    if (i < syllables.length - 1) wordEl.appendChild(document.createTextNode("·"));
+  });
+  $("songsWordIpa").textContent = data.ipa || "";
+  $("songsWordDef").textContent = data.definition || "";
+  $("songsWordCard").classList.remove("hidden");
+}
+$("songsWordListenBtn").onclick = () => {
+  if (!songsWordLastText) return;
+  const u = new SpeechSynthesisUtterance(songsWordLastText);
+  u.lang = "en-US"; u.rate = playbackRate;
+  speechSynthesis.cancel(); speechSynthesis.speak(u);
+};
 $("songsMicBtn").onclick = () => {
   const line = $("songsLineInput").value.trim();
   if (!line){ $("songsMicHint").textContent = t("songs.typeLineFirst"); return; }

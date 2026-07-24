@@ -241,29 +241,42 @@ GEMINI_CONFIGURED = bool(GEMINI_API_KEY)
 # typed line down from careful textbook pronunciation into fast natural
 # speech. Gemini is never asked to produce or recall real song lyrics --
 # it only ever transforms text the learner already typed in.
+BREAKDOWN_FIELDS = ("literal", "literal_ipa", "linking", "linking_ipa",
+                    "reduced", "reduced_ipa", "fluent", "fluent_ipa")
+
+
 def call_gemini_breakdown(text: str) -> dict:
     """
     The "connected speech breakdown" technique: shows one line transforming
     from careful textbook pronunciation into fast natural speech, in the
     same 4 layers as the reference videos this feature was inspired by
-    (No Rhythm -> Linking -> Reduced/Substituted -> Fluency). Works on any
-    line of English -- real lyrics, AI-generated lyrics, or plain
-    sentences. Returns {"literal", "linking", "reduced", "fluent"}.
+    (No Rhythm -> Linking -> Reduced/Substituted -> Fluency), each paired
+    with its own IPA transcription (also from the reference videos -- they
+    show IPA under every layer, not just once). Works on any line of
+    English -- real lyrics, AI-generated lyrics, or plain sentences.
+    Returns {"literal", "literal_ipa", "linking", "linking_ipa", "reduced",
+    "reduced_ipa", "fluent", "fluent_ipa"}.
     """
     system_prompt = (
         "You are a phonetics coach showing a language learner how a line of "
         "English transforms from careful textbook pronunciation into fast, "
         "natural native speech -- the same technique as: 'it was not me' -> "
         "'it ain't me'. Given one line, reply with ONLY valid JSON: "
-        '{"literal": "...", "linking": "...", "reduced": "...", "fluent": "..."}. '
+        '{"literal": "...", "literal_ipa": "...", "linking": "...", '
+        '"linking_ipa": "...", "reduced": "...", "reduced_ipa": "...", '
+        '"fluent": "...", "fluent_ipa": "..."}. '
         "literal = the line exactly as given. linking = the same words, but "
         "insert an underscore between any words whose sounds blend/link "
         "together when spoken fast (e.g. 'it_wasn't_me'). reduced = the "
         "casual contracted/substituted form a native would actually say "
         "(e.g. 'going to'->'gonna', 'want to'->'wanna', 'wasn't'->'ain't'). "
         "fluent = a short, easy-to-read phonetic-style respelling of how it "
-        "actually sounds spoken fast (e.g. 'it ain(t) me'). Keep every field "
-        "short -- one line, no explanations, JSON only."
+        "actually sounds spoken fast (e.g. 'it ain(t) me'). "
+        "*_ipa = the IPA transcription of that exact layer (literal_ipa for "
+        "the literal line, linking_ipa for the linking form, and so on), "
+        "using standard IPA symbols with the primary stress mark ˈ placed "
+        "before the stressed syllable of each stressed word. Keep every "
+        "field short -- one line, no explanations, JSON only."
     )
     resp = requests.post(
         f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent",
@@ -272,15 +285,12 @@ def call_gemini_breakdown(text: str) -> dict:
             "system_instruction": {"parts": [{"text": system_prompt}]},
             "contents": [{"role": "user", "parts": [{"text": text}]}],
             "generationConfig": {
-                "maxOutputTokens": 300, "temperature": 0.4,
+                "maxOutputTokens": 500, "temperature": 0.4,
                 "responseMimeType": "application/json",
                 "responseSchema": {
                     "type": "OBJECT",
-                    "properties": {
-                        "literal": {"type": "STRING"}, "linking": {"type": "STRING"},
-                        "reduced": {"type": "STRING"}, "fluent": {"type": "STRING"},
-                    },
-                    "required": ["literal", "linking", "reduced", "fluent"],
+                    "properties": {field: {"type": "STRING"} for field in BREAKDOWN_FIELDS},
+                    "required": list(BREAKDOWN_FIELDS),
                 },
             },
         },
@@ -297,7 +307,7 @@ def call_gemini_breakdown(text: str) -> dict:
     raw = re.sub(r"^```(?:json)?\s*|\s*```$", "", raw.strip())
     try:
         data = _json.loads(raw)
-        result = {k: str(data[k]).strip() for k in ("literal", "linking", "reduced", "fluent")}
+        result = {k: str(data[k]).strip() for k in BREAKDOWN_FIELDS}
         if not all(result.values()):
             raise ValueError("empty field")
     except (_json.JSONDecodeError, KeyError, ValueError, TypeError):
@@ -4718,6 +4728,101 @@ def songs_breakdown_batch(data: BreakdownBatchIn, request: Request, user: User =
     return {"lines": lines, "results": results}
 
 
+def call_gemini_word_lookup(word: str) -> dict:
+    """
+    Looks up ONE English word for pronunciation practice (a second
+    technique from the same reference videos as the breakdown feature,
+    this one showing a single word's stress + IPA + a plain-English
+    definition). Splits the word into syllables, marks which one carries
+    primary stress (so the UI can highlight it), and gives its IPA
+    transcription and a short definition. Returns {"word", "syllables",
+    "stressed_index", "ipa", "definition"}.
+    """
+    system_prompt = (
+        "You are an English pronunciation coach. Given one English word, "
+        "reply with ONLY valid JSON matching this exact shape: "
+        '{"word": "...", "syllables": ["...", "..."], "stressed_index": 0, '
+        '"ipa": "...", "definition": "..."}. '
+        "word = the word exactly as given (lowercase unless a proper noun). "
+        "syllables = the word split into its syllables, spelled normally "
+        '(not IPA), in order, e.g. ["ar", "ti", "fi", "cial"]. '
+        "stressed_index = the zero-based index into syllables of the ONE "
+        "syllable that carries primary stress. ipa = the word's IPA "
+        "transcription using standard IPA symbols, with the primary stress "
+        "mark ˈ placed right before the stressed syllable. definition = "
+        "a short, simple definition (under 10 words) a language learner "
+        "would understand. JSON only, no commentary."
+    )
+    resp = requests.post(
+        f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent",
+        params={"key": GEMINI_API_KEY},
+        json={
+            "system_instruction": {"parts": [{"text": system_prompt}]},
+            "contents": [{"role": "user", "parts": [{"text": word}]}],
+            "generationConfig": {
+                "maxOutputTokens": 200, "temperature": 0.3,
+                "responseMimeType": "application/json",
+                "responseSchema": {
+                    "type": "OBJECT",
+                    "properties": {
+                        "word": {"type": "STRING"},
+                        "syllables": {"type": "ARRAY", "items": {"type": "STRING"}},
+                        "stressed_index": {"type": "INTEGER"},
+                        "ipa": {"type": "STRING"},
+                        "definition": {"type": "STRING"},
+                    },
+                    "required": ["word", "syllables", "stressed_index", "ipa", "definition"],
+                },
+            },
+        },
+        timeout=20,
+    )
+    if not resp.ok:
+        raise HTTPException(502, f"Gemini rejected the request ({resp.status_code}): {resp.text[:500]}")
+    body = resp.json()
+    try:
+        raw = body["candidates"][0]["content"]["parts"][0]["text"].strip()
+    except (KeyError, IndexError, TypeError):
+        reason = (body.get("candidates") or [{}])[0].get("finishReason", "unknown")
+        raise HTTPException(502, f"Gemini didn't return a word lookup (reason: {reason}).")
+    raw = re.sub(r"^```(?:json)?\s*|\s*```$", "", raw.strip())
+    try:
+        data = _json.loads(raw)
+        syllables = [str(s).strip() for s in data["syllables"] if str(s).strip()]
+        stressed_index = int(data["stressed_index"])
+        result = {
+            "word": str(data["word"]).strip(),
+            "syllables": syllables,
+            "stressed_index": stressed_index if 0 <= stressed_index < len(syllables) else 0,
+            "ipa": str(data["ipa"]).strip(),
+            "definition": str(data["definition"]).strip(),
+        }
+        if not result["word"] or not syllables or not result["ipa"] or not result["definition"]:
+            raise ValueError("empty field")
+    except (_json.JSONDecodeError, KeyError, ValueError, TypeError):
+        raise HTTPException(502, "Gemini returned a word lookup in an unexpected format. Try again.")
+    return result
+
+
+class WordLookupIn(BaseModel):
+    word: str
+
+
+@app.post("/api/songs/word-lookup")
+def songs_word_lookup(data: WordLookupIn, request: Request, user: User = Depends(require_max)):
+    """
+    Looks up one English word for pronunciation practice (Max only):
+    stress, IPA, and a short definition. Nothing is persisted.
+    """
+    rate_limit(request, "songs-word-lookup", limit=30, window=300)
+    if not GEMINI_CONFIGURED:
+        raise HTTPException(503, "This feature isn't configured on this server yet (missing GEMINI_API_KEY).")
+    word = data.word.strip()[:40]
+    if not word:
+        raise HTTPException(400, "Type a word first.")
+    return call_gemini_word_lookup(word)
+
+
 # ----------------------------------------------------------------------
 # 7c. ADMIN ROUTES — manage users, and unlock the Sprint for testing
 # ----------------------------------------------------------------------
@@ -4954,7 +5059,7 @@ def _startup_banner():
     print(f"  Content              : OFFLINE (no API, no keys, no limits)")
     print(f"    practice sentences : {sum(len(v) for v in SENTENCE_BANK.values())} across "
           f"{len(SENTENCE_BANK)} levels")
-    print(f"  Gemini AI (Max: Roleplay + speech breakdown) : {'configured, model=' + GEMINI_MODEL if GEMINI_CONFIGURED else 'NOT configured  <-- add GEMINI_API_KEY to .env to turn it on'}")
+    print(f"  Gemini AI (Max: Roleplay + speech breakdown + word lookup) : {'configured, model=' + GEMINI_MODEL if GEMINI_CONFIGURED else 'NOT configured  <-- add GEMINI_API_KEY to .env to turn it on'}")
     total_sprint_convs = sum(len(c) for c in SPRINT_CONVS_BY_SPRINT.values())
     print(f"    conversations      : {len(CONVERSATIONS)} scenarios + {total_sprint_convs} sprint days")
     print("=" * 58)
