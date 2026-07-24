@@ -1119,11 +1119,6 @@
           <button class="btn-gold sh-cta" id="talkHeroCta" data-i18n="talk.cta">Start Talking</button>
         </div>
       </div>
-      <div id="aiOff" class="unsupported hidden">
-        <b data-i18n="aiOff.b">AI conversations are switched off.</b> Add <code>ANTHROPIC_API_KEY</code> to your
-        <code>.env</code> file and restart the server to turn them on.
-      </div>
-      <div class="grid scroll-row reveal" id="scenarioGrid"></div>
 
       <div class="drill-section reveal" style="margin-top:100px">
         <div class="section-header" style="margin-bottom:0">
@@ -1261,8 +1256,6 @@
         <button class="btn-sm solid" id="journalUpgradeBtn" data-i18n="progress.upgradeBtn">Upgrade to Pro</button>
       </div>
 
-      <div class="grid scroll-row reveal" id="lessonGrid"></div>
-
       <!-- Go Pro — consolidated upsell gallery. Replaces the 5 scattered
            progress-teaser blocks above (those stay in the DOM, permanently
            hidden, so their button-click wiring elsewhere keeps working). -->
@@ -1316,15 +1309,81 @@
         </div>
       </div>
 
-      <div class="grid scroll-row reveal" id="shadowGrid"></div>
+      <!-- AI Roleplay — the newest "pillar" feature, same full-screen hero
+           treatment as Talk/Lessons/Shadow above (gold-tinted, since AI/Max
+           already uses gold for the nav badge/sparkle elsewhere). No card
+           grid to scroll to (it's one unified free-form chat, not a
+           catalog) so the CTA opens the flow directly for Max members, or
+           the paywall (Max tab preselected) for everyone else -- see
+           renderModeHeroes() for how the stat line + button text adapt. -->
+      <div class="mode-hero ai-hero reveal" id="aiHero">
+        <canvas id="aiLetterCanvas" aria-hidden="true"></canvas>
+        <div class="sh-content">
+          <span class="sh-eyebrow" data-i18n="roleplay.eyebrow">AI-powered</span>
+          <h2 class="sh-title" data-i18n-html="roleplay.heroTitleHtml">AI <em>Roleplay</em></h2>
+          <p class="sh-promise" data-i18n="roleplay.cardSub">Free-form spoken conversation with an AI partner — talk about anything.</p>
+          <div class="sh-stat" id="aiHeroStat"></div>
+          <!-- No data-i18n here on purpose -- its text depends on tier
+               (Start a conversation / Upgrade to Max), not just language,
+               so renderModeHeroStats() sets it via JS every render,
+               exactly like journalBtn's already-established pattern. -->
+          <button class="btn-gold sh-cta" id="aiHeroCta"></button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Talk catalog — the scenario cards, now their own page (was inline
+         under the Talk hero above; moved out so the hero's CTA is the only
+         way in, matching the "click through to a catalog" pattern the
+         other pillar sections use). -->
+    <div id="talkCatalogView" class="hidden">
+      <button class="back" id="backTalkCatalog" data-i18n="back.home">← Home</button>
+      <div class="section-header">
+        <div>
+          <span class="sh-eyebrow" data-i18n="talk.eyebrow">Conversations</span>
+          <h2 data-i18n-html="talk.title">Talk to <em>someone</em></h2>
+        </div>
+        <p class="section-desc" data-i18n="talk.sub">Real conversations with a goal. Speak or type — get your meaning across.</p>
+      </div>
+      <div id="aiOff" class="unsupported hidden">
+        <b data-i18n="aiOff.b">AI conversations are switched off.</b> Add <code>ANTHROPIC_API_KEY</code> to your
+        <code>.env</code> file and restart the server to turn them on.
+      </div>
+      <div class="grid scroll-row anim-in" id="scenarioGrid"></div>
+    </div>
+
+    <!-- Lessons catalog -- same idea as Talk's above. -->
+    <div id="lessonsCatalogView" class="hidden">
+      <button class="back" id="backLessonsCatalog" data-i18n="back.home">← Home</button>
+      <div class="section-header">
+        <div>
+          <span class="sh-eyebrow" data-i18n="lessons.eyebrow">Your journey</span>
+          <h2 data-i18n-html="lessons.title">Practice <em>lessons</em></h2>
+        </div>
+        <p class="section-desc" data-i18n="lessons.sub">Fixed phrases to warm up with. Pick a lesson, listen, then speak.</p>
+      </div>
+      <div class="grid scroll-row anim-in" id="lessonGrid"></div>
+    </div>
+
+    <!-- Shadow catalog -- same idea, plus the Arabic-speaker tips card,
+         which lives right after the cards it supplements (see its own
+         comment below -- unchanged reasoning, just relocated). -->
+    <div id="shadowCatalogView" class="hidden">
+      <button class="back" id="backShadowCatalog" data-i18n="back.home">← Home</button>
+      <div class="section-header">
+        <div>
+          <span class="sh-eyebrow" data-i18n="shadow.eyebrow">Immersive</span>
+          <h2 data-i18n-html="shadow.title">Shadow <em>Mode</em></h2>
+        </div>
+        <p class="section-desc" data-i18n="shadow.sub">Speak along WITH the recording, not after it — the fastest way to pick up native rhythm, linking, and reductions.</p>
+      </div>
+      <div class="grid scroll-row anim-in" id="shadowGrid"></div>
 
       <!-- Static reference card -- sounds that are specifically hard for
            Arabic-L1 speakers (not just generic ESL tips). No backend, no
            per-user state: just content, toggled open/closed like the
-           phrase-translate box already does elsewhere on this page.
-           Lives after the practice cards now so it doesn't wedge itself
-           between the Shadow Mode intro and the cards it introduces. -->
-      <div class="progress-card arabic-tips-card reveal" id="arabicTipsCard" style="margin-top:26px">
+           phrase-translate box already does elsewhere on this page. -->
+      <div class="progress-card arabic-tips-card anim-in-1" id="arabicTipsCard" style="margin-top:26px">
         <div class="pc-head">
           <h3 data-i18n="arabicTips.title">🇮🇶 Sounds Arabic Speakers Often Mix Up</h3>
           <button class="atc-toggle" id="arabicTipsToggle" data-i18n="arabicTips.show">Show tips</button>
@@ -1354,28 +1413,6 @@
             <span class="atc-sound" dir="ltr">Stress &amp; rhythm</span>
             <span class="atc-desc" data-i18n="arabicTips.stress">Arabic gives syllables fairly even weight; English leans hard on stressed ones and swallows the rest. That's exactly what "Stress &amp; Rhythm" below trains.</span>
           </div>
-        </div>
-      </div>
-
-      <!-- AI Roleplay — the newest "pillar" feature, same full-screen hero
-           treatment as Talk/Lessons/Shadow above (gold-tinted, since AI/Max
-           already uses gold for the nav badge/sparkle elsewhere). No card
-           grid to scroll to (it's one unified free-form chat, not a
-           catalog) so the CTA opens the flow directly for Max members, or
-           the paywall (Max tab preselected) for everyone else -- see
-           renderModeHeroes() for how the stat line + button text adapt. -->
-      <div class="mode-hero ai-hero reveal" id="aiHero">
-        <canvas id="aiLetterCanvas" aria-hidden="true"></canvas>
-        <div class="sh-content">
-          <span class="sh-eyebrow" data-i18n="roleplay.eyebrow">AI-powered</span>
-          <h2 class="sh-title" data-i18n-html="roleplay.heroTitleHtml">AI <em>Roleplay</em></h2>
-          <p class="sh-promise" data-i18n="roleplay.cardSub">Free-form spoken conversation with an AI partner — talk about anything.</p>
-          <div class="sh-stat" id="aiHeroStat"></div>
-          <!-- No data-i18n here on purpose -- its text depends on tier
-               (Start a conversation / Upgrade to Max), not just language,
-               so renderModeHeroStats() sets it via JS every render,
-               exactly like journalBtn's already-established pattern. -->
-          <button class="btn-gold sh-cta" id="aiHeroCta"></button>
         </div>
       </div>
     </div>
@@ -2627,7 +2664,8 @@ async function api(path, method = "GET", body = null){
   return data;
 }
 function show(view){
-  ["dashboard","practiceView","paywallView","sprintView","certView","adminView","convView","settingsView","journalView","roleplayView"]
+  ["dashboard","practiceView","paywallView","sprintView","certView","adminView","convView","settingsView","journalView","roleplayView",
+   "talkCatalogView","lessonsCatalogView","shadowCatalogView"]
     .forEach(v => $(v).classList.add("hidden"));
   // #sprintHero lives outside #dashboard now (so it can go full-bleed), so
   // its visibility is tied to the dashboard view explicitly here.
@@ -5190,9 +5228,12 @@ function renderModeHeroStats(){
 // AI Roleplay has no grid (it's one unified free-form chat, not a list of
 // items), so its CTA opens the flow directly for Max members, or the
 // paywall (Max tab preselected) for everyone else.
-$("talkHeroCta").onclick = () => $("scenarioGrid").scrollIntoView({behavior: "smooth", block: "start"});
-$("lessonsHeroCta").onclick = () => $("lessonGrid").scrollIntoView({behavior: "smooth", block: "start"});
-$("shadowHeroCta").onclick = () => $("shadowGrid").scrollIntoView({behavior: "smooth", block: "start"});
+$("talkHeroCta").onclick = () => show("talkCatalogView");
+$("lessonsHeroCta").onclick = () => show("lessonsCatalogView");
+$("shadowHeroCta").onclick = () => show("shadowCatalogView");
+$("backTalkCatalog").onclick = () => loadDashboard();
+$("backLessonsCatalog").onclick = () => loadDashboard();
+$("backShadowCatalog").onclick = () => loadDashboard();
 $("aiHeroCta").onclick = () => {
   const isMax = !!(currentUser && currentUser.is_premium && currentUser.plan_tier === "max");
   if (isMax) openRoleplay();
